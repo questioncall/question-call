@@ -1,34 +1,16 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PortalShell } from "@/components/shared/portal-shell";
+import { Logo } from "@/components/shared/logo";
+import { SignOutButton } from "@/components/shared/sign-out-button";
 import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 
 const studentNavItems = [
-  {
-    href: "/student/profile",
-    label: "Profile",
-    description: "Your student account, progress, and future points view.",
-  },
-  {
-    href: "/student/ask",
-    label: "Ask",
-    description: "Create a new question with tier and visibility.",
-  },
-  {
-    href: "/student/feed",
-    label: "Feed",
-    description: "Browse open and solved academic questions.",
-  },
-  {
-    href: "/student/inbox",
-    label: "Inbox",
-    description: "Private answers and future channel follow-ups.",
-  },
-  {
-    href: "/student/leaderboard",
-    label: "Leaderboard",
-    description: "Track participation and peer-answer standing.",
-  },
+  { href: "/student/profile", label: "Profile" },
+  { href: "/student/ask", label: "Ask" },
+  { href: "/student/feed", label: "Feed" },
+  { href: "/student/inbox", label: "Inbox" },
+  { href: "/student/leaderboard", label: "Leaderboard" },
 ] as const;
 
 export default async function StudentPortalLayout({
@@ -47,18 +29,32 @@ export default async function StudentPortalLayout({
   }
 
   return (
-    <PortalShell
-      headline="Your student profile area is ready."
-      navItems={studentNavItems.map((item) => ({ ...item }))}
-      portalName="Student Profile"
-      summary="This protected area now holds profile-focused pages, while the authenticated root route is free to become the main question-feed home."
-      tone="student"
-      userEmail={session.user.email}
-      userName={session.user.name}
-    >
-      {children}
-    </PortalShell>
+    <div className="min-h-screen bg-[#f7f7f8]">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Logo />
+              <p className="mt-3 text-sm text-slate-500">Student portal</p>
+            </div>
+            <SignOutButton />
+          </div>
+
+          <nav className="mt-4 flex flex-wrap gap-2">
+            {studentNavItems.map((item) => (
+              <Link
+                key={item.href}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                href={item.href}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+    </div>
   );
 }
-
-

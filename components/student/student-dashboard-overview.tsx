@@ -2,60 +2,65 @@ const studentMetrics = [
   {
     label: "Question access",
     value: "Trial ready",
-    note: "Student accounts are initialized for the future 3-day trial flow and paid renewal logic.",
+    note: "Student accounts are initialized for the future trial and subscription flow.",
   },
   {
     label: "Peer rewards",
-    value: "Points engine soon",
-    note: "The profile view already reserves space for AI-validated points and leaderboard activity.",
+    value: "Points later",
+    note: "This page will show points and answer validation progress once that feature lands.",
   },
   {
     label: "Answer flow",
-    value: "Portal scaffolded",
-    note: "Ask, feed, inbox, and leaderboard routes are in place so Phase 2 can plug in quickly.",
+    value: "Routes ready",
+    note: "Ask, feed, inbox, and leaderboard pages are already in place.",
   },
 ] as const;
 
 const studentActions = [
-  "Ask a question with tier and visibility controls in Phase 2.",
-  "Track private answers and teacher communication inside the inbox and channel flow.",
-  "Use future points to reduce renewal cost once payment features arrive.",
+  "Create and manage questions.",
+  "Track private answers and channel history.",
+  "View points and leaderboard progress.",
 ] as const;
 
 export function StudentDashboardOverview() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-3">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-medium text-slate-500">Student profile</p>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Your student workspace</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+          This page will hold subscription details, points, progress, and personal
+          activity. The layout is intentionally plain for now so we can rebuild the UI
+          cleanly with shadcn later.
+        </p>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
         {studentMetrics.map((metric) => (
-          <div key={metric.label} className="section-frame rounded-[1.75rem] p-5">
-            <p className="eyebrow text-[11px] text-[#6d6257]">{metric.label}</p>
-            <p className="mt-3 text-2xl font-semibold text-[#1e1914]">{metric.value}</p>
-            <p className="mt-3 text-sm leading-6 text-[#5c544c]">{metric.note}</p>
-          </div>
+          <article
+            key={metric.label}
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <p className="text-sm font-medium text-slate-500">{metric.label}</p>
+            <p className="mt-2 text-xl font-semibold text-slate-900">{metric.value}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{metric.note}</p>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="section-frame rounded-[1.75rem] p-6">
-          <p className="eyebrow text-[11px] text-[#6d6257]">Student profile</p>
-          <h2 className="headline mt-3 text-2xl font-semibold text-[#1e1914]">Built for asking, tracking, and learning</h2>
-          <p className="mt-4 text-sm leading-7 text-[#5c544c]">
-            This profile view gives us the protected account space for the student experience: subscription status,
-            points, personal progress, and future channel history, while the root page can focus on the shared feed.
-          </p>
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Planned sections</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {studentActions.map((action) => (
+            <div
+              key={action}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+            >
+              {action}
+            </div>
+          ))}
         </div>
-
-        <div className="section-frame rounded-[1.75rem] p-6">
-          <p className="eyebrow text-[11px] text-[#6d6257]">What comes next</p>
-          <div className="mt-4 space-y-3">
-            {studentActions.map((action) => (
-              <div key={action} className="rounded-2xl border border-[#281f1614] bg-white/70 px-4 py-3 text-sm leading-6 text-[#433b33]">
-                {action}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

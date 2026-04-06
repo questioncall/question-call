@@ -1,4 +1,8 @@
-export function sendApiResponse(data: any, message = "Success", status = 200) {
+export function sendApiResponse(
+  data: unknown,
+  message = "Success",
+  status = 200,
+) {
   return Response.json(
     {
       success: true,
@@ -6,6 +10,6 @@ export function sendApiResponse(data: any, message = "Success", status = 200) {
       error: null,
       data,
     },
-    { status }
+    { status },
   );
 }

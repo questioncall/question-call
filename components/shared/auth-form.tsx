@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+
+import {
+  clearAuthState,
+  registerUser,
+} from "@/store/features/auth/auth-slice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -18,43 +24,49 @@ const defaultPathByRole = {
 
 export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { registerError, registerStatus } = useAppSelector(
+    (state) => state.auth,
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isRegister = mode === "register";
+  const isSubmitting =
+    (isRegister && registerStatus === "pending") || isSigningIn;
+  const activeError = isRegister ? registerError ?? formError : formError;
+
+  useEffect(() => {
+    dispatch(clearAuthState());
+  }, [dispatch, mode, role]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    setFormError(null);
     setSuccess(null);
-    setIsSubmitting(true);
+    dispatch(clearAuthState());
 
     try {
       if (isRegister && role) {
-        const response = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const registerResult = await dispatch(
+          registerUser({
             name,
             email,
             password,
             role,
           }),
-        });
+        );
 
-        const data = (await response.json()) as { message?: string };
-
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to create the account.");
+        if (registerUser.rejected.match(registerResult)) {
+          return;
         }
 
         setSuccess("Account created. Signing you in now...");
+        setIsSigningIn(true);
 
         const signInResult = await signIn("credentials", {
           email,
@@ -74,11 +86,13 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
         return;
       }
 
+      setIsSigningIn(true);
+
       const signInResult = await signIn("credentials", {
+        callbackUrl: callbackUrl || "/",
         email,
         password,
         redirect: false,
-        callbackUrl: callbackUrl || "/",
       });
 
       if (signInResult?.error) {
@@ -88,10 +102,13 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
       router.replace(signInResult?.url ?? "/");
       router.refresh();
     } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : "Something went wrong.";
-      setError(message);
+      const message =
+        submitError instanceof Error
+          ? submitError.message
+          : "Something went wrong.";
+      setFormError(message);
     } finally {
-      setIsSubmitting(false);
+      setIsSigningIn(false);
     }
   }
 
@@ -99,7 +116,9 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="eyebrow text-xs text-[#6d6257]">
-          {isRegister ? `${role === "STUDENT" ? "Student" : "Teacher"} Registration` : "Shared Login"}
+          {isRegister
+            ? `${role === "STUDENT" ? "Student" : "Teacher"} Registration`
+            : "Shared Login"}
         </p>
         <h2 className="headline text-3xl font-semibold text-[#1e1914]">
           {isRegister ? "Create your account" : "Welcome back"}
@@ -154,9 +173,9 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
           />
         </label>
 
-        {error ? (
+        {activeError ? (
           <div className="rounded-2xl border border-[#d7464622] bg-[#fff1f1] px-4 py-3 text-sm text-[#a13c3c]">
-            {error}
+            {activeError}
           </div>
         ) : null}
 
@@ -181,7 +200,7 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
         </button>
       </form>
 
-      <div className="space-y-3 rounded-[1.5rem] border border-[#281f1614] bg-[#fff8ef] p-4 text-sm text-[#5c544c]">
+      <div className="space-y-3 rounded-3xl border border-[#281f1614] bg-[#fff8ef] p-4 text-sm text-[#5c544c]">
         {isRegister ? (
           <>
             <p>

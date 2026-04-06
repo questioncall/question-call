@@ -1,18 +1,22 @@
-import { sendApiError } from "./sendApiError";
 import { ApiError } from "./apiError";
+import { sendApiError } from "./sendApiError";
 
-export function withApiHandler(handler: Function) {
-  return async (...args: any) => {
+type ApiHandler<TArgs extends unknown[]> = (...args: TArgs) => Promise<Response>;
+
+export function withApiHandler<TArgs extends unknown[]>(
+  handler: ApiHandler<TArgs>,
+) {
+  return async (...args: TArgs): Promise<Response> => {
     try {
       return await handler(...args);
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        console.log("Error at withApiHandler: in`", err);
-         return sendApiError(err, err.message, err.status); 
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        console.error("Error in withApiHandler:", error);
+        return sendApiError(error, error.message, error.status);
       }
-      console.log("Error at :", err);
 
-      return sendApiError(err, "Unexpected error", 500);
+      console.error("Unexpected API error:", error);
+      return sendApiError(error, "Unexpected error", 500);
     }
   };
 }

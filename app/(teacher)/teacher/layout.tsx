@@ -1,24 +1,14 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { PortalShell } from "@/components/shared/portal-shell";
+import { Logo } from "@/components/shared/logo";
+import { SignOutButton } from "@/components/shared/sign-out-button";
 import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 
 const teacherNavItems = [
-  {
-    href: "/teacher/profile",
-    label: "Profile",
-    description: "Your teacher account, ratings, and future monetization view.",
-  },
-  {
-    href: "/teacher/questions",
-    label: "Questions",
-    description: "Browse and accept open student questions.",
-  },
-  {
-    href: "/teacher/wallet",
-    label: "Wallet",
-    description: "Future earnings, credits, and withdrawals.",
-  },
+  { href: "/teacher/profile", label: "Profile" },
+  { href: "/teacher/questions", label: "Questions" },
+  { href: "/teacher/wallet", label: "Wallet" },
 ] as const;
 
 export default async function TeacherPortalLayout({
@@ -37,18 +27,32 @@ export default async function TeacherPortalLayout({
   }
 
   return (
-    <PortalShell
-      headline="Your teacher profile area is ready."
-      navItems={teacherNavItems.map((item) => ({ ...item }))}
-      portalName="Teacher Profile"
-      summary="This protected area now focuses on profile-style teacher pages, while the authenticated root route stays available for the shared home feed and header UI."
-      tone="teacher"
-      userEmail={session.user.email}
-      userName={session.user.name}
-    >
-      {children}
-    </PortalShell>
+    <div className="min-h-screen bg-[#f7f7f8]">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Logo />
+              <p className="mt-3 text-sm text-slate-500">Teacher portal</p>
+            </div>
+            <SignOutButton />
+          </div>
+
+          <nav className="mt-4 flex flex-wrap gap-2">
+            {teacherNavItems.map((item) => (
+              <Link
+                key={item.href}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                href={item.href}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+    </div>
   );
 }
-
-

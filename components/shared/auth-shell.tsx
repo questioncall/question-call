@@ -23,7 +23,7 @@ export function AuthShell({
     <div className="min-h-screen bg-transparent px-5 py-6 sm:px-8 lg:px-10">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl overflow-hidden rounded-[2rem] border border-[#281f1614] bg-[#fff8ef]/70 shadow-[0_28px_90px_rgba(90,56,24,0.12)] lg:grid-cols-[1.15fr_0.85fr]">
         <section className="relative flex flex-col justify-between overflow-hidden px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
-          <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top_left,_rgba(223,106,52,0.18),_transparent_45%),radial-gradient(circle_at_top_right,_rgba(31,118,110,0.14),_transparent_35%)]" />
+          <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top_left,_rgba(223,106,52,0.18),_transparent_45%),radial-gradient(circle_at_top_right,_rgba(31,118,110,0.14),_transparent_35%)] "/>
 
           <div className="relative z-10 flex items-center justify-between gap-4">
             <Logo />

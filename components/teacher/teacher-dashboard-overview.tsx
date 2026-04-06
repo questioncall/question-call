@@ -1,61 +1,66 @@
 const teacherMetrics = [
   {
     label: "Answer queue",
-    value: "Questions route ready",
-    note: "The teacher portal already has a dedicated question feed route waiting for Phase 2 acceptance logic.",
+    value: "Questions ready",
+    note: "This area will connect to the teacher question feed and accept flow.",
   },
   {
     label: "Monetization",
-    value: "Wallet scaffolded",
-    note: "Wallet and qualification progress can plug in cleanly during the earnings phase.",
+    value: "Wallet later",
+    note: "Earnings and qualification progress will appear here after the wallet phase.",
   },
   {
     label: "Channel work",
-    value: "Messaging slot created",
-    note: "Dynamic channel routing is prepared for real-time chat, answer submission, and close flow rules.",
+    value: "Channel route ready",
+    note: "The channel page is ready to become the messaging workspace.",
   },
 ] as const;
 
 const teacherActions = [
-  "Browse open academic questions from a dedicated teacher workspace.",
-  "Accept a question and work through a private student-teacher channel.",
-  "Track answer count, monetization unlock progress, and later withdrawal history.",
+  "Browse and accept open questions.",
+  "Submit answers by the required tier.",
+  "Track ratings and earnings over time.",
 ] as const;
 
 export function TeacherDashboardOverview() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-3">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-medium text-slate-500">Teacher profile</p>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Your teacher workspace</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+          This page will hold ratings, answer totals, qualification progress, and wallet
+          information. For now the UI stays flat and minimal so the later app-shell work
+          is easier to build on top of it.
+        </p>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
         {teacherMetrics.map((metric) => (
-          <div key={metric.label} className="section-frame rounded-[1.75rem] p-5">
-            <p className="eyebrow text-[11px] text-[#6d6257]">{metric.label}</p>
-            <p className="mt-3 text-2xl font-semibold text-[#1e1914]">{metric.value}</p>
-            <p className="mt-3 text-sm leading-6 text-[#5c544c]">{metric.note}</p>
-          </div>
+          <article
+            key={metric.label}
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <p className="text-sm font-medium text-slate-500">{metric.label}</p>
+            <p className="mt-2 text-xl font-semibold text-slate-900">{metric.value}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{metric.note}</p>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="section-frame rounded-[1.75rem] p-6">
-          <p className="eyebrow text-[11px] text-[#6d6257]">Teacher workflow</p>
-          <h2 className="headline mt-3 text-2xl font-semibold text-[#1e1914]">Solve with structure, timing, and ratings</h2>
-          <p className="mt-4 text-sm leading-7 text-[#5c544c]">
-            The teacher shell is ready for time-boxed question acceptance, rating feedback, answer submission by tier,
-            and the later wallet flow tied to solved channels.
-          </p>
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Planned sections</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {teacherActions.map((action) => (
+            <div
+              key={action}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+            >
+              {action}
+            </div>
+          ))}
         </div>
-
-        <div className="section-frame rounded-[1.75rem] p-6">
-          <p className="eyebrow text-[11px] text-[#6d6257]">What comes next</p>
-          <div className="mt-4 space-y-3">
-            {teacherActions.map((action) => (
-              <div key={action} className="rounded-2xl border border-[#281f1614] bg-white/70 px-4 py-3 text-sm leading-6 text-[#433b33]">
-                {action}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
