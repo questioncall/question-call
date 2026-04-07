@@ -41,6 +41,7 @@ export async function GET() {
         askerImage: asker?.userImage || undefined,
         title: q.title,
         body: q.body,
+        images: Array.isArray(q.images) ? q.images : [],
         tier: q.tier,
         answerVisibility: q.answerVisibility,
         status: q.status,

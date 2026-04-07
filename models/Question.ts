@@ -45,6 +45,10 @@ const questionSchema = new Schema(
       minlength: 12,
       maxlength: 5000,
     },
+    images: {
+      type: [String],
+      default: [],
+    },
     tier: {
       type: String,
       enum: QUESTION_TIERS,

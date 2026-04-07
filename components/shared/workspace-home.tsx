@@ -54,10 +54,10 @@ type FeedEventPayload = {
 };
 
 const tierLabelMap: Record<QuestionTier, string> = {
-  UNSET: "Any tier",
-  ONE: "Tier I",
-  TWO: "Tier II",
-  THREE: "Tier III",
+  UNSET: "Any answer type",
+  ONE: "Text answer",
+  TWO: "Photo answer",
+  THREE: "Video based answer",
 };
 
 const tierColorMap: Record<QuestionTier, string> = {
@@ -205,7 +205,31 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
 
   // Handle reaction toggle
   const handleReact = async (questionId: string, type: ReactionType) => {
-    setReactingId(questionId);
+    if (!userId) return;
+    
+    const targetQuestion = feedItems.find(item => item.id === questionId);
+    if (!targetQuestion) return;
+
+    // Optimistically calculate new reactions
+    const userReactionIndex = targetQuestion.reactions.findIndex(r => r.userId === userId);
+    let newReactions = [...targetQuestion.reactions];
+
+    if (userReactionIndex >= 0) {
+      if (newReactions[userReactionIndex].type === type) {
+        // Same reaction clicked, toggle it off
+        newReactions.splice(userReactionIndex, 1);
+      } else {
+        // Different reaction clicked, switch to the new one
+        newReactions[userReactionIndex] = { ...newReactions[userReactionIndex], type };
+      }
+    } else {
+      // No prior reaction, add it
+      newReactions.push({ userId, type } as any);
+    }
+
+    const optimisticQuestion = { ...targetQuestion, reactions: newReactions };
+    dispatch(upsertFeedQuestion(optimisticQuestion));
+
     try {
       const res = await fetch(`/api/questions/${questionId}/react`, {
         method: "POST",
@@ -216,11 +240,13 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       if (res.ok) {
         const updated: FeedQuestion = await res.json();
         dispatch(upsertFeedQuestion(updated));
+      } else {
+        // Revert on fail
+        dispatch(upsertFeedQuestion(targetQuestion));
       }
     } catch {
-      // Silently fail
-    } finally {
-      setReactingId(null);
+      // Revert on fail
+      dispatch(upsertFeedQuestion(targetQuestion));
     }
   };
 
@@ -236,7 +262,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
     },
     {
       title: "Fastest replies",
-      value: `${tierOneCount} Tier I requests`,
+      value: `${tierOneCount} Text requests`,
       text: "Text-only questions that can be answered quickly.",
     },
     {
@@ -261,8 +287,8 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
               {[
                 "All questions",
                 "Recent answers",
-                "Tier I",
-                "Tier II",
+                "Text answers",
+                "Photo answers",
                 "Video requests",
               ].map((filter) => (
                 <Button key={filter} size="sm" variant="outline">
@@ -314,7 +340,6 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
           const isOwnQuestion = userId === item.askerId;
           const canAccept = !isOwnQuestion && (item.status === "OPEN" || item.status === "RESET");
           const isAcceptLoading = acceptingId === item.id;
-          const isReactLoading = reactingId === item.id;
 
           // Determine which reaction the current user has (if any)
           const userReaction = userId
@@ -324,12 +349,22 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
           return (
             <Card key={item.id} className="border border-border/70 shadow-sm transition-shadow hover:shadow-md">
               <CardHeader>
-                <CardDescription className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-medium text-foreground/80">{item.askerName}</span>
-                  <span>•</span>
-                  <span>{formatTimeAgo(item.createdAt)}</span>
-                  <span>•</span>
-                  <span>{item.subject || "General"}</span>
+                <CardDescription className="flex items-center gap-2 flex-wrap text-sm">
+                  <Link href={`/profile/${item.askerId}`} className="group flex items-center gap-2 font-medium text-foreground/80 transition-colors">
+                    {item.askerImage ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={item.askerImage} alt={item.askerName} className="size-6 rounded-full object-cover shadow-sm border border-border/50" />
+                    ) : (
+                      <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold shadow-sm border border-primary/20">
+                        {item.askerName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="group-hover:text-primary group-hover:underline decoration-primary/50 underline-offset-2">{item.askerName}</span>
+                  </Link>
+                  <span className="text-muted-foreground/60">•</span>
+                  <span className="text-muted-foreground">{formatTimeAgo(item.createdAt)}</span>
+                  <span className="text-muted-foreground/60">•</span>
+                  <span className="text-muted-foreground">{item.subject || "General"}</span>
                 </CardDescription>
                 <CardTitle className="text-base">{item.title}</CardTitle>
               </CardHeader>
@@ -354,6 +389,24 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
 
                 {/* Body */}
                 <p className="text-sm leading-7 text-muted-foreground">{item.body}</p>
+
+                {/* Attached Images */}
+                {item.images && item.images.length > 0 && (
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    {item.images.map((imgUrl, i) => (
+                      <a 
+                        key={i} 
+                        href={imgUrl} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="block overflow-hidden rounded-md border border-border/70 hover:opacity-90 transition-opacity"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl} alt="Attached question media" className="h-28 w-28 object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
 
                 {/* Accepted state banner */}
                 {isAccepted && (
@@ -415,7 +468,6 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                             ? "bg-primary/15 text-primary border border-primary/30"
                             : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent"
                         }`}
-                        disabled={isReactLoading}
                         onClick={() => handleReact(item.id, type)}
                         title={label}
                         type="button"

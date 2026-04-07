@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2Icon, SparklesIcon, XIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import imageCompression from "browser-image-compression";
+import { Loader2Icon, SparklesIcon, XIcon, ImageIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type {
   CreateQuestionPayload,
   FeedQuestion,
@@ -26,9 +27,9 @@ import { useAppDispatch } from "@/store/hooks";
 
 const TIER_OPTIONS: { value: QuestionTier; label: string; desc: string }[] = [
   { value: "UNSET", label: "Any", desc: "Let the answerer choose" },
-  { value: "ONE", label: "Tier I · Text", desc: "Written explanation" },
-  { value: "TWO", label: "Tier II · Photo", desc: "Photo-based answer" },
-  { value: "THREE", label: "Tier III · Video", desc: "Video walkthrough" },
+  { value: "ONE", label: "Text", desc: "Written explanation" },
+  { value: "TWO", label: "Photo", desc: "Photo-based answer" },
+  { value: "THREE", label: "Video", desc: "Video walkthrough" },
 ];
 
 const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string }[] = [
@@ -64,14 +65,27 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
   const [level, setLevel] = useState("");
+  
+  // Image attachments
+  const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([]);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
   const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
+
+  useEffect(() => {
+    // Cleanup preview URLs on unmount
+    return () => {
+      pendingImages.forEach((pi) => URL.revokeObjectURL(pi.preview));
+    };
+  }, [pendingImages]);
 
   const resetForm = () => {
     setTitle("");
@@ -82,6 +96,71 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
     setStream("");
     setLevel("");
     setError(null);
+    pendingImages.forEach((pi) => URL.revokeObjectURL(pi.preview));
+    setPendingImages([]);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    if (pendingImages.length + files.length > 4) {
+      alert("You can only attach up to 4 images per question.");
+      return;
+    }
+
+    const newPending = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file), // create local preview
+    }));
+
+    setPendingImages((prev) => [...prev, ...newPending]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setPendingImages((prev) => {
+      const newArr = [...prev];
+      URL.revokeObjectURL(newArr[indexToRemove].preview);
+      newArr.splice(indexToRemove, 1);
+      return newArr;
+    });
+  };
+
+  // Upload sequential helper
+  const _uploadFiles = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (const pending of pendingImages) {
+      let fileToUpload = pending.file;
+      
+      // Compress if eligible
+      if (!fileToUpload.type.includes("gif")) {
+         try {
+           fileToUpload = await imageCompression(fileToUpload, {
+             maxSizeMB: 5,
+             maxWidthOrHeight: 1920,
+             useWebWorker: true,
+           });
+         } catch (err) {
+           console.error("Compression failed:", err);
+         }
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Failed to upload an image");
+      const data = await res.json();
+      uploadedUrls.push(data.secure_url);
+    }
+    
+    return uploadedUrls;
   };
 
   const handleSubmit = async () => {
@@ -91,9 +170,17 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
     setError(null);
 
     try {
+      // 1. First upload any pending images to Cloudinary
+      let uploadedImageUrls: string[] = [];
+      if (pendingImages.length > 0) {
+        uploadedImageUrls = await _uploadFiles();
+      }
+
+      // 2. Submit question text along with Cloudinary URLs
       const payload: CreateQuestionPayload = {
         title: title.trim(),
         body: body.trim(),
+        images: uploadedImageUrls,
         tier,
         answerVisibility: visibility,
         ...(subject ? { subject } : {}),
@@ -124,19 +211,19 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <SparklesIcon className="size-5 text-primary" />
             Post a Question
-          </SheetTitle>
-          <SheetDescription>
-            Describe your doubt clearly. The more context you provide, the better the answer you&apos;ll receive.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription>
+            Describe your doubt clearly. You can attach up to 4 images to help teachers understand perfectly.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-5 px-6 pb-6">
+        <div className="flex flex-1 flex-col gap-6 py-4">
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="q-title">
@@ -182,90 +269,154 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
             )}
           </div>
 
-          {/* Tier picker */}
-          <div className="space-y-2">
-            <Label>Answer tier</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {TIER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
-                    tier === opt.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-foreground hover:border-primary/40"
-                  }`}
-                  onClick={() => setTier(opt.value)}
-                  type="button"
-                >
-                  <span className="font-medium">{opt.label}</span>
-                  <span className="block text-xs text-muted-foreground mt-0.5">
-                    {opt.desc}
-                  </span>
-                </button>
-              ))}
+          {/* Image Attachments */}
+          <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Attached Images ({pendingImages.length}/4)</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                disabled={pendingImages.length >= 4 || isSubmitting}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="size-3.5" />
+                Add Image
+              </Button>
             </div>
+            
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
+            />
+
+            {pendingImages.length > 0 && (
+              <div className="flex flex-wrap gap-4 pt-2">
+                {pendingImages.map((img, i) => (
+                  <div key={i} className="relative group rounded-md border border-border overflow-hidden bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={img.preview} 
+                      alt="pending attachment preview" 
+                      className="size-24 object-cover" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute -right-1 -top-1 rounded-full bg-background border border-border p-0.5 text-foreground opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-8px] translate-y-[8px]"
+                    >
+                      <XIcon className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                
+                {pendingImages.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSubmitting}
+                    className="size-24 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border hover:bg-muted/50 transition-colors text-muted-foreground"
+                  >
+                    <PlusIcon className="size-5" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">Add More</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Visibility */}
-          <div className="space-y-2">
-            <Label>Answer visibility</Label>
-            <div className="flex gap-2">
-              {VISIBILITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                    visibility === opt.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-foreground hover:border-primary/40"
-                  }`}
-                  onClick={() => setVisibility(opt.value)}
-                  type="button"
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {/* Configuration Grid */}
+          <div className="grid sm:grid-cols-2 gap-6">
+            {/* Tier picker */}
+            <div className="space-y-3">
+              <Label>Answer tier</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {TIER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                      tier === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/40"
+                    }`}
+                    onClick={() => setTier(opt.value)}
+                    type="button"
+                  >
+                    <span className="font-medium">{opt.label}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {opt.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-3">
+              <Label>Answer visibility</Label>
+              <div className="flex gap-2 h-[calc(100%-28px)]">
+                {VISIBILITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      visibility === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/40"
+                    }`}
+                    onClick={() => setVisibility(opt.value)}
+                    type="button"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Optional metadata */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs" htmlFor="q-subject">Subject</Label>
+          <div className="grid grid-cols-3 gap-3 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-subject">Subject</Label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
                 id="q-subject"
                 onChange={(e) => setSubject(e.target.value)}
                 value={subject}
               >
-                <option value="">Any</option>
+                <option value="">Any Subject</option>
                 {SUBJECT_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs" htmlFor="q-stream">Stream</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-stream">Stream</Label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
                 id="q-stream"
                 onChange={(e) => setStream(e.target.value)}
                 value={stream}
               >
-                <option value="">Any</option>
+                <option value="">Any Stream</option>
                 {STREAM_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs" htmlFor="q-level">Level</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-level">Level</Label>
               <select
-                className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-sm"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
                 id="q-level"
                 onChange={(e) => setLevel(e.target.value)}
                 value={level}
               >
-                <option value="">Any</option>
+                <option value="">Any Level</option>
                 {LEVEL_OPTIONS.map((l) => (
                   <option key={l} value={l}>{l}</option>
                 ))}
@@ -275,26 +426,27 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               <XIcon className="size-4 shrink-0" />
               {error}
             </div>
           )}
         </div>
 
-        <SheetFooter className="border-t border-border/70">
+        <DialogFooter className="border-t border-border/70 pt-5 mt-2 bg-background sticky bottom-0">
           <Button
             onClick={() => { resetForm(); onOpenChange(false); }}
             variant="ghost"
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button disabled={!canSubmit} onClick={handleSubmit}>
+          <Button disabled={!canSubmit} onClick={() => void handleSubmit()}>
             {isSubmitting && <Loader2Icon className="mr-2 size-4 animate-spin" />}
-            Post Question
+            {isSubmitting ? "Uploading & Posting..." : "Post Question"}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

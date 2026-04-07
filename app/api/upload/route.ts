@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
     // Promise wrapper for the callback-based uploader
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "eduask_avatars" },
+        { 
+          folder: "eduask_messages",
+          resource_type: "auto",
+        },
         (error, result) => {
           if (error) {
             reject(error);

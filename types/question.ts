@@ -30,6 +30,7 @@ export type QuestionRecordShape = {
   askerId: string;
   title: string;
   body: string;
+  images?: string[];
   tier: QuestionTier;
   answerVisibility: AnswerVisibility;
   status: QuestionStatus;
@@ -64,6 +65,7 @@ export type FeedQuestion = QuestionRecordShape & {
 export type CreateQuestionPayload = {
   title: string;
   body: string;
+  images?: string[];
   tier: QuestionTier;
   answerVisibility: AnswerVisibility;
   subject?: string;
