@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/shared/auth-form";
 import { AuthShell } from "@/components/shared/auth-shell";
-import { getSafeServerSession, getDefaultPath } from "@/lib/auth";
+import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
 
-export default async function TeacherRegisterPage() {
+export default async function TeacherSignUpPage() {
   const session = await getSafeServerSession();
 
   if (session?.user?.role) {
@@ -13,12 +13,12 @@ export default async function TeacherRegisterPage() {
 
   return (
     <AuthShell
-      description="Create a teacher account, then land directly on the authenticated app home where the question feed shell can grow next."
+      description="Create a teacher account and land directly in the shared home feed, while your public profile becomes reachable at your username path."
       eyebrow="Teacher Portal"
       highlights={[
         "Teacher registration stays role-aware",
-        "The app home is now the post-login landing route",
-        "Profile details move to a dedicated teacher profile page",
+        "The home feed replaces the old dashboard-first flow",
+        "Profiles now follow the public /username route style",
       ]}
       portalLabel="Teacher signup"
       title="Register as a teacher"
@@ -27,5 +27,3 @@ export default async function TeacherRegisterPage() {
     </AuthShell>
   );
 }
-
-

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import { connectToDatabase } from "@/lib/mongodb";
+import { generateUniqueUsername } from "@/lib/user-directory";
 import User from "@/models/User";
 
 export const runtime = "nodejs";
@@ -52,10 +53,12 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const username = await generateUniqueUsername({ email, name });
 
     const user = await User.create({
       name,
       email,
+      username,
       passwordHash,
       role,
       points: 0,
@@ -76,6 +79,7 @@ export async function POST(request: Request) {
           name: user.name,
           email: user.email,
           role: user.role,
+          username: user.username,
         },
       },
       { status: 201 },

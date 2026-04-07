@@ -19,6 +19,15 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 40,
+    },
     passwordHash: {
       type: String,
       required: true,

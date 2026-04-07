@@ -1,5 +1,14 @@
 import { redirect } from "next/navigation";
 
-export default function StudentDashboardRedirectPage() {
-  redirect("/student/profile");
+import { getSafeServerSession } from "@/lib/auth";
+import { getProfilePath, getSignInPath } from "@/lib/user-paths";
+
+export default async function StudentDashboardRedirectPage() {
+  const session = await getSafeServerSession();
+
+  if (!session?.user) {
+    redirect(getSignInPath());
+  }
+
+  redirect(getProfilePath(session.user));
 }

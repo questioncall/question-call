@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { StoreProvider } from "@/components/providers/store-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
@@ -12,11 +14,11 @@ const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: {
-    default: "EduAsk",
-    template: "%s | EduAsk",
+    default: "Listeners",
+    template: "%s | Listeners",
   },
   description:
-    "Dual-portal academic Q&A platform for students, teachers, and admins.",
+    "Listeners is a platform for students, teachers, and admins.",
 };
 
 export default function RootLayout({
@@ -25,9 +27,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("h-full antialiased", "font-sans", inter.variable, dmSansHeading.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn("h-full antialiased", "font-sans", inter.variable, dmSansHeading.variable)}>
       <body className="min-h-full flex flex-col">
-        <StoreProvider>{children}</StoreProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <StoreProvider>
+            <TooltipProvider delayDuration={0}>
+              {children}
+            </TooltipProvider>
+          </StoreProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -4,17 +4,12 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { connectToDatabase } from "@/lib/mongodb";
+import { getProfilePath, getUserHandle } from "@/lib/user-paths";
 import User, { type UserRole } from "@/models/User";
 
 const defaultPathByRole: Record<UserRole, string> = {
   STUDENT: "/",
   TEACHER: "/",
-  ADMIN: "/admin/pricing",
-};
-
-const profilePathByRole: Record<UserRole, string> = {
-  STUDENT: "/student/profile",
-  TEACHER: "/teacher/profile",
   ADMIN: "/admin/pricing",
 };
 
@@ -26,13 +21,7 @@ export function getDefaultPath(role?: UserRole) {
   return defaultPathByRole[role];
 }
 
-export function getProfilePath(role?: UserRole) {
-  if (!role) {
-    return getDefaultPath(role);
-  }
-
-  return profilePathByRole[role];
-}
+export { getProfilePath, getUserHandle };
 
 export async function getSafeServerSession() {
   try {
@@ -56,7 +45,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/login",
+    signIn: "/auth/signin",
   },
   providers: [
     CredentialsProvider({
@@ -71,7 +60,17 @@ export const authOptions: NextAuthOptions = {
           type: "password",
         },
       },
-      async authorize(credentials: { email: string; password: string } | undefined) : Promise<{ id: string; name: string; email: string; role: UserRole } | null> {
+      async authorize(
+        credentials: { email: string; password: string } | undefined,
+      ): Promise<
+        {
+          id: string;
+          name: string;
+          email: string;
+          role: UserRole;
+          username?: string;
+        } | null
+      > {
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
 
@@ -98,6 +97,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role,
+          username: user.username,
         };
       },
     }),
@@ -107,6 +107,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.username = user.username;
       }
 
       return token;
@@ -115,6 +116,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token.id && token.role) {
         session.user.id = token.id;
         session.user.role = token.role as UserRole;
+        session.user.username =
+          typeof token.username === "string" ? token.username : undefined;
       }
 
       return session;

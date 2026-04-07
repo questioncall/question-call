@@ -1,25 +1,34 @@
 "use client";
 
-import { signOut } from "next-auth/react";
-import { useTransition } from "react";
+import { LogOutIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export function SignOutButton() {
-  const [isPending, startTransition] = useTransition();
+import { Button } from "@/components/ui/button";
+import { getSignOutPath } from "@/lib/user-paths";
+
+type SignOutButtonProps = {
+  className?: string;
+  size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg";
+  variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "link";
+};
+
+export function SignOutButton({
+  className,
+  size = "sm",
+  variant = "outline",
+}: SignOutButtonProps) {
+  const router = useRouter();
 
   return (
-    <button
-      className="rounded-2xl border border-[#281f1614] bg-white/70 px-4 py-2 text-sm font-medium text-[#2d251f] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-      disabled={isPending}
-      onClick={() =>
-        startTransition(() => {
-          void signOut({
-            callbackUrl: "/login",
-          });
-        })
-      }
+    <Button
+      className={className}
+      onClick={() => router.push(getSignOutPath())}
+      size={size}
       type="button"
+      variant={variant}
     >
-      {isPending ? "Signing out..." : "Sign out"}
-    </button>
+      <LogOutIcon />
+      Sign out
+    </Button>
   );
 }

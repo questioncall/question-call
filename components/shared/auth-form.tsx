@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { FormEvent, useEffect, useState } from "react";
 
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+
+import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import {
   clearAuthState,
   registerUser,
@@ -31,6 +34,8 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -49,6 +54,11 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
     setFormError(null);
     setSuccess(null);
     dispatch(clearAuthState());
+
+    if (isRegister && !termsAgreed) {
+      setFormError("You must agree to the terms and policy to register.");
+      return;
+    }
 
     try {
       if (isRegister && role) {
@@ -76,7 +86,7 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
         });
 
         if (signInResult?.error) {
-          router.replace("/login");
+          router.replace(getSignInPath());
           router.refresh();
           return;
         }
@@ -113,124 +123,128 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="eyebrow text-xs text-[#6d6257]">
-          {isRegister
-            ? `${role === "STUDENT" ? "Student" : "Teacher"} Registration`
-            : "Shared Login"}
-        </p>
-        <h2 className="headline text-3xl font-semibold text-[#1e1914]">
-          {isRegister ? "Create your account" : "Welcome back"}
-        </h2>
-        <p className="text-sm leading-6 text-[#6d6257]">
-          {isRegister
-            ? "We will get your portal ready with role-aware routing and Mongo-backed credentials."
-            : "Use the same login screen for students, teachers, and later admin access."}
-        </p>
-      </div>
-
+    <div className="space-y-5">
       <form className="space-y-4" onSubmit={handleSubmit}>
         {isRegister ? (
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-[#2d251f]">Full name</span>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-semibold text-gray-800">Name</span>
             <input
               required
               autoComplete="name"
-              className="w-full rounded-2xl border border-[#281f161f] bg-[#fffaf4] px-4 py-3 text-sm outline-none transition focus:border-[#df6a34] focus:ring-4 focus:ring-[#df6a3422]"
+              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
               onChange={(event) => setName(event.target.value)}
-              placeholder="Siddhant Sharma"
+              placeholder="Enter your name"
               type="text"
               value={name}
             />
           </label>
         ) : null}
 
-        <label className="block space-y-2">
-          <span className="text-sm font-medium text-[#2d251f]">Email address</span>
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold text-gray-800">Email address</span>
           <input
             required
             autoComplete="email"
-            className="w-full rounded-2xl border border-[#281f161f] bg-[#fffaf4] px-4 py-3 text-sm outline-none transition focus:border-[#df6a34] focus:ring-4 focus:ring-[#df6a3422]"
+            className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="name@example.com"
+            placeholder="Enter your email"
             type="email"
             value={email}
           />
         </label>
 
-        <label className="block space-y-2">
-          <span className="text-sm font-medium text-[#2d251f]">Password</span>
-          <input
-            required
-            autoComplete={isRegister ? "new-password" : "current-password"}
-            className="w-full rounded-2xl border border-[#281f161f] bg-[#fffaf4] px-4 py-3 text-sm outline-none transition focus:border-[#df6a34] focus:ring-4 focus:ring-[#df6a3422]"
-            minLength={8}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
-            type="password"
-            value={password}
-          />
+        <label className="block space-y-1.5">
+          <span className="text-sm font-semibold text-gray-800">Password</span>
+          <div className="relative">
+            <input
+              required
+              autoComplete={isRegister ? "new-password" : "current-password"}
+              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={isRegister ? "Name" : "At least 8 characters"}
+              type={showPassword ? "text" : "password"}
+              value={password}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOffIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </label>
 
+        {isRegister && (
+          <label className="flex items-center space-x-2.5 mt-2">
+            <input 
+              type="checkbox" 
+              checked={termsAgreed}
+              onChange={(e) => setTermsAgreed(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-[#405f31] focus:ring-[#405f31]" 
+            />
+            <span className="text-xs text-gray-700">
+              I agree to the <span className="underline cursor-pointer">terms & policy</span>
+            </span>
+          </label>
+        )}
+
         {activeError ? (
-          <div className="rounded-2xl border border-[#d7464622] bg-[#fff1f1] px-4 py-3 text-sm text-[#a13c3c]">
+          <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
             {activeError}
           </div>
         ) : null}
 
         {success ? (
-          <div className="rounded-2xl border border-[#1f766e22] bg-[#eefaf7] px-4 py-3 text-sm text-[#16564f]">
+          <div className="rounded-xl border border-green-100 bg-green-50 p-3 text-sm text-green-700">
             {success}
           </div>
         ) : null}
 
         <button
-          className="w-full rounded-2xl bg-[#1e1914] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#352c24] disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-xl bg-[#405f31] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#344b27] disabled:cursor-not-allowed disabled:opacity-70 mt-4"
           disabled={isSubmitting}
           type="submit"
         >
           {isSubmitting
             ? isRegister
-              ? "Creating account..."
+              ? "Signing up..."
               : "Signing in..."
             : isRegister
-              ? "Create account"
-              : "Sign in"}
+              ? "Signup"
+              : "Sign In"}
         </button>
       </form>
 
-      <div className="space-y-3 rounded-3xl border border-[#281f1614] bg-[#fff8ef] p-4 text-sm text-[#5c544c]">
+      <div className="mt-6 text-center text-sm font-medium text-gray-800">
         {isRegister ? (
           <>
-            <p>
-              Already have an account?{" "}
-              <Link className="font-semibold text-[#1e1914] underline decoration-[#df6a34] underline-offset-4" href="/login">
-                Sign in here
+            Have an account?{" "}
+            <Link href={getSignInPath()} className="text-blue-600 hover:text-blue-700 ml-1 font-bold">
+              Sign In
+            </Link>
+            <div className="mt-4 text-sm text-gray-500">
+              Registering differently?{" "}
+              <Link href={getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT")} className="font-semibold text-gray-900 underline hover:text-gray-700">
+                Switch Role
               </Link>
-            </p>
-            <p>
-              Need the other portal instead?{" "}
-              <Link
-                className="font-semibold text-[#1e1914] underline decoration-[#1f766e] underline-offset-4"
-                href={role === "STUDENT" ? "/register/teacher" : "/register/student"}
-              >
-                Switch registration type
-              </Link>
-            </p>
+            </div>
           </>
         ) : (
           <>
-            <p>
-              New here?{" "}
-              <Link className="font-semibold text-[#1e1914] underline decoration-[#df6a34] underline-offset-4" href="/register/student">
-                Register as a student
-              </Link>
-            </p>
-            <p>
-              Solving questions instead?{" "}
-              <Link className="font-semibold text-[#1e1914] underline decoration-[#1f766e] underline-offset-4" href="/register/teacher">
-                Register as a teacher
+            Don't have an account?{" "}
+            <Link href={getSignUpPath("STUDENT")} className="text-blue-600 hover:text-blue-700 ml-1 font-bold">
+              Sign Up
+            </Link>
+            <p className="mt-4 text-sm text-gray-500">
+              Want to teach instead?{" "}
+              <Link href={getSignUpPath("TEACHER")} className="font-semibold text-gray-900 underline hover:text-gray-700">
+                Register as teacher
               </Link>
             </p>
           </>

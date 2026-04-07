@@ -1,17 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { getUserHandle } from "@/lib/user-paths";
+
 type AppRole = "STUDENT" | "TEACHER" | "ADMIN";
 
 const defaultPathByRole: Record<AppRole, string> = {
   STUDENT: "/",
   TEACHER: "/",
-  ADMIN: "/admin/pricing",
-};
-
-const profilePathByRole: Record<AppRole, string> = {
-  STUDENT: "/student/profile",
-  TEACHER: "/teacher/profile",
   ADMIN: "/admin/pricing",
 };
 
@@ -26,14 +22,40 @@ function redirectToDefaultPath(request: NextRequest, role: AppRole) {
   return NextResponse.redirect(new URL(defaultPathByRole[role], request.url));
 }
 
-function redirectToProfilePath(request: NextRequest, role: AppRole) {
-  return NextResponse.redirect(new URL(profilePathByRole[role], request.url));
+function redirectToProfilePath(
+  request: NextRequest,
+  token: {
+    role?: AppRole;
+    sub?: string | null;
+    name?: string | null;
+    email?: string | null;
+    username?: string | null;
+  },
+) {
+  if (token.role === "ADMIN") {
+    return redirectToDefaultPath(request, "ADMIN");
+  }
+
+  const profileUrl = new URL(
+    `/${getUserHandle({
+      id: typeof token.sub === "string" ? token.sub : undefined,
+      name: typeof token.name === "string" ? token.name : undefined,
+      email: typeof token.email === "string" ? token.email : undefined,
+      username: typeof token.username === "string" ? token.username : undefined,
+    })}`,
+    request.url,
+  );
+
+  return NextResponse.redirect(profileUrl);
 }
 
-function redirectToHome(request: NextRequest) {
-  const homeUrl = new URL("/", request.url);
-  homeUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
-  return NextResponse.redirect(homeUrl);
+function redirectToSignIn(request: NextRequest) {
+  const signInUrl = new URL("/auth/signin", request.url);
+  signInUrl.searchParams.set(
+    "callbackUrl",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+  return NextResponse.redirect(signInUrl);
 }
 
 function requestHasSessionCookie(request: NextRequest) {
@@ -86,39 +108,77 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = token?.role as AppRole | undefined;
+  const isAuthEntryRoute =
+    pathname === "/auth/signin" ||
+    pathname.startsWith("/auth/signup/") ||
+    pathname === "/login" ||
+    pathname.startsWith("/register");
 
-  if ((pathname === "/login" || pathname.startsWith("/register")) && role) {
+  if (isAuthEntryRoute && role) {
     return redirectToDefaultPath(request, role);
   }
 
+  const isSharedProtectedRoute =
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    pathname === "/subscription" ||
+    pathname.startsWith("/subscription/") ||
+    pathname === "/wallet" ||
+    pathname.startsWith("/wallet/") ||
+    pathname === "/message" ||
+    pathname.startsWith("/message/") ||
+    pathname.startsWith("/channel/") ||
+    pathname.startsWith("/ask/") ||
+    pathname.startsWith("/leaderboard/");
   const isStudentRoute = pathname.startsWith("/student");
   const isTeacherRoute = pathname.startsWith("/teacher");
   const isAdminRoute = pathname.startsWith("/admin");
-  const isProtectedRoute = isStudentRoute || isTeacherRoute || isAdminRoute;
+  const isProtectedRoute =
+    isSharedProtectedRoute || isStudentRoute || isTeacherRoute || isAdminRoute;
 
   if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
   if (!role) {
-    return redirectToHome(request);
+    return redirectToSignIn(request);
   }
 
   if (isStudentRoute && role !== "STUDENT") {
-    return redirectToProfilePath(request, role);
+    return redirectToProfilePath(request, token ?? {});
   }
 
   if (isTeacherRoute && role !== "TEACHER") {
-    return redirectToProfilePath(request, role);
+    return redirectToProfilePath(request, token ?? {});
   }
 
   if (isAdminRoute && role !== "ADMIN") {
-    return redirectToProfilePath(request, role);
+    return redirectToProfilePath(request, token ?? {});
+  }
+
+  if (isSharedProtectedRoute && role === "ADMIN") {
+    return redirectToDefaultPath(request, role);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/", "/login", "/register/:path*", "/student/:path*", "/teacher/:path*", "/admin/:path*"],
+  matcher: [
+    "/auth/:path*",
+    "/settings/:path*",
+    "/subscription/:path*",
+    "/wallet/:path*",
+    "/message/:path*",
+    "/channel/:path*",
+    "/ask/:path*",
+    "/leaderboard/:path*",
+    "/student/:path*",
+    "/teacher/:path*",
+    "/admin/:path*",
+  ],
 };
+
+export default proxy;
+
+ 

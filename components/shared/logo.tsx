@@ -7,13 +7,13 @@ type LogoProps = {
 export function Logo({ compact = false }: LogoProps) {
   return (
     <Link href="/" className="inline-flex items-center gap-3">
-      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1e1914] text-sm font-semibold text-white shadow-[0_18px_45px_rgba(30,25,20,0.18)]">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
         EA
       </span>
       {!compact ? (
         <span className="flex flex-col">
-          <span className="headline text-lg font-semibold text-[#1e1914]">EduAsk</span>
-          <span className="eyebrow text-[11px] text-[#6d6257]">Students • Teachers • Admin</span>
+          <span className="headline text-lg font-semibold text-foreground">EduAsk</span>
+          <span className="eyebrow text-[11px] text-muted-foreground">Students • Teachers • Admin</span>
         </span>
       ) : null}
     </Link>

@@ -1,109 +1,79 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
-import { Logo } from "@/components/shared/logo";
-import { SignOutButton } from "@/components/shared/sign-out-button";
-import { getSafeServerSession, getDefaultPath } from "@/lib/auth";
+import { GuestHeader } from "@/components/shared/guest-header";
+import { WorkspaceHome } from "@/components/shared/workspace-home";
+import { WorkspaceShell } from "@/components/shared/workspace-shell";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 
-const homeLinksByRole = {
-  STUDENT: [
-    {
-      href: "/student/profile",
-      label: "Profile",
-      description: "Account details, subscription state, and future progress.",
-    },
-    {
-      href: "/student/ask",
-      label: "Ask",
-      description: "Create a new question when we wire the composer.",
-    },
-    {
-      href: "/student/feed",
-      label: "Feed",
-      description: "Browse the shared question feed once it is built.",
-    },
-    {
-      href: "/student/inbox",
-      label: "Inbox",
-      description: "Private answers and channel history will live here.",
-    },
-  ],
-  TEACHER: [
-    {
-      href: "/teacher/profile",
-      label: "Profile",
-      description: "Ratings, activity, and monetization progress.",
-    },
-    {
-      href: "/teacher/questions",
-      label: "Questions",
-      description: "Open questions and future accept actions.",
-    },
-    {
-      href: "/teacher/wallet",
-      label: "Wallet",
-      description: "Earnings, payouts, and withdrawals later on.",
-    },
-  ],
-} as const;
-
-type HomePageProps = {
-  searchParams: Promise<{
-    callbackUrl?: string;
-  }>;
-};
-
-export default async function HomePage({ searchParams }: HomePageProps) {
+export default async function HomePage() {
   const session = await getSafeServerSession();
-  const params = await searchParams;
-  const callbackUrl =
-    typeof params.callbackUrl === "string" ? params.callbackUrl : undefined;
 
   if (!session?.user) {
-    const loginHref = callbackUrl
-      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-      : "/login";
-
     return (
-      <main className="min-h-screen bg-[#f7f7f8]">
-        <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
-            <Logo />
-            <section className="mt-8 space-y-4">
-              <p className="text-sm font-medium text-slate-500">Home</p>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                Sign in or create an account.
-              </h1>
-              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                The public home is intentionally simple for now. We will replace the
-                signed-in experience with a cleaner app layout once the shadcn-based
-                sidebar and header are ready.
-              </p>
-            </section>
+      <div className="min-h-screen bg-background">
+        <GuestHeader />
+        <main>
+          <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center px-4 py-10 sm:px-6 lg:px-8">
+            <div className="grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    EduAsk workspace
+                  </p>
+                  <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+                    A cleaner app shell for asking, answering, and tracking academic help.
+                  </h1>
+                  <p className="max-w-2xl text-base leading-8 text-muted-foreground">
+                    Sign in to enter the new sidebar-and-header layout. The home page now
+                    behaves like a real feed, while profile and settings live on separate routes.
+                  </p>
+                </div>
 
-            <section className="mt-8 flex flex-wrap gap-3">
-              <Link
-                className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
-                href={loginHref}
-              >
-                Sign in
-              </Link>
-              <Link
-                className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                href="/register/student"
-              >
-                Register as student
-              </Link>
-              <Link
-                className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                href="/register/teacher"
-              >
-                Register as teacher
-              </Link>
-            </section>
+                <div className="flex flex-wrap gap-3">
+                  <Button asChild size="lg">
+                    <Link href={getSignInPath()}>Sign in</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href={getSignUpPath("STUDENT")}>Register as student</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href={getSignUpPath("TEACHER")}>Register as teacher</Link>
+                  </Button>
+                </div>
+              </div>
+
+              <Card className="border border-border/70 shadow-sm">
+                <CardHeader>
+                  <CardDescription>What changed</CardDescription>
+                  <CardTitle>Current direction</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm leading-7 text-muted-foreground">
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    Home is being treated like the main application feed instead of a placeholder landing page.
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    Public profile routes now use the top-level username path instead of role-specific URLs.
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    The shell is built with shadcn sidebar primitives so the later UI work can grow from a stable base.
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
@@ -111,54 +81,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(getDefaultPath(session.user.role));
   }
 
-  const roleLabel = session.user.role === "STUDENT" ? "Student" : "Teacher";
-  const quickLinks = homeLinksByRole[session.user.role];
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <main className="min-h-screen bg-[#f7f7f8]">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Logo />
-            <p className="mt-3 text-sm text-slate-500">Signed in as {roleLabel.toLowerCase()}</p>
-          </div>
-          <SignOutButton />
-        </header>
-
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Home</p>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">
-            Welcome, {session.user.name || roleLabel}.
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-            This is the simple authenticated home for now. We have removed the extra
-            scaffold UI so we can rebuild the app shell cleanly with a left sidebar
-            and top header later.
-          </p>
-        </section>
-
-        <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {quickLinks.map((item) => (
-            <Link
-              key={item.href}
-              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-              href={item.href}
-            >
-              <h2 className="text-lg font-semibold text-slate-900">{item.label}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-            </Link>
-          ))}
-        </section>
-
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Next UI step</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            Once you install the shadcn pieces you want, I can turn this into a
-            GitHub-style app shell with a persistent sidebar, top header, and SPA-like
-            page transitions on top of the App Router.
-          </p>
-        </section>
-      </div>
-    </main>
+    <WorkspaceShell user={session.user} defaultOpen={defaultOpen}>
+      <WorkspaceHome name={session.user.name} role={session.user.role} />
+    </WorkspaceShell>
   );
 }

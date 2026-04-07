@@ -1,0 +1,27 @@
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
+import { WorkspaceShell } from "@/components/shared/workspace-shell";
+import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { getSignInPath } from "@/lib/user-paths";
+
+export default async function WorkspaceLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const session = await getSafeServerSession();
+
+  if (!session?.user) {
+    redirect(getSignInPath());
+  }
+
+  if (session.user.role === "ADMIN") {
+    redirect(getDefaultPath(session.user.role));
+  }
+
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
+
+  return <WorkspaceShell user={session.user} defaultOpen={defaultOpen}>{children}</WorkspaceShell>;
+}

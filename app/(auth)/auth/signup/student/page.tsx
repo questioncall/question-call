@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/shared/auth-form";
 import { AuthShell } from "@/components/shared/auth-shell";
-import { getSafeServerSession, getDefaultPath } from "@/lib/auth";
+import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
 
-export default async function StudentRegisterPage() {
+export default async function StudentSignUpPage() {
   const session = await getSafeServerSession();
 
   if (session?.user?.role) {
@@ -13,12 +13,12 @@ export default async function StudentRegisterPage() {
 
   return (
     <AuthShell
-      description="Create a student account, then land directly on the authenticated home where the feed and shared shell will live."
+      description="Create a student account and land directly in the shared home feed, with your public profile available at a clean username URL."
       eyebrow="Student Portal"
       highlights={[
         "Student registration stays role-aware",
-        "The app home is now the first stop after sign-in",
-        "Profile details live on a dedicated profile route",
+        "The shared home route is the first stop after sign-in",
+        "Each account receives a clean public username path",
       ]}
       portalLabel="Student signup"
       title="Register as a student"
@@ -27,5 +27,3 @@ export default async function StudentRegisterPage() {
     </AuthShell>
   );
 }
-
-
