@@ -54,6 +54,7 @@ type WorkspaceUser = {
   email?: string | null;
   username?: string | null;
   role: WorkspaceRole;
+  userImage?: string | null;
 };
 
 type WorkspaceShellProps = {
@@ -62,7 +63,23 @@ type WorkspaceShellProps = {
   children: ReactNode;
 };
 
+import { useDispatch } from "react-redux";
+import { setProfile } from "@/store/features/user/user-slice";
+
 export function WorkspaceShell({ user, defaultOpen = true, children }: WorkspaceShellProps) {
+  const dispatch = useDispatch();
+  
+  useEffect(() => {
+    dispatch(setProfile({
+      id: user.id,
+      name: user.name || "",
+      email: user.email || "",
+      username: user.username || "",
+      role: user.role,
+      userImage: user.userImage || "",
+    }));
+  }, [dispatch, user]);
+
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {

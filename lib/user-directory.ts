@@ -17,6 +17,12 @@ type DirectoryUser = {
   totalAnswered?: number;
   overallScore?: number;
   createdAt?: Date | string;
+  bio?: string;
+  userImage?: string;
+  skills?: string[];
+  interests?: string[];
+  totalAsked?: number;
+  teacherModeVerified?: boolean;
 };
 
 export type PublicDirectoryUser = {
@@ -30,10 +36,16 @@ export type PublicDirectoryUser = {
   totalAnswered: number;
   overallScore: number;
   createdAt?: Date | string;
+  bio?: string;
+  userImage?: string;
+  skills?: string[];
+  interests?: string[];
+  totalAsked?: number;
+  teacherModeVerified?: boolean;
 };
 
 const publicDirectorySelect =
-  "name email username role points walletBalance totalAnswered overallScore createdAt";
+  "name email username role points walletBalance totalAnswered overallScore createdAt bio userImage skills interests totalAsked teacherModeVerified";
 
 function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
   const id = typeof user._id === "string" ? user._id : user._id.toString();
@@ -54,6 +66,12 @@ function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
     totalAnswered: user.totalAnswered ?? 0,
     overallScore: user.overallScore ?? 0,
     createdAt: user.createdAt,
+    bio: user.bio,
+    userImage: user.userImage,
+    skills: user.skills || [],
+    interests: user.interests || [],
+    totalAsked: user.totalAsked ?? 0,
+    teacherModeVerified: user.teacherModeVerified ?? false,
   };
 }
 

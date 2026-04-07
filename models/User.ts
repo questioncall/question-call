@@ -76,6 +76,30 @@ const userSchema = new Schema(
       min: 0,
       max: 5,
     },
+    totalAsked: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    bio: {
+      type: String,
+      maxlength: 500,
+    },
+    teacherModeVerified: {
+      type: Boolean,
+      default: false,
+    },
+    userImage: {
+      type: String,
+    },
+    skills: {
+      type: [String],
+      default: [],
+    },
+    interests: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

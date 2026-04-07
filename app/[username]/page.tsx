@@ -145,10 +145,14 @@ export default async function PublicProfilePage({
         {/* LEFT SIDEBAR - GitHub Style Sticky */}
         <aside className="space-y-5 lg:sticky lg:top-[5.5rem]">
           {/* Avatar */}
-          <div className="relative mx-auto aspect-square w-full max-w-[296px] overflow-hidden rounded-full border border-border shadow-sm">
-            <div className="flex h-full w-full items-center justify-center bg-primary text-6xl font-semibold text-primary-foreground drop-shadow-sm select-none">
-              {(profile.name || profile.username).slice(0, 2).toUpperCase()}
-            </div>
+          <div className="relative mx-auto aspect-square w-full max-w-[296px] overflow-hidden rounded-full border border-border bg-muted shadow-sm">
+            {profile.userImage ? (
+              <img src={profile.userImage} alt={profile.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-primary text-6xl font-semibold text-primary-foreground drop-shadow-sm select-none">
+                {(profile.name || profile.username).slice(0, 2).toUpperCase()}
+              </div>
+            )}
           </div>
           
           {/* Name and Handle */}
@@ -158,14 +162,26 @@ export default async function PublicProfilePage({
           </div>
           
           {/* Action Button */}
-          <Button className="w-full font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border" variant="secondary">
-            {isOwner ? "Edit profile" : "Follow"}
-          </Button>
+          {session?.user ? (
+            isOwner ? (
+               <Button asChild className="w-full font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border" variant="secondary">
+                 <Link href={getSettingsPath(session.user)}>Edit profile</Link>
+               </Button>
+            ) : (
+               <Button asChild className="w-full font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border" variant="secondary">
+                 <Link href={getMessagesPath(session.user)}>Message</Link>
+               </Button>
+            )
+          ) : (
+             <Button asChild className="w-full font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border" variant="secondary">
+               <Link href={getSignInPath()}>Follow</Link>
+             </Button>
+          )}
           
-          <div className="text-sm leading-snug text-foreground">
-            {profile.role === "STUDENT" 
+          <div className="text-sm leading-snug text-foreground whitespace-pre-wrap">
+            {profile.bio || (profile.role === "STUDENT" 
               ? "Student at EduAsk. Learning and growing every day."
-              : "Platform Educator. Helping students understand core concepts."}
+              : "Platform Educator. Helping students understand core concepts.")}
           </div>
           
           <div className="flex items-center gap-2 text-sm text-foreground">
@@ -198,7 +214,12 @@ export default async function PublicProfilePage({
             <div className="flex items-center gap-2">
               <span className="w-5 text-center text-muted-foreground">🎓</span>
               <span className="text-muted-foreground">Role</span>
-              <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary capitalize">{profile.role.toLowerCase()}</span>
+              <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary capitalize">
+                {profile.role.toLowerCase()}
+                {profile.role === "TEACHER" && profile.teacherModeVerified && (
+                   <span className="ml-1 text-[10px] uppercase font-bold text-emerald-500">✔ Verified</span>
+                )}
+              </span>
             </div>
 
             {profile.role === "TEACHER" && (
@@ -230,7 +251,7 @@ export default async function PublicProfilePage({
                 <MessageSquareIcon className="size-4" />
                 {profile.role === "STUDENT" ? "Questions Asked" : "Solved Questions"}
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground font-semibold">
-                  {profile.role === "STUDENT" ? "18" : profile.totalAnswered}
+                  {profile.role === "STUDENT" ? profile.totalAsked || 0 : profile.totalAnswered}
                 </span>
               </button>
               {profile.role === "TEACHER" && (
@@ -251,20 +272,41 @@ export default async function PublicProfilePage({
             <div className="space-y-6">
               <div className="prose prose-sm md:prose-base dark:prose-invert">
                 <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I'm {profile.name}</h2>
-                <p className="text-muted-foreground leading-7">
-                  {profile.role === "STUDENT" 
+                <div className="text-muted-foreground leading-7 whitespace-pre-wrap">
+                  {profile.bio || (profile.role === "STUDENT" 
                     ? "I'm a student using EduAsk to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can."
-                    : "I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on EduAsk."}
-                </p>
+                    : "I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on EduAsk.")}
+                </div>
                 <div className="mt-6">
                   <h3 className="font-semibold text-lg text-foreground mb-3">Core Skills & Interests</h3>
                   <div className="flex flex-wrap gap-2">
-                    {["Physics", "Calculus", "Computer Science", "Algorithms"].map((tag) => (
-                      <span key={tag} className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">
-                        {tag}
-                      </span>
-                    ))}
+                    {profile.skills?.length ? (
+                      profile.skills.map((tag: string) => (
+                        <span key={tag} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <>
+                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Physics</span>
+                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Calculus</span>
+                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Computer Science</span>
+                      </>
+                    )}
                   </div>
+                  
+                  {profile.interests && profile.interests.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Also interested in:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.interests.map((tag: string) => (
+                           <span key={tag} className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                             {tag}
+                           </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

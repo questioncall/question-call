@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
 import { getSignInPath } from "@/lib/user-paths";
+import { connectToDatabase } from "@/lib/mongodb";
+import User from "@/models/User";
 
 export default async function WorkspaceLayout({
   children,
@@ -23,5 +25,13 @@ export default async function WorkspaceLayout({
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
-  return <WorkspaceShell user={session.user} defaultOpen={defaultOpen}>{children}</WorkspaceShell>;
+  await connectToDatabase();
+  const dbUser = await User.findById(session.user.id).select("userImage").lean<{ userImage?: string }>();
+
+  const workspaceUser = {
+    ...session.user,
+    userImage: dbUser?.userImage || "",
+  };
+
+  return <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>{children}</WorkspaceShell>;
 }
