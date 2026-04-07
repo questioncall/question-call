@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BellIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
+import { BellIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
 
+import { PostQuestionModal } from "@/components/shared/post-question-modal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ type AuthenticatedHeaderProps = {
   primaryHref: string;
   primaryLabel: string;
   showQuestionFilter?: boolean;
+  useModalForPrimary?: boolean;
 };
 
 export function AuthenticatedHeader({
@@ -51,11 +53,14 @@ export function AuthenticatedHeader({
   primaryHref,
   primaryLabel,
   showQuestionFilter = false,
+  useModalForPrimary = false,
 }: AuthenticatedHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const currentFilters = useMemo<FilterState>(() => {
     const readValues = (key: string) =>
@@ -130,6 +135,12 @@ export function AuthenticatedHeader({
     setIsFilterOpen(false);
   };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchValue.trim()) {
+      router.push(`/ask/question?q=${encodeURIComponent(searchValue.trim())}`);
+    }
+  };
+
   return (
     <>
       <header
@@ -144,12 +155,28 @@ export function AuthenticatedHeader({
           <SidebarTrigger className="shrink-0" />
           <div className="relative hidden max-w-xl flex-1 md:mx-auto md:block">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-[18px] -translate-y-1/2 text-muted-foreground" />
-            <Input className="h-10 pl-10 text-base md:text-sm" placeholder="Search questions, topics, answers, and teachers" />
+            <Input
+              className="h-10 pl-10 text-base md:text-sm"
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search questions, topics, answers, and teachers"
+              value={searchValue}
+            />
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <Button asChild className="hidden sm:inline-flex" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
-              <Link href={primaryHref}>{primaryLabel}</Link>
-            </Button>
+            {useModalForPrimary ? (
+              <Button
+                className="hidden sm:inline-flex"
+                onClick={() => setIsPostModalOpen(true)}
+              >
+                <PlusIcon className="mr-1 size-4" />
+                {primaryLabel}
+              </Button>
+            ) : (
+              <Button asChild className="hidden sm:inline-flex" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
+                <Link href={primaryHref}>{primaryLabel}</Link>
+              </Button>
+            )}
             {showQuestionFilter ? (
               <Button
                 className="hidden sm:inline-flex"
@@ -168,6 +195,11 @@ export function AuthenticatedHeader({
           </div>
         </div>
       </header>
+
+      {/* Post Question Modal — only rendered when useModalForPrimary is true */}
+      {useModalForPrimary && (
+        <PostQuestionModal open={isPostModalOpen} onOpenChange={setIsPostModalOpen} />
+      )}
 
       <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
         <SheetContent className="w-full sm:max-w-lg" side="right">

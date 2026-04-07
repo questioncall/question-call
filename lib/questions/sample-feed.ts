@@ -1,0 +1,72 @@
+import type { FeedQuestion } from "@/lib/question-types";
+
+export const sampleFeedQuestions: FeedQuestion[] = [
+  {
+    id: "q_101",
+    askerId: "student_101",
+    askerName: "Anjana Koirala",
+    askerUsername: "anjana_koirala",
+    title: "Why does current split in a parallel circuit instead of staying equal?",
+    body:
+      "I understand the formula but not the intuition. Can someone explain it in a way that connects resistance and current flow?",
+    tier: "ONE",
+    answerVisibility: "PUBLIC",
+    status: "OPEN",
+    subject: "Physics",
+    level: "Class 10",
+    resetCount: 0,
+    answerCount: 8,
+    reactionCount: 21,
+    previewAuthor: "Rohit Sir",
+    previewText:
+      "Think of each branch as a different path width. Lower resistance behaves like a wider road, so more charge moves there in the same time.",
+    createdAt: "2026-04-07T07:24:00.000Z",
+    updatedAt: "2026-04-07T07:24:00.000Z",
+  },
+  {
+    id: "q_214",
+    askerId: "student_214",
+    askerName: "Suman Basnet",
+    askerUsername: "suman_basnet",
+    title: "Need a photo-based explanation for completing the square quickly.",
+    body:
+      "I can solve the steps slowly, but I want a simple visual pattern for turning a quadratic into vertex form during revision.",
+    tier: "TWO",
+    answerVisibility: "PRIVATE",
+    status: "OPEN",
+    subject: "Mathematics",
+    stream: "Science",
+    level: "Plus 2",
+    resetCount: 0,
+    answerCount: 3,
+    reactionCount: 12,
+    previewAuthor: "Meera Tutor",
+    previewText:
+      "I would sketch the square blocks first, then show how the missing corner becomes the constant you add and subtract.",
+    createdAt: "2026-04-07T07:12:00.000Z",
+    updatedAt: "2026-04-07T07:12:00.000Z",
+  },
+  {
+    id: "q_315",
+    askerId: "student_315",
+    askerName: "Pratik Joshi",
+    askerUsername: "pratik_joshi",
+    title: "Looking for a video answer on balancing redox reactions in acidic medium.",
+    body:
+      "I keep mixing oxidation numbers and half-reactions. A narrated walkthrough would help me see the pattern.",
+    tier: "THREE",
+    answerVisibility: "PUBLIC",
+    status: "OPEN",
+    subject: "Chemistry",
+    stream: "Science",
+    level: "Plus 2",
+    resetCount: 0,
+    answerCount: 5,
+    reactionCount: 17,
+    previewAuthor: "Kiran Faculty",
+    previewText:
+      "Start by separating oxidation and reduction clearly, then equalize oxygen with water and hydrogen with H+ before balancing charge.",
+    createdAt: "2026-04-07T06:48:00.000Z",
+    updatedAt: "2026-04-07T06:48:00.000Z",
+  },
+];

@@ -87,7 +87,7 @@ export default async function HomePage() {
 
   return (
     <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>
-      <WorkspaceHome name={workspaceUser.name} role={workspaceUser.role} />
+      <WorkspaceHome name={workspaceUser.name} role={workspaceUser.role as "STUDENT" | "TEACHER"} userId={workspaceUser.id} />
     </WorkspaceShell>
   );
 }

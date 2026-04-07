@@ -1,5 +1,12 @@
 import Pusher from "pusher";
 
+import type { FeedQuestion } from "@/lib/question-types";
+import {
+  QUESTION_CREATED_EVENT,
+  QUESTION_FEED_CHANNEL,
+  QUESTION_UPDATED_EVENT,
+} from "@/lib/pusher/events";
+
 type PusherPayload = Record<string, unknown>;
 
 export const pusherServer = new Pusher({
@@ -17,4 +24,16 @@ export async function emitEvent(
 ) {
   const channel = `interview-${sessionId}`;
   await pusherServer.trigger(channel, event, data);
+}
+
+export async function emitQuestionCreated(question: FeedQuestion) {
+  await pusherServer.trigger(QUESTION_FEED_CHANNEL, QUESTION_CREATED_EVENT, {
+    question,
+  });
+}
+
+export async function emitQuestionUpdated(question: FeedQuestion) {
+  await pusherServer.trigger(QUESTION_FEED_CHANNEL, QUESTION_UPDATED_EVENT, {
+    question,
+  });
 }

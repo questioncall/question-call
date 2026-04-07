@@ -1,4 +1,13 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  ArrowRightIcon,
+  EyeIcon,
+  Loader2Icon,
+  SparklesIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,80 +17,385 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSafeServerSession } from "@/lib/auth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import type {
+  CreateQuestionPayload,
+  FeedQuestion,
+  QuestionTier,
+  AnswerVisibility,
+} from "@/types/question";
+import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
+import { useAppDispatch } from "@/store/hooks";
 
-export default async function AskQuestionPage() {
-  const session = await getSafeServerSession();
+const TIER_OPTIONS: { value: QuestionTier; label: string; desc: string; color: string }[] = [
+  { value: "UNSET", label: "Any", desc: "Let the answerer decide the format", color: "border-muted-foreground/30" },
+  { value: "ONE", label: "Tier I · Text", desc: "Written explanation only", color: "border-blue-500" },
+  { value: "TWO", label: "Tier II · Photo", desc: "Photo-based answer with annotations", color: "border-amber-500" },
+  { value: "THREE", label: "Tier III · Video", desc: "Full video walkthrough", color: "border-purple-500" },
+];
 
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
+const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string; desc: string }[] = [
+  { value: "PUBLIC", label: "Public", desc: "Everyone can see the answer on the feed" },
+  { value: "PRIVATE", label: "Private", desc: "Only you will see the answer in your inbox" },
+];
 
-  if (session.user.role !== "STUDENT") {
-    redirect("/");
-  }
+const SUBJECT_OPTIONS = [
+  "IT", "Biology", "Chemistry", "Physics", "Mathematics", "English", "Accountancy",
+] as const;
+
+const STREAM_OPTIONS = ["Science", "Management"] as const;
+const LEVEL_OPTIONS = ["School level", "Plus 2", "Bachelor"] as const;
+
+const tierLabelMap: Record<QuestionTier, string> = {
+  UNSET: "Any tier",
+  ONE: "Tier I",
+  TWO: "Tier II",
+  THREE: "Tier III",
+};
+
+const visibilityLabelMap: Record<AnswerVisibility, string> = {
+  PUBLIC: "Public",
+  PRIVATE: "Private",
+};
+
+export default function AskQuestionPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const dispatch = useAppDispatch();
+
+  // Pre-fill from search bar query param
+  const initialQuery = searchParams.get("q") || "";
+
+  const [title, setTitle] = useState(initialQuery);
+  const [body, setBody] = useState("");
+  const [tier, setTier] = useState<QuestionTier>("UNSET");
+  const [visibility, setVisibility] = useState<AnswerVisibility>("PUBLIC");
+  const [subject, setSubject] = useState("");
+  const [stream, setStream] = useState("");
+  const [level, setLevel] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Sync initial query on mount
+  useEffect(() => {
+    if (initialQuery && !title) {
+      setTitle(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const titleLen = title.trim().length;
+  const bodyLen = body.trim().length;
+  const isTitleValid = titleLen >= 6 && titleLen <= 180;
+  const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
+  const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const payload: CreateQuestionPayload = {
+        title: title.trim(),
+        body: body.trim(),
+        tier,
+        answerVisibility: visibility,
+        ...(subject ? { subject } : {}),
+        ...(stream ? { stream } : {}),
+        ...(level ? { level } : {}),
+      };
+
+      const res = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to post question");
+      }
+
+      const feedQuestion: FeedQuestion = await res.json();
+      dispatch(prependFeedQuestion(feedQuestion));
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <Card className="border border-border/70 shadow-sm">
-        <CardHeader>
-          <CardDescription>Ask flow</CardDescription>
-          <CardTitle>/ask/question</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-            This route is the student-only entry point for asking a question. It is set up like a search-first composer so we can later check the database for similar questions before posting a brand-new one.
-          </p>
-          <form action="/ask/question/results" className="space-y-4" method="get">
-            <textarea
-              className="min-h-36 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-primary"
-              name="q"
-              placeholder="Ask your question in natural language, the way you would type into Google..."
-              required
-            />
-            <div className="flex flex-wrap gap-3">
-              <select className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground" name="tier">
-                <option value="UNSET">Any answer type</option>
-                <option value="ONE">Tier I • Text</option>
-                <option value="TWO">Tier II • Photo</option>
-                <option value="THREE">Tier III • Video</option>
-              </select>
-              <select className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground" name="visibility">
-                <option value="PUBLIC">Public answer</option>
-                <option value="PRIVATE">Private answer</option>
-              </select>
-              <Button type="submit">Search first, then continue</Button>
+    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      {/* Main composer */}
+      <div className="space-y-6">
+        <Card className="border border-border/70 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <SparklesIcon className="size-5 text-primary" />
+              <CardTitle>Ask a Question</CardTitle>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+            <CardDescription>
+              Describe your doubt clearly. The more context you provide, the better the answer you&apos;ll receive.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="q-title">
+                Title
+                <span className={`ml-2 text-xs ${isTitleValid || titleLen === 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                  {titleLen}/180
+                </span>
+              </Label>
+              <Input
+                autoFocus
+                id="q-title"
+                maxLength={180}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Why does current split in a parallel circuit instead of staying equal?"
+                value={title}
+              />
+              {titleLen > 0 && titleLen < 6 && (
+                <p className="text-xs text-destructive">Title must be at least 6 characters</p>
+              )}
+            </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="border border-border/70 shadow-sm">
-          <CardHeader>
-            <CardDescription>Step 1</CardDescription>
-            <CardTitle>Write naturally</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm leading-7 text-muted-foreground">
-            Students should be able to type the full doubt without fitting it into rigid fields first.
+            {/* Body */}
+            <div className="space-y-2">
+              <Label htmlFor="q-body">
+                Details
+                <span className={`ml-2 text-xs ${isBodyValid || bodyLen === 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                  {bodyLen}/5000
+                </span>
+              </Label>
+              <Textarea
+                className="min-h-44 resize-none"
+                id="q-body"
+                maxLength={5000}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Explain what you understand so far, what confuses you, and what kind of answer would help. Include the chapter, concept, or exact confusion..."
+                value={body}
+              />
+              {bodyLen > 0 && bodyLen < 12 && (
+                <p className="text-xs text-destructive">Body must be at least 12 characters</p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Tier picker */}
+            <div className="space-y-3">
+              <Label>Answer tier</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {TIER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={`rounded-xl border-2 px-4 py-3 text-left text-sm transition-all ${
+                      tier === opt.value
+                        ? `${opt.color} bg-primary/5 ring-1 ring-primary/20`
+                        : "border-border bg-background hover:border-primary/30"
+                    }`}
+                    onClick={() => setTier(opt.value)}
+                    type="button"
+                  >
+                    <span className="font-medium">{opt.label}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      {opt.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-3">
+              <Label>Answer visibility</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {VISIBILITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={`rounded-xl border-2 px-4 py-3 text-left text-sm transition-all ${
+                      visibility === opt.value
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border bg-background hover:border-primary/30"
+                    }`}
+                    onClick={() => setVisibility(opt.value)}
+                    type="button"
+                  >
+                    <span className="font-medium">{opt.label}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      {opt.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Optional metadata */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="q-subject">Subject</Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                  id="q-subject"
+                  onChange={(e) => setSubject(e.target.value)}
+                  value={subject}
+                >
+                  <option value="">Any</option>
+                  {SUBJECT_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="q-stream">Stream</Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                  id="q-stream"
+                  onChange={(e) => setStream(e.target.value)}
+                  value={stream}
+                >
+                  <option value="">Any</option>
+                  {STREAM_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="q-level">Level</Label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                  id="q-level"
+                  onChange={(e) => setLevel(e.target.value)}
+                  value={level}
+                >
+                  <option value="">Any</option>
+                  {LEVEL_OPTIONS.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button disabled={!canSubmit} onClick={handleSubmit} size="lg">
+                {isSubmitting ? (
+                  <Loader2Icon className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <ArrowRightIcon className="mr-2 size-4" />
+                )}
+                Post Question
+              </Button>
+              <Button
+                onClick={() => setShowPreview(!showPreview)}
+                size="lg"
+                variant="outline"
+              >
+                <EyeIcon className="mr-2 size-4" />
+                {showPreview ? "Hide preview" : "Show preview"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Right rail — preview + tips */}
+      <div className="space-y-6">
+        {/* Live Preview */}
+        {showPreview && (
+          <Card className="border border-primary/20 shadow-sm">
+            <CardHeader>
+              <CardDescription>Feed preview</CardDescription>
+              <CardTitle className="text-sm">How your question will look</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                You • just now • {subject || "General"}
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {title.trim() || "Your question title will appear here..."}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  {tierLabelMap[tier]}
+                </span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                  {visibilityLabelMap[visibility]}
+                </span>
+                {stream && (
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {stream}
+                  </span>
+                )}
+                {level && (
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {level}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs leading-6 text-muted-foreground line-clamp-3">
+                {body.trim() || "Your question details will appear here..."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tips */}
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
-            <CardDescription>Step 2</CardDescription>
-            <CardTitle>Check similar threads</CardTitle>
+            <CardDescription>Tips</CardDescription>
+            <CardTitle className="text-sm">Write a great question</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm leading-7 text-muted-foreground">
-            The next page can query MongoDB for similar solved questions before creating a duplicate thread.
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex gap-2">
+              <span className="shrink-0 font-medium text-primary">1.</span>
+              <span>Write your question naturally — describe what confuses you.</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="shrink-0 font-medium text-primary">2.</span>
+              <span>Include the chapter, topic, or concept for faster matching.</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="shrink-0 font-medium text-primary">3.</span>
+              <span>Choose a higher tier if you need a visual or video explanation.</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="shrink-0 font-medium text-primary">4.</span>
+              <span>Set visibility to Private if you don&apos;t want the answer shown publicly.</span>
+            </div>
           </CardContent>
         </Card>
+
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
-            <CardDescription>Step 3</CardDescription>
-            <CardTitle>Post if needed</CardTitle>
+            <CardDescription>What happens next</CardDescription>
+            <CardTitle className="text-sm">After posting</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm leading-7 text-muted-foreground">
-            If nothing useful matches, we can promote the exact same text into the final question composer.
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>Your question appears on the feed immediately. Teachers and fellow students can:</p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>React to your question (like, insightful, same doubt)</li>
+              <li>Accept it to start a private channel with you</li>
+              <li>Submit an answer within the tier&apos;s time limit</li>
+            </ul>
           </CardContent>
         </Card>
       </div>

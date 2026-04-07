@@ -115,7 +115,8 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     ? pathname.startsWith("/wallet")
     : pathname.startsWith("/subscription");
   const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
-  const primaryLabel = resolvedUser.role === "STUDENT" ? "Ask question" : "Open messages";
+  const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
+  const useModalForPrimary = resolvedUser.role === "STUDENT";
   const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
 
   const mainItems = [
@@ -256,6 +257,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}
           showQuestionFilter={showQuestionFilter}
+          useModalForPrimary={useModalForPrimary}
         />
 
         <div className={cn("flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6")}>{children}</div>
