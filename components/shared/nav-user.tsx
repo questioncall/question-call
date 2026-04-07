@@ -30,9 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { getSignOutPath } from "@/lib/user-paths"
-
-import { useSelector } from "react-redux"
-import { RootState } from "@/store/store"
+import { useAppSelector } from "@/store/hooks"
 
 export function NavUser({
   user: fallbackUser,
@@ -40,16 +38,16 @@ export function NavUser({
   user: {
     name: string
     email: string
+    userImage?: string
   }
 }) {
   const { isMobile } = useSidebar()
-  const profile = useSelector((state: RootState) => state.user)
-  
-  // Use Redux state first, fallback to props only if Redux hasn't hydrated yet
+  const profile = useAppSelector((state) => state.user)
+
   const name = profile.name || fallbackUser.name || "Student"
   const email = profile.email || fallbackUser.email || ""
-  const avatar = profile.userImage || ""
-  
+  const avatar = profile.userImage || fallbackUser.userImage || ""
+
   const fallback = name ? name.substring(0, 2).toUpperCase() : "U"
 
   return (
@@ -62,7 +60,7 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={avatar || ""} alt={name} />
+                <AvatarImage src={avatar} alt={name} />
                 <AvatarFallback className="rounded-lg">{fallback}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -83,7 +81,7 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={avatar || ""} alt={name} />
+                  <AvatarImage src={avatar} alt={name} />
                   <AvatarFallback className="rounded-lg">{fallback}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -122,3 +120,4 @@ export function NavUser({
     </SidebarMenu>
   )
 }
+

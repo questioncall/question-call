@@ -9,25 +9,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getChannelPath } from "@/lib/user-paths";
 
 const existingResults = [
   {
     id: "chn_101",
-    topic: "parallel-circuit-current",
     title: "Why does current split in a parallel circuit?",
     snippet:
       "Think of each branch as a different road width. Same voltage pushes charge through every road, but the lower-resistance branch carries more current.",
   },
   {
     id: "chn_214",
-    topic: "completing-the-square-shortcut",
     title: "Need a faster way to complete the square",
     snippet:
       "Start with the missing-corner visual. Once you see the square, the add-and-subtract move becomes predictable.",
   },
   {
     id: "chn_315",
-    topic: "redox-reaction-video-request",
     title: "Video help for balancing redox reactions",
     snippet:
       "Separate oxidation and reduction first, then balance oxygen, hydrogen, and finally charge in that order.",
@@ -81,7 +79,7 @@ export default async function AskQuestionResultsPage({
             <CardContent className="space-y-4">
               <p className="text-sm leading-7 text-muted-foreground">{item.snippet}</p>
               <Button asChild variant="outline">
-                <Link href={`/channel/${item.id}/${item.topic}`}>Open matching channel</Link>
+                <Link href={getChannelPath(item.id)}>Open matching channel</Link>
               </Button>
             </CardContent>
           </Card>

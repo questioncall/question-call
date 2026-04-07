@@ -2,30 +2,19 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import {
-  ArrowUpRightIcon,
   AwardIcon,
   BookOpenIcon,
   MessageSquareIcon,
-  Settings2Icon,
   StarIcon,
 } from "lucide-react";
 
 import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getPublicUserByUsername } from "@/lib/user-directory";
 import {
-  getLeaderboardPath,
   getMessagesPath,
-  getProfilePath,
   getSettingsPath,
   getSignInPath,
   getUserHandle,
@@ -124,20 +113,7 @@ export default async function PublicProfilePage({
 
   const viewerHandle = session?.user ? getUserHandle(session.user) : null;
   const isOwner = viewerHandle === profile.username;
-  const roleLabel = profile.role === "STUDENT" ? "Student" : "Teacher";
   const activityItems = profile.role === "STUDENT" ? studentActivity : teacherActivity;
-  const leftSideStats =
-    profile.role === "STUDENT"
-      ? [
-          { label: "Points", value: `${profile.points}` },
-          { label: "Solved replies", value: `${profile.totalAnswered}` },
-          { label: "Rating", value: `${profile.overallScore.toFixed(1)}/5` },
-        ]
-      : [
-          { label: "Answered", value: `${profile.totalAnswered}` },
-          { label: "Wallet", value: `Rs ${profile.walletBalance.toFixed(0)}` },
-          { label: "Rating", value: `${profile.overallScore.toFixed(1)}/5` },
-        ];
 
   const profileContent = (
     <div className="mx-auto w-full max-w-[1280px] px-4 md:px-8 py-8">
@@ -271,7 +247,7 @@ export default async function PublicProfilePage({
             </p>
             <div className="space-y-6">
               <div className="prose prose-sm md:prose-base dark:prose-invert">
-                <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I'm {profile.name}</h2>
+                <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I&apos;m {profile.name}</h2>
                 <div className="text-muted-foreground leading-7 whitespace-pre-wrap">
                   {profile.bio || (profile.role === "STUDENT" 
                     ? "I'm a student using EduAsk to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can."
@@ -350,7 +326,9 @@ export default async function PublicProfilePage({
   if (session?.user) {
     const cookieStore = await cookies();
     const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
-    return <WorkspaceShell user={session.user} defaultOpen={defaultOpen}>{profileContent}</WorkspaceShell>;
+    const workspaceUser = await getWorkspaceUser(session.user);
+
+    return <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>{profileContent}</WorkspaceShell>;
   }
 
   return (
@@ -360,3 +338,5 @@ export default async function PublicProfilePage({
     </div>
   );
 }
+
+

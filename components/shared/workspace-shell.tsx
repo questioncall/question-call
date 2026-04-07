@@ -45,6 +45,8 @@ import {
   getSubscriptionPath,
   getUserHandle,
 } from "@/lib/user-paths";
+import { setProfile } from "@/store/features/user/user-slice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 type WorkspaceRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -63,12 +65,10 @@ type WorkspaceShellProps = {
   children: ReactNode;
 };
 
-import { useDispatch } from "react-redux";
-import { setProfile } from "@/store/features/user/user-slice";
-
 export function WorkspaceShell({ user, defaultOpen = true, children }: WorkspaceShellProps) {
-  const dispatch = useDispatch();
-  
+  const dispatch = useAppDispatch();
+  const profile = useAppSelector((state) => state.user);
+
   useEffect(() => {
     dispatch(setProfile({
       id: user.id,
@@ -76,9 +76,9 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       email: user.email || "",
       username: user.username || "",
       role: user.role,
-      userImage: user.userImage || "",
+      userImage: user.userImage ?? "",
     }));
-  }, [dispatch, user]);
+  }, [dispatch, user.email, user.id, user.name, user.role, user.userImage, user.username]);
 
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -91,20 +91,31 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
   }, []);
 
   const pathname = usePathname();
-  const handle = getUserHandle(user);
-  const askQuestionHref = getAskQuestionPath(user);
-  const leaderboardHref = getLeaderboardPath(user);
-  const messageHref = getMessagesPath(user);
-  const profileHref = getProfilePath(user);
-  const settingsHref = getSettingsPath(user);
-  const subscriptionHref = getSubscriptionPath(user);
-  const billingLabel = user.role === "TEACHER" ? "Wallet" : "Subscription";
-  const billingBadge = user.role === "STUDENT" ? "plan" : "wallet";
-  const isBillingActive = user.role === "TEACHER"
+
+  // Keep shell identity in sync with profile edits that already landed in Redux.
+  const resolvedUser = {
+    ...user,
+    name: profile.name || user.name || "",
+    email: profile.email || user.email || "",
+    username: profile.username || user.username || "",
+    role: profile.isHydrated ? profile.role : user.role,
+    userImage: profile.userImage || user.userImage || "",
+  };
+
+  const handle = getUserHandle(resolvedUser);
+  const askQuestionHref = getAskQuestionPath(resolvedUser);
+  const leaderboardHref = getLeaderboardPath(resolvedUser);
+  const messageHref = getMessagesPath(resolvedUser);
+  const profileHref = getProfilePath(resolvedUser);
+  const settingsHref = getSettingsPath(resolvedUser);
+  const subscriptionHref = getSubscriptionPath(resolvedUser);
+  const billingLabel = resolvedUser.role === "TEACHER" ? "Wallet" : "Subscription";
+  const billingBadge = resolvedUser.role === "STUDENT" ? "plan" : "wallet";
+  const isBillingActive = resolvedUser.role === "TEACHER"
     ? pathname.startsWith("/wallet")
     : pathname.startsWith("/subscription");
-  const primaryHref = user.role === "STUDENT" ? askQuestionHref : messageHref;
-  const primaryLabel = user.role === "STUDENT" ? "Ask question" : "Open messages";
+  const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
+  const primaryLabel = resolvedUser.role === "STUDENT" ? "Ask question" : "Open messages";
   const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
 
   const mainItems = [
@@ -128,7 +139,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       href: askQuestionHref,
       icon: CircleHelpIcon,
       label: "Ask",
-      badge: user.role === "STUDENT" ? "new" : null,
+      badge: resolvedUser.role === "STUDENT" ? "new" : null,
       isActive: pathname.startsWith("/ask"),
       collapseSidebarOnClick: true,
     },
@@ -166,9 +177,9 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     },
   ] as const;
 
-  const roleLabel = user.role === "STUDENT" ? "Student" : "Teacher";
+  const roleLabel = resolvedUser.role === "STUDENT" ? "Student" : "Teacher";
   const roleSummary =
-    user.role === "STUDENT"
+    resolvedUser.role === "STUDENT"
       ? "Ask doubts, follow answers, and manage your learning flow."
       : "Track question activity, channel updates, and reputation from one place.";
 
@@ -229,8 +240,9 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
         <SidebarFooter>
           <NavUser
             user={{
-              name: user.name || roleLabel,
-              email: user.email || "",
+              name: resolvedUser.name || roleLabel,
+              email: resolvedUser.email || "",
+              userImage: resolvedUser.userImage || "",
             }}
           />
         </SidebarFooter>
@@ -251,3 +263,4 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     </SidebarProvider>
   );
 }
+

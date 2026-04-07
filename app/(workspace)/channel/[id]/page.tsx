@@ -9,6 +9,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const channelDirectory: Record<string, { title: string; counterpart: string; requiredAnswer: string }> = {
+  chn_101: {
+    title: "Why does current split in a parallel circuit?",
+    counterpart: "Rohit Sir",
+    requiredAnswer: "Tier I",
+  },
+  chn_214: {
+    title: "Need a faster way to complete the square",
+    counterpart: "Meera Tutor",
+    requiredAnswer: "Tier II",
+  },
+  chn_315: {
+    title: "Video help for balancing redox reactions",
+    counterpart: "Anjana Koirala",
+    requiredAnswer: "Tier III",
+  },
+};
+
 const sampleMessages = [
   {
     sender: "Student",
@@ -28,28 +46,24 @@ const sampleMessages = [
   },
 ] as const;
 
-function formatTopicLabel(topic: string) {
-  return topic
-    .split("-")
-    .filter(Boolean)
-    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
-    .join(" ");
-}
-
 export default async function ChannelPage({
   params,
 }: {
-  params: Promise<{ id: string; topic: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { id, topic } = await params;
-  const topicLabel = formatTopicLabel(topic);
+  const { id } = await params;
+  const channel = channelDirectory[id] ?? {
+    title: `Channel ${id}`,
+    counterpart: "Shared thread",
+    requiredAnswer: "Flexible",
+  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="border border-border/70 shadow-sm">
         <CardHeader>
-          <CardDescription>Channel workspace</CardDescription>
-          <CardTitle>{topicLabel}</CardTitle>
+          <CardDescription>Shared channel workspace</CardDescription>
+          <CardTitle>{channel.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {sampleMessages.map((message, index) => (
@@ -67,7 +81,7 @@ export default async function ChannelPage({
           ))}
 
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 text-sm leading-7 text-muted-foreground">
-            Dummy chat UI for now. The real version will hold live messages, uploads, answer submission, rating, and close-channel controls.
+            One shared channel route serves both students and teachers. Only the data, permissions, and UI state should differ by role.
           </div>
         </CardContent>
       </Card>
@@ -76,17 +90,17 @@ export default async function ChannelPage({
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardDescription>Route details</CardDescription>
-            <CardTitle>/channel/{id}/{topic}</CardTitle>
+            <CardTitle>/channel/{id}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-7 text-muted-foreground">
             <div className="rounded-xl border border-border bg-muted/20 p-4">
-              Channel ID stays technical for database lookup.
+              Channel ID is the only canonical route key now.
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-4">
-              Topic slug keeps the URL readable and shareable.
+              Thread title and other presentation details should come from real channel data, not the URL.
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-4">
-              This route is protected, but the public profile route is not.
+              The same route works for student-teacher and student-student conversations.
             </div>
           </CardContent>
         </Card>
@@ -94,7 +108,7 @@ export default async function ChannelPage({
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardDescription>Status</CardDescription>
-            <CardTitle>Dummy channel controls</CardTitle>
+            <CardTitle>{channel.counterpart}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-4 py-3">
@@ -103,7 +117,7 @@ export default async function ChannelPage({
             </div>
             <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-4 py-3">
               <span>Required answer type</span>
-              <span className="font-medium text-foreground">Tier I</span>
+              <span className="font-medium text-foreground">{channel.requiredAnswer}</span>
             </div>
             <Button asChild className="w-full">
               <Link href="/message">Back to messages</Link>

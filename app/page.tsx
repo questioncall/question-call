@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 
 export default async function HomePage() {
@@ -83,10 +83,11 @@ export default async function HomePage() {
 
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
+  const workspaceUser = await getWorkspaceUser(session.user);
 
   return (
-    <WorkspaceShell user={session.user} defaultOpen={defaultOpen}>
-      <WorkspaceHome name={session.user.name} role={session.user.role} />
+    <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>
+      <WorkspaceHome name={workspaceUser.name} role={workspaceUser.role} />
     </WorkspaceShell>
   );
 }

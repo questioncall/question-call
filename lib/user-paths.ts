@@ -95,6 +95,14 @@ export function getMessagesPath(user?: UserPathInput | null) {
   return "/message";
 }
 
+export function getChannelPath(channelId?: string | null) {
+  if (!channelId) {
+    return "/message";
+  }
+
+  return `/channel/${channelId}`;
+}
+
 export function getAskQuestionPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
     return "/admin/pricing";

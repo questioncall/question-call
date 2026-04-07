@@ -7,11 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getChannelPath } from "@/lib/user-paths";
 
 const threads = [
   {
     id: "chn_101",
-    topic: "parallel-circuit-current",
     title: "Why does current split in a parallel circuit?",
     counterpart: "Rohit Sir",
     preview: "Start by thinking of each branch like a different width road...",
@@ -19,7 +19,6 @@ const threads = [
   },
   {
     id: "chn_214",
-    topic: "completing-the-square-shortcut",
     title: "Need a faster way to complete the square",
     counterpart: "Meera Tutor",
     preview: "Picture the missing corner of the square before touching the formula.",
@@ -27,7 +26,6 @@ const threads = [
   },
   {
     id: "chn_315",
-    topic: "redox-reaction-video-request",
     title: "Video help for balancing redox reactions",
     counterpart: "Anjana Koirala",
     preview: "I can explain the half-reaction method once you confirm the acidic-medium step.",
@@ -48,7 +46,7 @@ export default function MessagesPage() {
             <Link
               key={thread.id}
               className="block rounded-xl border border-border bg-muted/20 p-4 transition hover:border-primary/50 hover:bg-background"
-              href={`/channel/${thread.id}/${thread.topic}`}
+              href={getChannelPath(thread.id)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -76,7 +74,7 @@ export default function MessagesPage() {
               This page is the shared home for every private communication thread between students, teachers, and peer students.
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-4">
-              Each card opens the canonical channel route at `/channel/[id]/[topic]`, which keeps URLs descriptive and readable.
+              Each card opens the canonical channel route at `/channel/[id]`, so one thread URL works for everyone.
             </div>
           </CardContent>
         </Card>

@@ -1,11 +1,11 @@
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProfilePath, getUserHandle } from "@/lib/user-paths";
-import User, { type UserRole } from "@/models/User";
+import User, { type UserRecord, type UserRole } from "@/models/User";
 
 const defaultPathByRole: Record<UserRole, string> = {
   STUDENT: "/",
@@ -37,6 +37,28 @@ export async function getSafeServerSession() {
 
     throw error;
   }
+}
+
+type WorkspaceUserRecord = Pick<
+  UserRecord,
+  "name" | "email" | "username" | "role" | "userImage"
+>;
+
+export async function getWorkspaceUser(sessionUser: Session["user"]) {
+  await connectToDatabase();
+
+  const dbUser = await User.findById(sessionUser.id)
+    .select("name email username role userImage")
+    .lean<WorkspaceUserRecord | null>();
+
+  return {
+    id: sessionUser.id,
+    name: dbUser?.name ?? sessionUser.name ?? "",
+    email: dbUser?.email ?? sessionUser.email ?? "",
+    username: dbUser?.username ?? sessionUser.username ?? "",
+    role: dbUser?.role ?? sessionUser.role,
+    userImage: dbUser?.userImage ?? "",
+  };
 }
 
 export const authOptions: NextAuthOptions = {
