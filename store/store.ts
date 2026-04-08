@@ -1,6 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 import authReducer from "@/store/features/auth/auth-slice";
+import channelReducer from "@/store/features/channel/channel-slice";
+import channelsReducer from "@/store/features/channels/channels-slice";
 import feedReducer from "@/store/features/feed/feed-slice";
 import userReducer from "@/store/features/user/user-slice";
 
@@ -8,6 +10,8 @@ export const makeStore = () =>
   configureStore({
     reducer: {
       auth: authReducer,
+      channel: channelReducer,
+      channels: channelsReducer,
       feed: feedReducer,
       user: userReducer,
     },

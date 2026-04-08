@@ -6,7 +6,7 @@ export function getPusherClient() {
   const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
   const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-  if (!key || !cluster) {
+  if (!key || !cluster || typeof window === "undefined") {
     return null;
   }
 

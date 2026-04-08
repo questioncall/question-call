@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRightIcon,
@@ -107,6 +108,7 @@ function getQuestionChips(question: FeedQuestion) {
 
 export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const { items: feedItems, isHydrated, connectionStatus } = useAppSelector((state) => state.feed);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
@@ -193,8 +195,13 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       });
 
       if (res.ok) {
-        const updated: FeedQuestion = await res.json();
-        dispatch(upsertFeedQuestion(updated));
+        const data = await res.json();
+        // Update feed state
+        dispatch(upsertFeedQuestion(data as FeedQuestion));
+        // Auto-redirect to the channel
+        if (data.channelId) {
+          router.push(`/channel/${data.channelId}`);
+        }
       }
     } catch {
       // Silently fail — user can retry

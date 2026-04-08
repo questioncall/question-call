@@ -3,8 +3,12 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitQuestionUpdated } from "@/lib/pusher/pusherServer";
+import { emitQuestionUpdated, emitChannelMessage } from "@/lib/pusher/pusherServer";
+import Channel from "@/models/Channel";
+import Message from "@/models/Message";
+import { getPlatformConfig, getTierDurationMinutes } from "@/models/PlatformConfig";
 import Question from "@/models/Question";
+import User from "@/models/User";
 import type { FeedQuestion } from "@/types/question";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -46,11 +50,64 @@ export async function POST(_request: Request, context: RouteParams) {
       );
     }
 
+    // Get platform config for tier time limits
+    const config = await getPlatformConfig();
+    const tierDurationMinutes = getTierDurationMinutes(config, question.tier);
+
+    const now = new Date();
+    const timerDeadline = new Date(now.getTime() + tierDurationMinutes * 60 * 1000);
+
+    // Update question status
     question.status = "ACCEPTED";
     question.acceptedById = session.user.id;
-    question.acceptedAt = new Date();
+    question.acceptedAt = now;
     await question.save();
 
+    // Create the channel
+    const channel = await Channel.create({
+      questionId: question._id,
+      askerId: question.askerId._id,
+      acceptorId: session.user.id,
+      openedAt: now,
+      timerDeadline,
+      status: "ACTIVE",
+    });
+
+    // Get acceptor's name for the auto-message
+    const acceptor = await User.findById(session.user.id).select("name").lean();
+    const acceptorName = (acceptor as { name?: string })?.name || session.user.name || "Someone";
+
+    // Format duration for the message
+    const durationText =
+      tierDurationMinutes >= 60
+        ? `${Math.floor(tierDurationMinutes / 60)} hour${Math.floor(tierDurationMinutes / 60) > 1 ? "s" : ""}`
+        : `${tierDurationMinutes} minutes`;
+
+    // Create the auto-message from acceptor
+    const autoMessageContent = `Hey there! I accepted your question — the answer will be with you within ${durationText}. 🚀`;
+    const autoMessage = await Message.create({
+      channelId: channel._id,
+      senderId: session.user.id,
+      content: autoMessageContent,
+      isSystemMessage: true,
+      sentAt: now,
+    });
+
+    // Broadcast the auto-message via Pusher (non-fatal if fails)
+    await emitChannelMessage(channel._id.toString(), {
+      id: autoMessage._id.toString(),
+      channelId: channel._id.toString(),
+      senderId: session.user.id,
+      senderName: acceptorName,
+      content: autoMessageContent,
+      isSystemMessage: true,
+      isOwn: false,
+      isSeen: false,
+      isDelivered: true,
+      sentAt: now.toISOString(),
+    }).catch(() => {});
+
+    // Build the FeedQuestion shape for broadcast
     const asker = question.askerId as unknown as {
       _id: { toString(): string };
       name?: string;
@@ -81,7 +138,7 @@ export async function POST(_request: Request, context: RouteParams) {
       })),
       acceptedById: session.user.id,
       acceptedAt: question.acceptedAt!.toISOString(),
-      acceptedByName: session.user.name || "Someone",
+      acceptedByName: acceptorName,
       answerCount: 0,
       reactionCount: reactions.length,
       createdAt: question.createdAt.toISOString(),
@@ -90,7 +147,13 @@ export async function POST(_request: Request, context: RouteParams) {
 
     await emitQuestionUpdated(feedQuestion).catch(() => {});
 
-    return NextResponse.json(feedQuestion);
+    // Return channelId so the UI can redirect
+    return NextResponse.json({
+      ...feedQuestion,
+      channelId: channel._id.toString(),
+      timerDeadline: timerDeadline.toISOString(),
+      tierDurationMinutes,
+    });
   } catch (error) {
     console.error("[POST /api/questions/[id]/accept]", error);
     return NextResponse.json(

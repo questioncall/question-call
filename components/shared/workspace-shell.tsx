@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -47,6 +47,16 @@ import {
 } from "@/lib/user-paths";
 import { setProfile } from "@/store/features/user/user-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { getPusherClient } from "@/lib/pusher/pusherClient";
+import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
+import {
+  setChannelsLoading,
+  setChannelsList,
+  updateChannelPreview,
+  incrementChannelUnread,
+  clearChannelUnread,
+} from "@/store/features/channels/channels-slice";
+import type { ChannelListItem } from "@/types/channel";
 
 type WorkspaceRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -68,6 +78,76 @@ type WorkspaceShellProps = {
 export function WorkspaceShell({ user, defaultOpen = true, children }: WorkspaceShellProps) {
   const dispatch = useAppDispatch();
   const profile = useAppSelector((state) => state.user);
+  const { items: channels, isHydrated: channelsHydrated } = useAppSelector((state) => state.channels);
+
+  const totalUnreadChannels = channels.reduce(
+    (acc, ch) => acc + (ch.unreadCount > 0 ? 1 : 0),
+    0
+  );
+
+  // Fetch channels from API (global)
+  const fetchChannels = useCallback(async () => {
+    dispatch(setChannelsLoading());
+    try {
+      const res = await fetch("/api/channels");
+      if (res.ok) {
+        const data: ChannelListItem[] = await res.json();
+        dispatch(setChannelsList(data));
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!channelsHydrated) {
+      fetchChannels();
+    }
+  }, [fetchChannels, channelsHydrated]);
+
+  // Subscribe to user-specific channel for real-time list updates (global)
+  useEffect(() => {
+    if (!user.id) return;
+
+    const pusherClient = getPusherClient();
+    if (!pusherClient) return;
+
+    const userChannel = getUserPusherName(user.id);
+    const channel = pusherClient.subscribe(userChannel);
+
+    channel.bind(CHANNEL_UPDATED_EVENT, (data: any) => {
+      if (data.unreadCountCleared) {
+        dispatch(clearChannelUnread(data.channelId));
+      } else {
+        if (data.lastMessagePreview) {
+          dispatch(
+            updateChannelPreview({
+              channelId: data.channelId,
+              preview: data.lastMessagePreview,
+              at: data.lastMessageAt,
+            })
+          );
+        }
+        if (data.unreadCountIncrement) {
+          // Verify we aren't currently viewing this active channel
+          const currentViewingId = window.location.pathname.split("/").pop();
+          if (currentViewingId !== data.channelId) {
+            dispatch(
+              incrementChannelUnread({
+                channelId: data.channelId,
+                incrementBy: data.unreadCountIncrement,
+              })
+            );
+          }
+        }
+      }
+    });
+
+    return () => {
+      channel.unbind(CHANNEL_UPDATED_EVENT);
+      pusherClient.unsubscribe(userChannel);
+    };
+  }, [user.id, dispatch]);
 
   useEffect(() => {
     dispatch(setProfile({
@@ -118,6 +198,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
   const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
   const useModalForPrimary = resolvedUser.role === "STUDENT";
   const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
+  const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel");
 
   const mainItems = [
     {
@@ -125,6 +206,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: HomeIcon,
       label: "Home",
       badge: null,
+      badgeClassName: undefined,
       isActive: pathname === "/",
       collapseSidebarOnClick: true,
     },
@@ -132,7 +214,8 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       href: messageHref,
       icon: MessageSquareIcon,
       label: "Messages",
-      badge: "4",
+      badge: totalUnreadChannels > 0 ? totalUnreadChannels.toString() : null,
+      badgeClassName: "text-white bg-red-500 rounded-full h-4 min-w-[16px] text-[10px] px-1 flex items-center justify-center peer-hover/menu-button:text-white peer-data-active/menu-button:text-white group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1 group-data-[collapsible=icon]:!translate-y-0",
       isActive: pathname.startsWith("/message") || pathname.startsWith("/channel/"),
       collapseSidebarOnClick: true,
     },
@@ -141,6 +224,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: CircleHelpIcon,
       label: "Ask",
       badge: resolvedUser.role === "STUDENT" ? "new" : null,
+      badgeClassName: "text-primary bg-primary/10",
       isActive: pathname.startsWith("/ask"),
       collapseSidebarOnClick: true,
     },
@@ -149,6 +233,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: TrophyIcon,
       label: "Leaderboard",
       badge: null,
+      badgeClassName: undefined,
       isActive: pathname.startsWith("/leaderboard/"),
       collapseSidebarOnClick: true,
     },
@@ -157,6 +242,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: UserCircle2Icon,
       label: "Profile",
       badge: null,
+      badgeClassName: undefined,
       isActive: pathname === profileHref,
       collapseSidebarOnClick: true,
     },
@@ -165,6 +251,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: Settings2Icon,
       label: "Settings",
       badge: null,
+      badgeClassName: undefined,
       isActive: pathname.startsWith("/settings"),
       collapseSidebarOnClick: true,
     },
@@ -173,6 +260,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       icon: CreditCardIcon,
       label: billingLabel,
       badge: billingBadge,
+      badgeClassName: "text-muted-foreground bg-muted",
       isActive: isBillingActive,
       collapseSidebarOnClick: true,
     },
@@ -217,7 +305,11 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
-                    {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
+                    {item.badge ? (
+                      <SidebarMenuBadge className={item.badgeClassName}>
+                        {item.badge}
+                      </SidebarMenuBadge>
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -251,7 +343,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-svh bg-[#f6f8fb] dark:bg-background">
+      <SidebarInset className={cn("bg-[#f6f8fb] dark:bg-background flex flex-col", isChatPage ? "h-svh overflow-hidden" : "min-h-svh")}>
         <AuthenticatedHeader
           isScrolled={isScrolled}
           primaryHref={primaryHref}
@@ -260,7 +352,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           useModalForPrimary={useModalForPrimary}
         />
 
-        <div className={cn("flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6")}>{children}</div>
+        <div className={cn("flex flex-1 flex-col", isChatPage ? "overflow-hidden" : "gap-6 px-4 py-6 lg:px-6")}>{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

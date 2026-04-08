@@ -1,0 +1,95 @@
+// ──────────────────────────────────────────────────────────
+// Shared channel & message types — single source of truth
+// ──────────────────────────────────────────────────────────
+
+export type ChannelStatus = "ACTIVE" | "CLOSED" | "EXPIRED";
+export type MessageMediaType = "TEXT" | "IMAGE" | "VIDEO" | "AUDIO";
+
+// ──────────────────────────────────────────────────────────
+// Channel shapes
+// ──────────────────────────────────────────────────────────
+
+/** Raw channel record shape (from DB) */
+export type ChannelRecord = {
+  id: string;
+  questionId: string;
+  askerId: string;
+  acceptorId: string;
+  openedAt: string;
+  timerDeadline: string;
+  closedAt: string | null;
+  status: ChannelStatus;
+  isClosedByAsker: boolean;
+  ratingGiven: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Populated channel detail for the UI */
+export type ChannelDetail = ChannelRecord & {
+  questionTitle: string;
+  questionBody: string;
+  questionTier: string;
+  answerVisibility: string;
+  askerName: string;
+  askerUsername?: string;
+  askerImage?: string;
+  acceptorName: string;
+  acceptorUsername?: string;
+  acceptorImage?: string;
+  tierDurationMinutes: number;
+};
+
+/** Lightweight channel shape for sidebar list */
+export type ChannelListItem = {
+  id: string;
+  questionTitle: string;
+  counterpartName: string;
+  counterpartImage?: string;
+  status: ChannelStatus;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
+  unreadCount: number;
+  timerDeadline: string;
+  role: "asker" | "acceptor";
+};
+
+// ──────────────────────────────────────────────────────────
+// Message shapes
+// ──────────────────────────────────────────────────────────
+
+/** Chat message shape for the UI */
+export type ChatMessage = {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  mediaUrl?: string | null;
+  mediaType?: MessageMediaType | null;
+  isSystemMessage: boolean;
+  isOwn: boolean;
+  isSending?: boolean;
+  isSeen: boolean;
+  isDelivered: boolean;
+  sentAt: string;
+};
+
+// ──────────────────────────────────────────────────────────
+// API payloads
+// ──────────────────────────────────────────────────────────
+
+/** Body shape for POST /api/channels/[id]/messages */
+export type SendMessagePayload = {
+  content?: string;
+  mediaUrl?: string;
+  mediaType?: MessageMediaType;
+};
+
+/** Response from the accept API — includes channelId for redirect */
+export type AcceptQuestionResponse = {
+  channelId: string;
+  questionId: string;
+  timerDeadline: string;
+  tierDurationMinutes: number;
+};
