@@ -29,7 +29,7 @@ export type ChannelRecord = {
 export type ChannelDetail = ChannelRecord & {
   questionTitle: string;
   questionBody: string;
-  questionTier: string;
+  answerFormat: string;
   answerVisibility: string;
   askerName: string;
   askerUsername?: string;
@@ -37,7 +37,8 @@ export type ChannelDetail = ChannelRecord & {
   acceptorName: string;
   acceptorUsername?: string;
   acceptorImage?: string;
-  tierDurationMinutes: number;
+  formatDurationMinutes: number;
+  isAnswerSubmitted: boolean;
 };
 
 /** Lightweight channel shape for sidebar list */
@@ -65,13 +66,14 @@ export type ChatMessage = {
   senderId: string;
   senderName: string;
   content: string;
-  mediaUrl?: string | null;
-  mediaType?: MessageMediaType | null;
+  mediaUrl: string | null;
+  mediaType: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | null;
   isSystemMessage: boolean;
   isOwn: boolean;
   isSending?: boolean;
   isSeen: boolean;
-  isDelivered: boolean;
+  isDelivered?: boolean;
+  isMarkedAsAnswer?: boolean;
   sentAt: string;
 };
 
@@ -91,5 +93,5 @@ export type AcceptQuestionResponse = {
   channelId: string;
   questionId: string;
   timerDeadline: string;
-  tierDurationMinutes: number;
+  formatDurationMinutes: number;
 };

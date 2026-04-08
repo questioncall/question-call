@@ -9,7 +9,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     title: "Why does current split in a parallel circuit instead of staying equal?",
     body:
       "I understand the formula but not the intuition. Can someone explain it in a way that connects resistance and current flow?",
-    tier: "ONE",
+    answerFormat: "TEXT",
     answerVisibility: "PUBLIC",
     status: "OPEN",
     subject: "Physics",
@@ -32,7 +32,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     title: "Need a photo-based explanation for completing the square quickly.",
     body:
       "I can solve the steps slowly, but I want a simple visual pattern for turning a quadratic into vertex form during revision.",
-    tier: "TWO",
+    answerFormat: "PHOTO",
     answerVisibility: "PRIVATE",
     status: "OPEN",
     subject: "Mathematics",
@@ -56,7 +56,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     title: "Looking for a video answer on balancing redox reactions in acidic medium.",
     body:
       "I keep mixing oxidation numbers and half-reactions. A narrated walkthrough would help me see the pattern.",
-    tier: "THREE",
+    answerFormat: "VIDEO",
     answerVisibility: "PUBLIC",
     status: "OPEN",
     subject: "Chemistry",

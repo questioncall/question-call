@@ -9,7 +9,10 @@ import {
   CHANNEL_MESSAGE_EVENT,
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
+  NEW_CHANNEL_EVENT,
   getChannelPusherName,
+  getUserPusherName,
+  NOTIFICATION_EVENT,
 } from "@/lib/pusher/events";
 
 type PusherPayload = Record<string, unknown>;
@@ -68,5 +71,27 @@ export async function emitChannelStatusUpdate(
   await pusherServer.trigger(pusherChannel, CHANNEL_STATUS_EVENT, {
     status,
     ...data,
+  });
+}
+
+/** Broadcast a notification to a specific user */
+export async function emitNotification(userId: string, notification: any) {
+  const pusherChannel = getUserPusherName(userId);
+  await pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
+    notification: {
+      id: notification._id.toString(),
+      type: notification.type,
+      message: notification.message,
+      isRead: notification.isRead,
+      createdAt: new Date(notification.createdAt).toISOString(),
+    },
+  });
+}
+
+/** Broadcast a new channel to a specific user */
+export async function emitNewChannel(userId: string, channelListItem: any) {
+  const pusherChannel = getUserPusherName(userId);
+  await pusherServer.trigger(pusherChannel, NEW_CHANNEL_EVENT, {
+    channel: channelListItem,
   });
 }

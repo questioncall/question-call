@@ -3,7 +3,7 @@ import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoo
 import {
   ANSWER_VISIBILITY_OPTIONS,
   QUESTION_STATUSES,
-  QUESTION_TIERS,
+  ANSWER_FORMATS,
   REACTION_TYPES,
 } from "@/lib/question-types";
 
@@ -49,10 +49,10 @@ const questionSchema = new Schema(
       type: [String],
       default: [],
     },
-    tier: {
+    answerFormat: {
       type: String,
-      enum: QUESTION_TIERS,
-      default: "UNSET",
+      enum: ANSWER_FORMATS,
+      default: "ANY",
       required: true,
     },
     answerVisibility: {
@@ -94,6 +94,11 @@ const questionSchema = new Schema(
     },
     acceptedAt: {
       type: Date,
+      default: null,
+    },
+    answerId: {
+      type: Schema.Types.ObjectId,
+      ref: "Answer",
       default: null,
     },
     reactions: {

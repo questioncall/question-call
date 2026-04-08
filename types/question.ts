@@ -2,8 +2,8 @@
 // Shared question types — single source of truth
 // ──────────────────────────────────────────────────────────
 
-/** Answer tiers */
-export type QuestionTier = "UNSET" | "ONE" | "TWO" | "THREE";
+/** Answer formats */
+export type AnswerFormat = "ANY" | "TEXT" | "PHOTO" | "VIDEO";
 
 /** Who can see the answer */
 export type AnswerVisibility = "PUBLIC" | "PRIVATE";
@@ -31,7 +31,7 @@ export type QuestionRecordShape = {
   title: string;
   body: string;
   images?: string[];
-  tier: QuestionTier;
+  answerFormat: AnswerFormat;
   answerVisibility: AnswerVisibility;
   status: QuestionStatus;
   subject?: string;
@@ -55,6 +55,14 @@ export type FeedQuestion = QuestionRecordShape & {
   acceptedByName?: string | null;
   previewAuthor?: string;
   previewText?: string;
+  answer?: {
+    content?: string;
+    mediaUrls?: string[];
+    answerFormat?: string;
+    rating?: number | null;
+    acceptorName?: string;
+    submittedAt?: string;
+  };
 };
 
 // ──────────────────────────────────────────────────────────
@@ -66,7 +74,7 @@ export type CreateQuestionPayload = {
   title: string;
   body: string;
   images?: string[];
-  tier: QuestionTier;
+  answerFormat: AnswerFormat;
   answerVisibility: AnswerVisibility;
   subject?: string;
   stream?: string;

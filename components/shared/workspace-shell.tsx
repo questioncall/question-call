@@ -48,13 +48,14 @@ import {
 import { setProfile } from "@/store/features/user/user-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
-import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
+import { getUserPusherName, CHANNEL_UPDATED_EVENT, NEW_CHANNEL_EVENT } from "@/lib/pusher/events";
 import {
   setChannelsLoading,
   setChannelsList,
   updateChannelPreview,
   incrementChannelUnread,
   clearChannelUnread,
+  upsertChannelItem,
 } from "@/store/features/channels/channels-slice";
 import type { ChannelListItem } from "@/types/channel";
 
@@ -143,8 +144,15 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       }
     });
 
+    channel.bind(NEW_CHANNEL_EVENT, (data: any) => {
+      if (data.channel) {
+        dispatch(upsertChannelItem(data.channel));
+      }
+    });
+
     return () => {
       channel.unbind(CHANNEL_UPDATED_EVENT);
+      channel.unbind(NEW_CHANNEL_EVENT);
       pusherClient.unsubscribe(userChannel);
     };
   }, [user.id, dispatch]);
@@ -279,7 +287,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           <div className="flex items-center gap-3 rounded-lg border border-sidebar-border/70 bg-background px-3 py-3">
             <Logo compact />
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="truncate text-sm font-medium text-sidebar-foreground">EduAsk</p>
+              <h1 className="truncate text-sm font-bold text-sidebar-foreground hidden md:block">Question Hub</h1>
               <p className="truncate text-xs text-sidebar-foreground/70">@{handle}</p>
             </div>
           </div>
@@ -350,6 +358,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           primaryLabel={primaryLabel}
           showQuestionFilter={showQuestionFilter}
           useModalForPrimary={useModalForPrimary}
+          userId={resolvedUser.id}
         />
 
         <div className={cn("flex flex-1 flex-col", isChatPage ? "overflow-hidden" : "gap-6 px-4 py-6 lg:px-6")}>{children}</div>

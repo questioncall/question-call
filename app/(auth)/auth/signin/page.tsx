@@ -30,7 +30,7 @@ export default async function SignInPage({ searchParams }: LoginPageProps) {
         "Public profiles use the top-level username path",
       ]}
       portalLabel="Student + Teacher"
-      title="Sign in to enter EduAsk"
+      title="Sign in to enter Question Hub"
     >
       <AuthForm callbackUrl={callbackUrl} mode="login" />
     </AuthShell>

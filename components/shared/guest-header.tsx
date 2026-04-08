@@ -14,10 +14,10 @@ export function GuestHeader({ portalLabel = "Students • Teachers • Public" }
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3" href="/">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
-            EA
+            QH
           </span>
           <span className="flex min-w-0 flex-col">
-            <span className="headline truncate text-base font-semibold text-foreground">EduAsk</span>
+            <span className="headline truncate text-base font-semibold text-foreground">Question Hub</span>
             <span className="truncate text-[11px] text-muted-foreground">{portalLabel}</span>
           </span>
         </Link>

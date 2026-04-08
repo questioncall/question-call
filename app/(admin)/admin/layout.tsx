@@ -7,7 +7,7 @@ import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 
 const adminNavItems = [
   { href: "/admin/pricing", label: "Pricing" },
-  { href: "/admin/tier-config", label: "Tier config" },
+  { href: "/admin/format-config", label: "Format config" },
   { href: "/admin/users", label: "Users" },
 ] as const;
 

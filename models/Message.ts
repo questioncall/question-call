@@ -41,6 +41,10 @@ const messageSchema = new Schema({
     type: Boolean,
     default: true, // Assuming delivered when saved to DB for now
   },
+  isMarkedAsAnswer: {
+    type: Boolean,
+    default: false,
+  },
   sentAt: {
     type: Date,
     required: true,

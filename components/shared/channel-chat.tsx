@@ -14,6 +14,7 @@ import {
   AlertTriangleIcon,
   LockIcon,
   InfoIcon,
+  StarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,9 @@ import {
   CHANNEL_MESSAGE_EVENT,
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
+  MESSAGE_MARKED_EVENT,
+  ANSWER_SUBMITTED_EVENT,
+  CHANNEL_CLOSED_EVENT,
   getChannelPusherName,
 } from "@/lib/pusher/events";
 import {
@@ -32,6 +36,9 @@ import {
   updateMessage,
   removeMessage,
   setChannelStatus,
+  setChannelRating,
+  setAnswerSubmitted,
+  toggleMessageMarked,
   markMessagesAsSeen,
   markOwnMessagesAsSeen,
   clearActiveChannel,
@@ -51,12 +58,7 @@ type PendingFile = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const TIER_LABEL: Record<string, string> = {
-  ONE: "Text Answer",
-  TWO: "Photo Answer",
-  THREE: "Video Answer",
-  UNSET: "Flexible",
-};
+
 
 function formatCountdown(ms: number) {
   if (ms <= 0) return "0:00";
@@ -109,7 +111,7 @@ function formatMessageTime(dateString: string) {
 
 export function ChannelChat({ channelId }: ChannelChatProps) {
   const dispatch = useAppDispatch();
-  const { channel, messages, isLoaded, isLoading, error } = useAppSelector(
+  const { channel, messages, isLoaded, isLoading, error, isAnswerSubmitted } = useAppSelector(
     (state) => state.channel,
   );
   const userId = useAppSelector((state) => state.user.id);
@@ -119,6 +121,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [countdown, setCountdown] = useState<number>(0);
+
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [ratingValue, setRatingValue] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -198,14 +204,37 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       }
     };
 
+    const handleAnswerSubmitted = () => {
+      dispatch(setAnswerSubmitted(true));
+    };
+
+    const handleChannelClosed = (payload: { status?: ChannelStatus; ratingGiven?: number }) => {
+      if (payload.status) {
+        dispatch(setChannelStatus(payload.status));
+      }
+      if (payload.ratingGiven) {
+        dispatch(setChannelRating(payload.ratingGiven));
+      }
+    };
+
+    const handleMessageMarked = (payload: { messageId: string; isMarkedAsAnswer: boolean }) => {
+      dispatch(toggleMessageMarked(payload));
+    };
+
     pusherChannel.bind(CHANNEL_MESSAGE_EVENT, handleMessage);
     pusherChannel.bind(CHANNEL_STATUS_EVENT, handleStatus);
     pusherChannel.bind(CHANNEL_MESSAGES_SEEN_EVENT, handleMessagesSeen);
+    pusherChannel.bind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
+    pusherChannel.bind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
+    pusherChannel.bind(MESSAGE_MARKED_EVENT, handleMessageMarked);
 
     return () => {
       pusherChannel.unbind(CHANNEL_MESSAGE_EVENT, handleMessage);
       pusherChannel.unbind(CHANNEL_STATUS_EVENT, handleStatus);
       pusherChannel.unbind(CHANNEL_MESSAGES_SEEN_EVENT, handleMessagesSeen);
+      pusherChannel.unbind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
+      pusherChannel.unbind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
+      pusherChannel.unbind(MESSAGE_MARKED_EVENT, handleMessageMarked);
       client.unsubscribe(pusherChannelName);
     };
   }, [channelId, userId, dispatch]);
@@ -480,14 +509,86 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   };
 
   // ─── Derived state ────────────────────────────────────
+  const markedMessagesCount = messages.filter((m) => m.isMarkedAsAnswer).length;
+
+  // ─── Handlers ─────────────────────────────────────────
+
+  // Fire-and-forget background sync — UI updates instantly via dispatch above
+  const syncMarkToServer = (messageId: string, nextMark: boolean) => {
+    fetch(`/api/channels/${channelId}/messages/${messageId}/mark-answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isMarkedAsAnswer: nextMark }),
+    }).catch(() => {
+      // Silently revert on network error
+      dispatch(toggleMessageMarked({ messageId, isMarkedAsAnswer: !nextMark }));
+    });
+  };
+
+  // Non-async: dispatch is synchronous so React re-renders the star in the same frame
+  const handleToggleMark = (messageId: string, currentMark: boolean) => {
+    const nextMark = !currentMark;
+    dispatch(toggleMessageMarked({ messageId, isMarkedAsAnswer: nextMark }));
+    syncMarkToServer(messageId, nextMark);
+  };
+
+
+  const handleSubmitAnswer = async () => {
+    if (markedMessagesCount === 0) {
+      alert("Please mark at least one message as the answer.");
+      return;
+    }
+    setIsSubmittingAnswer(true);
+    try {
+      const res = await fetch("/api/answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId }),
+      });
+      if (res.ok) {
+        dispatch(setAnswerSubmitted(true));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to submit answer.");
+      }
+    } catch {
+      alert("Network error.");
+    } finally {
+      setIsSubmittingAnswer(false);
+    }
+  };
+
+  const handleCloseChannel = async () => {
+    if (ratingValue < 1 || ratingValue > 5) {
+      alert("Please provide a rating (1-5 stars).");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/channels/${channelId}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: ratingValue }),
+      });
+      if (res.ok) {
+        setIsRatingModalOpen(false);
+        dispatch(setChannelStatus("CLOSED"));
+        dispatch(setChannelRating(ratingValue));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to close channel.");
+      }
+    } catch {
+      alert("Network error.");
+    }
+  };
+
+  // ─── Derived state ────────────────────────────────────
   const isActive = channel?.status === "ACTIVE";
   const isClosed = channel?.status === "CLOSED";
   const isExpired = channel?.status === "EXPIRED";
   const timerExpired = countdown <= 0 && channel?.status === "ACTIVE";
   const isAsker = userId === channel?.askerId;
   const counterpartName = isAsker ? channel?.acceptorName : channel?.askerName;
-  const tierLabel = TIER_LABEL[channel?.questionTier || "UNSET"];
-
   const groupedMessages = useMemo(() => {
     const groups: { dateLabel: string; messages: typeof messages }[] = [];
     let currentGroup: { dateLabel: string; messages: typeof messages } | null = null;
@@ -536,9 +637,9 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   return (
     <div className="flex h-full flex-col bg-background relative">
       {/* ─── Header ─────────────────────────────────────── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-6 py-4 sticky top-0 z-10">
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3 sticky top-0 z-10">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground line-clamp-1">
+          <h2 className="text-base font-semibold tracking-tight text-foreground line-clamp-1">
             {channel.questionTitle}
           </h2>
           <div className="flex items-center gap-2 mt-1">
@@ -547,82 +648,138 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             </span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
             <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-              {tierLabel}
+              {channel.answerFormat} format
             </span>
+            {isActive && (
+              <>
+                <span className="h-1 w-1 rounded-full bg-muted-foreground/40 hidden sm:inline-block" />
+                <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                  {channel.formatDurationMinutes} min to answer
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Timer */}
-        {isActive && (
-          <div
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm transition-colors ${
-              countdownUrgent
-                ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
-                : countdownWarning
-                  ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                  : "border-border bg-background text-foreground"
-            }`}
-          >
-            <ClockIcon className="size-4" />
-            {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
-          </div>
-        )}
+        {/* Actions based on role and answer status */}
+        <div className="flex items-center gap-3">
+          {/* Timer */}
+          {isActive && (
+            <div
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm transition-colors ${
+                countdownUrgent
+                  ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
+                  : countdownWarning
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-border bg-background text-foreground"
+              }`}
+            >
+              <ClockIcon className="size-4" />
+              {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
+            </div>
+          )}
 
-        {isClosed && (
-          <div className="flex items-center gap-2 rounded-full border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-            <LockIcon className="size-4" />
-            Closed
-          </div>
-        )}
+          {isClosed && (
+            <div className="flex items-center gap-2 rounded-full border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+              <LockIcon className="size-4" />
+              Closed
+            </div>
+          )}
 
-        {isExpired && (
-          <div className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400">
-            <AlertTriangleIcon className="size-4" />
-            Expired
-          </div>
-        )}
+          {isExpired && (
+            <div className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400">
+              <AlertTriangleIcon className="size-4" />
+              Expired
+            </div>
+          )}
+
+          {/* Teacher Submit Answer Button */}
+          {!isAsker && isActive && !isAnswerSubmitted && (
+            <Button
+              size="sm"
+              className="rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow shadow-blue-500/20 gap-1.5"
+              onClick={handleSubmitAnswer}
+              disabled={isSubmittingAnswer}
+            >
+              {isSubmittingAnswer ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Submitting
+                </>
+              ) : (
+                <>
+                  Submit Answer Now
+                  {markedMessagesCount > 0 && (
+                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] tabular-nums font-bold">
+                      {markedMessagesCount}
+                    </span>
+                  )}
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* Asker Close Channel Button */}
+          {isAsker && isActive && isAnswerSubmitted && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="rounded-full shadow-sm"
+              onClick={() => setIsRatingModalOpen(true)}
+            >
+              Close Channel
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ─── Status banners ─────────────────────────────── */}
+      {isAnswerSubmitted && isActive && isAsker && (
+        <div className="flex justify-between items-center w-full bg-blue-500/10 px-4 py-2 border-b border-blue-500/20 text-xs">
+          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <InfoIcon className="size-3.5" />
+            <span className="font-medium">Answer Submitted!</span> Please review and close the channel.
+          </div>
+          <Button
+            size="sm"
+            className="h-7 text-xs rounded-full bg-blue-600 text-white hover:bg-blue-700 px-3"
+            onClick={() => setIsRatingModalOpen(true)}
+          >
+            Close & Rate
+          </Button>
+        </div>
+      )}
+
+      {isAnswerSubmitted && isActive && !isAsker && (
+        <div className="flex justify-center w-full my-1">
+          <div className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <InfoIcon className="size-3" />
+            Answer submitted. Waiting for asker review.
+          </div>
+        </div>
+      )}
+
       {isClosed && (
-        <div className="mx-4 mt-4 rounded-lg border border-green-500/30 bg-green-500/5 p-3 flex items-center gap-3">
-          <LockIcon className="size-5 text-green-600 dark:text-green-400 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-green-700 dark:text-green-300">
-              Channel closed — read-only
-            </p>
-            <p className="text-xs text-green-600/70 dark:text-green-400/70">
-              This channel has been closed. You can still view the message history.
-            </p>
+        <div className="flex justify-center w-full my-1">
+          <div className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600 dark:text-green-400 flex items-center gap-1.5">
+            <LockIcon className="size-3" />
+            Channel closed — read-only
           </div>
         </div>
       )}
 
       {isExpired && (
-        <div className="mx-4 mt-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 flex items-center gap-3">
-          <AlertTriangleIcon className="size-5 text-red-600 dark:text-red-400 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-700 dark:text-red-300">
-              Channel expired — time limit exceeded
-            </p>
-            <p className="text-xs text-red-600/70 dark:text-red-400/70">
-              The question has been reset and pushed back to the feed.
-            </p>
+        <div className="flex justify-center w-full my-1">
+          <div className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1.5">
+            <AlertTriangleIcon className="size-3" />
+            Channel expired — time limit exceeded
           </div>
         </div>
       )}
 
       {/* ─── Messages feed ──────────────────────────────── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {/* Channel opened system message */}
-        <div className="mx-auto max-w-md rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <InfoIcon className="size-4" />
-            <p className="font-medium text-foreground">Channel opened</p>
-          </div>
-          Timer started. {channel.acceptorName} has {channel.tierDurationMinutes} minutes to provide a{" "}
-          {tierLabel.toLowerCase()} answer.
-        </div>
+
 
         {groupedMessages.map((group) => (
           <div key={group.dateLabel} className="space-y-6">
@@ -663,12 +820,39 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                     )}
 
                     <div
-                      className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      className={`group relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                         isOwn
-                          ? "bg-foreground text-background rounded-tr-sm shadow-sm"
-                          : "bg-background text-foreground border border-border rounded-tl-sm shadow-sm"
+                          ? "bg-[#183620] text-[#d4ebd9] dark:bg-[#d4ebd9] dark:text-[#183620] rounded-tr-sm"
+                          : "bg-background text-foreground border rounded-tl-sm"
+                      } ${
+                        msg.isMarkedAsAnswer
+                          ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-background border-transparent"
+                          : isOwn ? "" : "border-border"
                       }`}
                     >
+                      {/* Mark as answer toggle */}
+                      {!isAsker && isOwn && isActive && !isAnswerSubmitted && (
+                        <button
+                          type="button"
+                          className={`absolute -left-10 top-1/2 -translate-y-1/2 flex items-center justify-center size-8 rounded-full ${
+                            msg.isMarkedAsAnswer 
+                              ? "text-yellow-500 opacity-100" 
+                              : "text-muted-foreground opacity-0 group-hover:opacity-100"
+                          } hover:text-yellow-500 hover:bg-yellow-500/10 transition-all`}
+                          onClick={() => handleToggleMark(msg.id, msg.isMarkedAsAnswer ?? false)}
+                          title={msg.isMarkedAsAnswer ? "Unmark part of answer" : "Mark as part of answer"}
+                        >
+                          <StarIcon className={`size-4 ${msg.isMarkedAsAnswer ? "fill-yellow-500" : ""}`} />
+                        </button>
+                      )}
+
+                      {/* Small badge for asker view */}
+                      {isAsker && msg.isMarkedAsAnswer && (
+                        <div className="absolute -right-2 top-0 -translate-y-1/2 rounded-full bg-yellow-100 p-1 border border-yellow-200 shadow-sm">
+                          <StarIcon className="size-3 text-yellow-600 fill-yellow-600" />
+                        </div>
+                      )}
+
                       {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
 
                       {msg.mediaUrl && (
@@ -751,7 +935,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
       {/* ─── Input Area ─────────────────────────────────── */}
       {isActive ? (
-        <div className="shrink-0 border-t border-border bg-background p-4 sticky bottom-0 flex flex-col gap-3">
+        <div className="shrink-0 border-t border-border bg-background p-2.5 sticky bottom-0 flex flex-col gap-2">
           {/* Pending file preview */}
           {pendingFile && (
             <div className="flex animate-in slide-in-from-bottom-2 fade-in items-center gap-3 rounded-lg border border-border bg-muted/40 p-2 max-w-xs relative">
@@ -845,7 +1029,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               <div className="relative flex-1">
                 <Input
                   placeholder="Type your message..."
-                  className="min-h-12 w-full resize-none rounded-2xl border-border bg-muted/40 pr-12 focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
+                  className="min-h-12 w-full resize-none rounded-2xl border-border bg-muted/40 pr-10 focus-visible:ring-1 focus-visible:ring-foreground/20 text-base py-3"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -856,17 +1040,17 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                 <Button
                   type="button"
                   size="icon"
-                  className="shrink-0 rounded-full size-12 bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-transform active:scale-95"
+                  className="shrink-0 rounded-full size-10 bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-transform active:scale-95"
                   onClick={() => void handleSend()}
                 >
-                  <SendIcon className="size-5 ml-0.5" />
+                  <SendIcon className="size-4 ml-0.5" />
                 </Button>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="shrink-0 rounded-full size-12 border-border bg-background shadow-sm hover:bg-muted transition-transform active:scale-95"
+                  className="shrink-0 rounded-full size-10 border-border bg-background shadow-sm hover:bg-muted transition-transform active:scale-95"
                   onClick={startRecording}
                 >
                   <MicIcon className="size-5 text-foreground" />
@@ -877,14 +1061,59 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         </div>
       ) : (
         /* Disabled input for closed/expired channels */
-        <div className="shrink-0 border-t border-border bg-muted/30 p-4 sticky bottom-0">
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-3">
-            <LockIcon className="size-4" />
+        <div className="shrink-0 border-t border-border bg-muted/30 p-3 sticky bottom-0">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+            <LockIcon className="size-3.5" />
             <span>
               {isClosed
                 ? "This channel is closed. You can view the history above."
                 : "This channel has expired. Messages can no longer be sent."}
             </span>
+          </div>
+        </div>
+      )}
+      {/* ─── Rating Modal ───────────────────────────────── */}
+      {isRatingModalOpen && isAsker && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-background rounded-2xl border border-border shadow-2xl p-6 max-w-sm w-full mx-auto flex flex-col items-center">
+            <div className="size-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
+              <StarIcon className="size-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Rate Teacher</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Please rate the quality of the answer before closing the channel permanently.
+            </p>
+            
+            <div className="flex gap-2 mb-8">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRatingValue(star)}
+                  className={`p-1 transition-transform hover:scale-110 active:scale-95 ${
+                    ratingValue >= star ? "text-amber-500" : "text-muted border-none"
+                  }`}
+                >
+                  <StarIcon className={`size-8 ${ratingValue >= star ? "fill-amber-500" : ""}`} />
+                </button>
+              ))}
+            </div>
+
+            <div className="flex w-full gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full"
+                onClick={() => setIsRatingModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                onClick={handleCloseChannel}
+                disabled={ratingValue === 0}
+              >
+                Submit & Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

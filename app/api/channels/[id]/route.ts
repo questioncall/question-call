@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import "@/models/User";
 import "@/models/Question";
-import { getTierDurationMinutes, getPlatformConfig } from "@/models/PlatformConfig";
+import { getFormatDurationMinutes, getPlatformConfig } from "@/models/PlatformConfig";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
+import Answer from "@/models/Answer";
 import type { ChannelDetail, ChatMessage } from "@/types/channel";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -26,7 +27,7 @@ export async function GET(_request: Request, context: RouteParams) {
     await connectToDatabase();
 
     const channel = await Channel.findById(id)
-      .populate("questionId", "title body tier answerVisibility")
+      .populate("questionId", "title body answerFormat answerVisibility")
       .populate("askerId", "name username userImage")
       .populate("acceptorId", "name username userImage")
       .lean();
@@ -49,7 +50,7 @@ export async function GET(_request: Request, context: RouteParams) {
     const question = channel.questionId as unknown as {
       title?: string;
       body?: string;
-      tier?: string;
+      answerFormat?: string;
       answerVisibility?: string;
     };
 
@@ -68,7 +69,9 @@ export async function GET(_request: Request, context: RouteParams) {
     };
 
     const config = await getPlatformConfig();
-    const tierDurationMinutes = getTierDurationMinutes(config, question.tier || "UNSET");
+    const formatDurationMinutes = getFormatDurationMinutes(config, question.answerFormat || "ANY");
+
+    const isAnswerSubmitted = await Answer.exists({ channelId: id });
 
     const channelDetail: ChannelDetail = {
       id: channel._id.toString(),
@@ -85,7 +88,7 @@ export async function GET(_request: Request, context: RouteParams) {
       updatedAt: new Date(channel.updatedAt!).toISOString(),
       questionTitle: question.title || "Untitled",
       questionBody: question.body || "",
-      questionTier: question.tier || "UNSET",
+      answerFormat: question.answerFormat || "ANY",
       answerVisibility: question.answerVisibility || "PUBLIC",
       askerName: asker.name || "Anonymous",
       askerUsername: asker.username || undefined,
@@ -93,7 +96,8 @@ export async function GET(_request: Request, context: RouteParams) {
       acceptorName: acceptor.name || "Anonymous",
       acceptorUsername: acceptor.username || undefined,
       acceptorImage: acceptor.userImage || undefined,
-      tierDurationMinutes,
+      formatDurationMinutes,
+      isAnswerSubmitted: !!isAnswerSubmitted,
     };
 
     // Fetch messages
@@ -120,6 +124,7 @@ export async function GET(_request: Request, context: RouteParams) {
         isOwn: sender._id.toString() === userId,
         isSeen: msg.isSeen || false,
         isDelivered: msg.isDelivered || false,
+        isMarkedAsAnswer: msg.isMarkedAsAnswer || false,
         sentAt: new Date(msg.sentAt).toISOString(),
       };
     });

@@ -13,6 +13,8 @@ type ActiveChannelState = {
   isLoading: boolean;
   /** Error message if load failed */
   error: string | null;
+  /** Whether the teacher has officially submitted the answer */
+  isAnswerSubmitted: boolean;
 };
 
 const initialState: ActiveChannelState = {
@@ -21,6 +23,7 @@ const initialState: ActiveChannelState = {
   isLoaded: false,
   isLoading: false,
   error: null,
+  isAnswerSubmitted: false,
 };
 
 const channelSlice = createSlice({
@@ -38,6 +41,7 @@ const channelSlice = createSlice({
     ) {
       state.channel = action.payload.channel;
       state.messages = action.payload.messages;
+      state.isAnswerSubmitted = action.payload.channel.isAnswerSubmitted || false;
       state.isLoaded = true;
       state.isLoading = false;
       state.error = null;
@@ -72,6 +76,13 @@ const channelSlice = createSlice({
       state.messages = state.messages.filter((m) => m.id !== action.payload);
     },
 
+    toggleMessageMarked(state, action: PayloadAction<{ messageId: string; isMarkedAsAnswer: boolean }>) {
+      const msg = state.messages.find((m) => m.id === action.payload.messageId);
+      if (msg) {
+        msg.isMarkedAsAnswer = action.payload.isMarkedAsAnswer;
+      }
+    },
+
     /** Update channel status (from Pusher status event) */
     setChannelStatus(state, action: PayloadAction<ChannelStatus>) {
       if (state.channel) {
@@ -84,6 +95,11 @@ const channelSlice = createSlice({
       if (state.channel) {
         state.channel.ratingGiven = action.payload;
       }
+    },
+
+    /** Mark answer as submitted */
+    setAnswerSubmitted(state, action: PayloadAction<boolean>) {
+      state.isAnswerSubmitted = action.payload;
     },
 
     /** Mark all counterpart messages as seen (we read them) */
@@ -120,8 +136,10 @@ export const {
   addMessage,
   updateMessage,
   removeMessage,
+  toggleMessageMarked,
   setChannelStatus,
   setChannelRating,
+  setAnswerSubmitted,
   markMessagesAsSeen,
   markOwnMessagesAsSeen,
   clearActiveChannel,

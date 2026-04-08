@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BellIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from "lucide-react";
+import { SearchIcon, SlidersHorizontalIcon, PlusIcon } from "lucide-react";
 
 import { PostQuestionModal } from "@/components/shared/post-question-modal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +47,7 @@ type AuthenticatedHeaderProps = {
   primaryLabel: string;
   showQuestionFilter?: boolean;
   useModalForPrimary?: boolean;
+  userId?: string;
 };
 
 export function AuthenticatedHeader({
@@ -54,6 +56,7 @@ export function AuthenticatedHeader({
   primaryLabel,
   showQuestionFilter = false,
   useModalForPrimary = false,
+  userId,
 }: AuthenticatedHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -189,9 +192,7 @@ export function AuthenticatedHeader({
               </Button>
             ) : null}
             <ThemeToggle />
-            <Button size="icon" variant="ghost">
-              <BellIcon className="size-[18px]" />
-            </Button>
+            {userId && <NotificationBell userId={userId} />}
           </div>
         </div>
       </header>

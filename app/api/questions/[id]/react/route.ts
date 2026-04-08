@@ -84,7 +84,7 @@ export async function POST(request: Request, context: RouteParams) {
       askerImage: asker.userImage || undefined,
       title: question.title,
       body: question.body,
-      tier: question.tier,
+      answerFormat: question.answerFormat,
       answerVisibility: question.answerVisibility,
       status: question.status,
       subject: question.subject || undefined,

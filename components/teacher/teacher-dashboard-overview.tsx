@@ -18,7 +18,7 @@ const teacherMetrics = [
 
 const teacherActions = [
   "Browse and accept open questions.",
-  "Submit answers by the required tier.",
+  "Submit answers by the required format.",
   "Track ratings and earnings over time.",
 ] as const;
 

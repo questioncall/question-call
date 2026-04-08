@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitQuestionUpdated, emitChannelMessage } from "@/lib/pusher/pusherServer";
+import { emitQuestionUpdated, emitChannelMessage, emitNotification, emitNewChannel } from "@/lib/pusher/pusherServer";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
-import { getPlatformConfig, getTierDurationMinutes } from "@/models/PlatformConfig";
+import { getPlatformConfig, getFormatDurationMinutes } from "@/models/PlatformConfig";
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { FeedQuestion } from "@/types/question";
+import Notification from "@/models/Notification";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -50,12 +51,12 @@ export async function POST(_request: Request, context: RouteParams) {
       );
     }
 
-    // Get platform config for tier time limits
+    // Get platform config for format time limits
     const config = await getPlatformConfig();
-    const tierDurationMinutes = getTierDurationMinutes(config, question.tier);
+    const formatDurationMinutes = getFormatDurationMinutes(config, question.answerFormat);
 
     const now = new Date();
-    const timerDeadline = new Date(now.getTime() + tierDurationMinutes * 60 * 1000);
+    const timerDeadline = new Date(now.getTime() + formatDurationMinutes * 60 * 1000);
 
     // Update question status
     question.status = "ACCEPTED";
@@ -79,9 +80,9 @@ export async function POST(_request: Request, context: RouteParams) {
 
     // Format duration for the message
     const durationText =
-      tierDurationMinutes >= 60
-        ? `${Math.floor(tierDurationMinutes / 60)} hour${Math.floor(tierDurationMinutes / 60) > 1 ? "s" : ""}`
-        : `${tierDurationMinutes} minutes`;
+      formatDurationMinutes >= 60
+        ? `${Math.floor(formatDurationMinutes / 60)} hour${Math.floor(formatDurationMinutes / 60) > 1 ? "s" : ""}`
+        : `${formatDurationMinutes} minutes`;
 
     // Create the auto-message from acceptor
     const autoMessageContent = `Hey there! I accepted your question — the answer will be with you within ${durationText}. 🚀`;
@@ -100,6 +101,8 @@ export async function POST(_request: Request, context: RouteParams) {
       senderId: session.user.id,
       senderName: acceptorName,
       content: autoMessageContent,
+      mediaUrl: null,
+      mediaType: null,
       isSystemMessage: true,
       isOwn: false,
       isSeen: false,
@@ -125,7 +128,7 @@ export async function POST(_request: Request, context: RouteParams) {
       askerImage: asker.userImage || undefined,
       title: question.title,
       body: question.body,
-      tier: question.tier,
+      answerFormat: question.answerFormat,
       answerVisibility: question.answerVisibility,
       status: question.status,
       subject: question.subject || undefined,
@@ -147,12 +150,37 @@ export async function POST(_request: Request, context: RouteParams) {
 
     await emitQuestionUpdated(feedQuestion).catch(() => {});
 
+    // Notify Asker that their question was accepted
+    const acceptNotif = await Notification.create({
+      userId: asker._id,
+      type: "QUESTION_ACCEPTED",
+      message: `${acceptorName} accepted your question. Channel is now open.`,
+    }).catch(() => null);
+    if (acceptNotif) {
+      await emitNotification(asker._id.toString(), acceptNotif);
+    }
+
+    // Emit the new channel to the asker so their sidebar updates in real-time
+    const channelListItem = {
+      id: channel._id.toString(),
+      questionTitle: question.title,
+      counterpartName: acceptorName,
+      counterpartImage: session.user.image || undefined,
+      status: "ACTIVE",
+      lastMessagePreview: autoMessageContent,
+      lastMessageAt: now.toISOString(),
+      unreadCount: 1, // The auto-message is unread for the asker
+      timerDeadline: timerDeadline.toISOString(),
+      role: "asker",
+    };
+    await emitNewChannel(asker._id.toString(), channelListItem).catch(() => {});
+
     // Return channelId so the UI can redirect
     return NextResponse.json({
       ...feedQuestion,
       channelId: channel._id.toString(),
       timerDeadline: timerDeadline.toISOString(),
-      tierDurationMinutes,
+      formatDurationMinutes,
     });
   } catch (error) {
     console.error("[POST /api/questions/[id]/accept]", error);

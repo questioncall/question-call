@@ -7,9 +7,11 @@ import {
   ArrowUpRightIcon,
   BookOpenIcon,
   CheckCircle2Icon,
+  ChevronDownIcon,
   Loader2Icon,
   LightbulbIcon,
   MessageSquareIcon,
+  StarIcon,
   ThumbsUpIcon,
   HelpCircleIcon,
 } from "lucide-react";
@@ -25,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { FeedQuestion, QuestionTier, AnswerVisibility, ReactionType } from "@/types/question";
+import type { FeedQuestion, AnswerFormat, AnswerVisibility, ReactionType } from "@/types/question";
 import {
   QUESTION_CREATED_EVENT,
   QUESTION_FEED_CHANNEL,
@@ -54,18 +56,18 @@ type FeedEventPayload = {
   question?: FeedQuestion;
 };
 
-const tierLabelMap: Record<QuestionTier, string> = {
-  UNSET: "Any answer type",
-  ONE: "Text answer",
-  TWO: "Photo answer",
-  THREE: "Video based answer",
+const formatLabelMap: Record<AnswerFormat, string> = {
+  ANY: "Any format",
+  TEXT: "Text format",
+  PHOTO: "Photo format",
+  VIDEO: "Video format",
 };
 
-const tierColorMap: Record<QuestionTier, string> = {
-  UNSET: "bg-muted text-muted-foreground",
-  ONE: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  TWO: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  THREE: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
+const formatColorMap: Record<AnswerFormat, string> = {
+  ANY: "bg-muted text-muted-foreground",
+  TEXT: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  PHOTO: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  VIDEO: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
 };
 
 const visibilityLabelMap: Record<AnswerVisibility, string> = {
@@ -112,7 +114,16 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   const { items: feedItems, isHydrated, connectionStatus } = useAppSelector((state) => state.feed);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [reactingId, setReactingId] = useState<string | null>(null);
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+
+  const toggleAnswer = (questionId: string) => {
+    setExpandedAnswers((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+  };
 
   // Fetch feed from API on mount
   const fetchFeed = useCallback(async () => {
@@ -258,7 +269,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   };
 
   const openQuestionCount = feedItems.filter((item) => item.status === "OPEN" || item.status === "RESET").length;
-  const tierOneCount = feedItems.filter((item) => item.tier === "ONE").length;
+  const textFormatCount = feedItems.filter((item) => item.answerFormat === "TEXT").length;
   const newestQuestion = feedItems[0];
 
   const rightRailItems = [
@@ -269,7 +280,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
     },
     {
       title: "Fastest replies",
-      value: `${tierOneCount} Text requests`,
+      value: `${textFormatCount} Text requests`,
       text: "Text-only questions that can be answered quickly.",
     },
     {
@@ -378,8 +389,8 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
               <CardContent className="space-y-4">
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${tierColorMap[item.tier]}`}>
-                    {tierLabelMap[item.tier]}
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${formatColorMap[item.answerFormat]}`}>
+                    {formatLabelMap[item.answerFormat]}
                   </span>
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
                     {visibilityLabelMap[item.answerVisibility]}
@@ -433,15 +444,95 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                   </div>
                 )}
 
-                {/* Solved state banner */}
+                {/* Solved state banner + expandable answer */}
                 {isSolved && (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
-                    <CheckCircle2Icon className="size-5 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-primary">
+                  <div className="space-y-0 rounded-lg border border-primary/30 bg-primary/5 overflow-hidden">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-primary/10 transition-colors"
+                      onClick={() => item.answer && toggleAnswer(item.id)}
+                    >
+                      <CheckCircle2Icon className="size-4 text-primary shrink-0" />
+                      <p className="text-sm font-medium text-primary flex-1 text-left">
                         This question has been solved
                       </p>
-                    </div>
+                      {item.answer && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-primary/70">
+                            {expandedAnswers.has(item.id) ? "Hide answer" : "See answer"}
+                          </span>
+                          <ChevronDownIcon
+                            className={`size-4 text-primary transition-transform duration-200 ${
+                              expandedAnswers.has(item.id) ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                      )}
+                    </button>
+
+                    {item.answer && expandedAnswers.has(item.id) && (
+                      <div className="border-t border-primary/20 px-4 py-4 bg-background space-y-3 animate-in slide-in-from-top-2 fade-in duration-200">
+                        {/* Answer header */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold">
+                              {(item.answer.acceptorName || "T").charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm font-medium text-foreground">
+                              {item.answer.acceptorName || "Teacher"}
+                            </span>
+                          </div>
+                          {item.answer.rating != null && (
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <StarIcon
+                                  key={star}
+                                  className={`size-3.5 ${
+                                    star <= Math.round(item.answer!.rating!)
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "text-muted-foreground/30"
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-1 text-xs text-muted-foreground">
+                                {Number(item.answer.rating).toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Answer text content */}
+                        {item.answer.content && (
+                          <p className="text-sm leading-7 text-foreground whitespace-pre-wrap">
+                            {item.answer.content}
+                          </p>
+                        )}
+
+                        {/* Answer media */}
+                        {item.answer.mediaUrls && item.answer.mediaUrls.length > 0 && (
+                          <div className="flex flex-wrap gap-3">
+                            {item.answer.mediaUrls.map((url, idx) => {
+                              const isVideo = url.includes("/video/") || url.endsWith(".mp4") || url.endsWith(".webm");
+                              return isVideo ? (
+                                <video
+                                  key={idx}
+                                  src={url}
+                                  controls
+                                  className="max-w-full rounded-lg border border-border bg-muted/50"
+                                />
+                              ) : (
+                                <a key={idx} href={url} target="_blank" rel="noreferrer"
+                                  className="block overflow-hidden rounded-lg border border-border hover:opacity-90 transition-opacity"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={url} alt={`Answer media ${idx + 1}`} className="h-40 w-40 object-cover" />
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

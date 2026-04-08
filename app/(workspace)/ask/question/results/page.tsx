@@ -35,7 +35,7 @@ const existingResults = [
 export default async function AskQuestionResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tier?: string; visibility?: string }>;
+  searchParams: Promise<{ q?: string; answerFormat?: string; visibility?: string }>;
 }) {
   const params = await searchParams;
   const query = params.q?.trim();

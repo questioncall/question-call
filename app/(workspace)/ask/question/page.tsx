@@ -24,17 +24,17 @@ import { Textarea } from "@/components/ui/textarea";
 import type {
   CreateQuestionPayload,
   FeedQuestion,
-  QuestionTier,
+  AnswerFormat,
   AnswerVisibility,
 } from "@/types/question";
 import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
 import { useAppDispatch } from "@/store/hooks";
 
-const TIER_OPTIONS: { value: QuestionTier; label: string; desc: string; color: string }[] = [
-  { value: "UNSET", label: "Any", desc: "Let the answerer decide the format", color: "border-muted-foreground/30" },
-  { value: "ONE", label: "Tier I · Text", desc: "Written explanation only", color: "border-blue-500" },
-  { value: "TWO", label: "Tier II · Photo", desc: "Photo-based answer with annotations", color: "border-amber-500" },
-  { value: "THREE", label: "Tier III · Video", desc: "Full video walkthrough", color: "border-purple-500" },
+const FORMAT_OPTIONS: { value: AnswerFormat; label: string; desc: string; color: string }[] = [
+  { value: "ANY", label: "Any", desc: "Let the answerer decide the format", color: "border-muted-foreground/30" },
+  { value: "TEXT", label: "Text", desc: "Written explanation only", color: "border-blue-500" },
+  { value: "PHOTO", label: "Photo", desc: "Photo-based answer with annotations", color: "border-amber-500" },
+  { value: "VIDEO", label: "Video", desc: "Full video walkthrough", color: "border-purple-500" },
 ];
 
 const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string; desc: string }[] = [
@@ -49,11 +49,11 @@ const SUBJECT_OPTIONS = [
 const STREAM_OPTIONS = ["Science", "Management"] as const;
 const LEVEL_OPTIONS = ["School level", "Plus 2", "Bachelor"] as const;
 
-const tierLabelMap: Record<QuestionTier, string> = {
-  UNSET: "Any tier",
-  ONE: "Tier I",
-  TWO: "Tier II",
-  THREE: "Tier III",
+const formatLabelMap: Record<AnswerFormat, string> = {
+  ANY: "Any format",
+  TEXT: "Text format",
+  PHOTO: "Photo format",
+  VIDEO: "Video format",
 };
 
 const visibilityLabelMap: Record<AnswerVisibility, string> = {
@@ -71,7 +71,7 @@ export default function AskQuestionPage() {
 
   const [title, setTitle] = useState(initialQuery);
   const [body, setBody] = useState("");
-  const [tier, setTier] = useState<QuestionTier>("UNSET");
+  const [answerFormat, setAnswerFormat] = useState<AnswerFormat>("ANY");
   const [visibility, setVisibility] = useState<AnswerVisibility>("PUBLIC");
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
@@ -104,7 +104,7 @@ export default function AskQuestionPage() {
       const payload: CreateQuestionPayload = {
         title: title.trim(),
         body: body.trim(),
-        tier,
+        answerFormat,
         answerVisibility: visibility,
         ...(subject ? { subject } : {}),
         ...(stream ? { stream } : {}),
@@ -191,19 +191,19 @@ export default function AskQuestionPage() {
 
             <Separator />
 
-            {/* Tier picker */}
+            {/* Format picker */}
             <div className="space-y-3">
-              <Label>Answer tier</Label>
+              <Label>Answer format</Label>
               <div className="grid grid-cols-2 gap-3">
-                {TIER_OPTIONS.map((opt) => (
+                {FORMAT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     className={`rounded-xl border-2 px-4 py-3 text-left text-sm transition-all ${
-                      tier === opt.value
+                      answerFormat === opt.value
                         ? `${opt.color} bg-primary/5 ring-1 ring-primary/20`
                         : "border-border bg-background hover:border-primary/30"
                     }`}
-                    onClick={() => setTier(opt.value)}
+                    onClick={() => setAnswerFormat(opt.value)}
                     type="button"
                   >
                     <span className="font-medium">{opt.label}</span>
@@ -335,7 +335,7 @@ export default function AskQuestionPage() {
               </p>
               <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  {tierLabelMap[tier]}
+                  {formatLabelMap[answerFormat]}
                 </span>
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
                   {visibilityLabelMap[visibility]}
@@ -375,7 +375,7 @@ export default function AskQuestionPage() {
             </div>
             <div className="flex gap-2">
               <span className="shrink-0 font-medium text-primary">3.</span>
-              <span>Choose a higher tier if you need a visual or video explanation.</span>
+              <span>Choose a higher duration format if you need a visual or video explanation.</span>
             </div>
             <div className="flex gap-2">
               <span className="shrink-0 font-medium text-primary">4.</span>
@@ -394,7 +394,7 @@ export default function AskQuestionPage() {
             <ul className="list-disc pl-4 space-y-1">
               <li>React to your question (like, insightful, same doubt)</li>
               <li>Accept it to start a private channel with you</li>
-              <li>Submit an answer within the tier&apos;s time limit</li>
+              <li>Submit an answer within the format&apos;s time limit</li>
             </ul>
           </CardContent>
         </Card>

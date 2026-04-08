@@ -13,8 +13,8 @@ export default function AdminUsersPage() {
         <Link className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white" href="/admin/pricing">
           Back to pricing
         </Link>
-        <Link className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700" href="/admin/tier-config">
-          Tier settings
+        <Link className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700" href="/admin/format-config">
+          Format settings
         </Link>
       </div>
     </section>

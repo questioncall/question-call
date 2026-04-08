@@ -2,35 +2,35 @@ import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoo
 
 const platformConfigSchema = new Schema(
   {
-    // Tier pricing (in smallest currency unit, e.g. paisa)
-    tierFirstPrice: {
+    // Format pricing (in smallest currency unit, e.g. paisa)
+    textFormatPrice: {
       type: Number,
       default: 50,
       min: 0,
     },
-    tierSecondPrice: {
+    photoFormatPrice: {
       type: Number,
       default: 100,
       min: 0,
     },
-    tierThirdPrice: {
+    videoFormatPrice: {
       type: Number,
       default: 200,
       min: 0,
     },
 
-    // Tier time limits in minutes
-    tierFirstDuration: {
+    // Format time limits in minutes
+    textFormatDuration: {
       type: Number,
       default: 30,
       min: 1,
     },
-    tierSecondDuration: {
+    photoFormatDuration: {
       type: Number,
       default: 60,
       min: 1,
     },
-    tierThirdDuration: {
+    videoFormatDuration: {
       type: Number,
       default: 180,
       min: 1,
@@ -85,22 +85,22 @@ export async function getPlatformConfig(): Promise<PlatformConfigDocument> {
 }
 
 /**
- * Returns the time limit in minutes for a given tier.
+ * Returns the time limit in minutes for a given format.
  */
-export function getTierDurationMinutes(
+export function getFormatDurationMinutes(
   config: PlatformConfigDocument,
-  tier: string,
+  answerFormat: string,
 ): number {
-  switch (tier) {
-    case "ONE":
-      return config.tierFirstDuration;
-    case "TWO":
-      return config.tierSecondDuration;
-    case "THREE":
-      return config.tierThirdDuration;
+  switch (answerFormat) {
+    case "TEXT":
+      return config.textFormatDuration;
+    case "PHOTO":
+      return config.photoFormatDuration;
+    case "VIDEO":
+      return config.videoFormatDuration;
     default:
-      // UNSET defaults to Tier II duration
-      return config.tierSecondDuration;
+      // ANY defaults to PHOTO duration
+      return config.photoFormatDuration;
   }
 }
 

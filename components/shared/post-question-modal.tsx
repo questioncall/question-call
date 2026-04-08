@@ -17,19 +17,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type {
+  AnswerFormat,
   CreateQuestionPayload,
   FeedQuestion,
-  QuestionTier,
   AnswerVisibility,
 } from "@/types/question";
 import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
 import { useAppDispatch } from "@/store/hooks";
 
-const TIER_OPTIONS: { value: QuestionTier; label: string; desc: string }[] = [
-  { value: "UNSET", label: "Any", desc: "Let the answerer choose" },
-  { value: "ONE", label: "Text", desc: "Written explanation" },
-  { value: "TWO", label: "Photo", desc: "Photo-based answer" },
-  { value: "THREE", label: "Video", desc: "Video walkthrough" },
+const FORMAT_OPTIONS: { value: AnswerFormat; label: string; desc: string }[] = [
+  { value: "ANY", label: "Any Format", desc: "Let the answerer choose" },
+  { value: "TEXT", label: "Text", desc: "Written explanation" },
+  { value: "PHOTO", label: "Photo", desc: "Photo-based answer" },
+  { value: "VIDEO", label: "Video", desc: "Video walkthrough" },
 ];
 
 const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string }[] = [
@@ -60,7 +60,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [tier, setTier] = useState<QuestionTier>("UNSET");
+  const [answerFormat, setAnswerFormat] = useState<AnswerFormat>("ANY");
   const [visibility, setVisibility] = useState<AnswerVisibility>("PUBLIC");
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
@@ -90,7 +90,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const resetForm = () => {
     setTitle("");
     setBody("");
-    setTier("UNSET");
+    setAnswerFormat("ANY");
     setVisibility("PUBLIC");
     setSubject("");
     setStream("");
@@ -181,7 +181,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
         title: title.trim(),
         body: body.trim(),
         images: uploadedImageUrls,
-        tier,
+        answerFormat,
         answerVisibility: visibility,
         ...(subject ? { subject } : {}),
         ...(stream ? { stream } : {}),
@@ -332,19 +332,18 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
           {/* Configuration Grid */}
           <div className="grid sm:grid-cols-2 gap-6">
-            {/* Tier picker */}
             <div className="space-y-3">
-              <Label>Answer tier</Label>
+              <Label>Answer format</Label>
               <div className="grid grid-cols-2 gap-2">
-                {TIER_OPTIONS.map((opt) => (
+                {FORMAT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
-                      tier === opt.value
+                      answerFormat === opt.value
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-background text-foreground hover:border-primary/40"
                     }`}
-                    onClick={() => setTier(opt.value)}
+                    onClick={() => setAnswerFormat(opt.value)}
                     type="button"
                   >
                     <span className="font-medium">{opt.label}</span>

@@ -29,7 +29,7 @@ export default async function HomePage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    EduAsk workspace
+                    Question Hub workspace
                   </p>
                   <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
                     A cleaner app shell for asking, answering, and tracking academic help.
