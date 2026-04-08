@@ -6,6 +6,8 @@ export const NOTIFICATION_TYPES = [
   "QUESTION_RESET",
   "CHANNEL_CLOSED",
   "PAYMENT",
+  "ANSWER_SUBMITTED",
+  "DEADLINE_WARNING",
 ] as const;
 
 const notificationSchema = new Schema(

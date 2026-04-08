@@ -3,10 +3,12 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitChannelMessage, pusherServer } from "@/lib/pusher/pusherServer";
+import { emitChannelMessage, pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
 import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
+import Answer from "@/models/Answer";
+import Notification from "@/models/Notification";
 import type { ChatMessage, SendMessagePayload } from "@/types/channel";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -26,7 +28,7 @@ export async function POST(request: Request, context: RouteParams) {
 
     // Verify channel exists and user is a participant
     const channel = await Channel.findById(channelId).lean();
-
+    
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
     }
@@ -47,6 +49,28 @@ export async function POST(request: Request, context: RouteParams) {
         { error: "This channel is no longer active" },
         { status: 409 },
       );
+    }
+
+    // Check if deadline has passed - send warning notification if at 80%
+    const now = new Date();
+    const deadline = new Date(channel.timerDeadline);
+    const totalTime = deadline.getTime() - new Date(channel.openedAt).getTime();
+    const elapsed = now.getTime() - new Date(channel.openedAt).getTime();
+    const percentElapsed = totalTime > 0 ? (elapsed / totalTime) * 100 : 0;
+
+    if (percentElapsed >= 80 && percentElapsed < 100) {
+      const existingAnswer = await Answer.findOne({ channelId });
+      if (!existingAnswer) {
+        const notif = await Notification.create({
+          userId: channel.acceptorId,
+          type: "DEADLINE_WARNING",
+          message: "Hurry! Time is running out to answer the question.",
+        }).catch(() => null);
+
+        if (notif) {
+          await emitNotification(channel.acceptorId.toString(), notif).catch(console.error);
+        }
+      }
     }
 
     const body = (await request.json()) as SendMessagePayload;

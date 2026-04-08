@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { pusherServer } from "@/lib/pusher/pusherServer";
+import { pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
 import { ANSWER_SUBMITTED_EVENT, getChannelPusherName } from "@/lib/pusher/events";
 import Answer from "@/models/Answer";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
+import Notification from "@/models/Notification";
 
 export async function POST(req: Request) {
   try {
@@ -128,6 +129,16 @@ export async function POST(req: Request) {
           submittedAt: answer.submittedAt,
         }
       );
+    }
+
+    // Create notification for asker
+    const askerNotif = await Notification.create({
+      userId: channel.askerId,
+      type: "ANSWER_SUBMITTED",
+      message: "The teacher has submitted an answer to your question. Please review and rate it.",
+    }).catch(() => null);
+    if (askerNotif) {
+      await emitNotification(channel.askerId.toString(), askerNotif);
     }
 
     return NextResponse.json(answer);
