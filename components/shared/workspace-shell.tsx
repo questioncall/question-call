@@ -165,6 +165,11 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       username: user.username || "",
       role: user.role,
       userImage: user.userImage ?? "",
+      subscriptionStatus: "NONE",
+      subscriptionEnd: null,
+      planSlug: "free",
+      pendingManualPayment: false,
+      questionsAsked: 0,
     }));
   }, [dispatch, user.email, user.id, user.name, user.role, user.userImage, user.username]);
 

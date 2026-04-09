@@ -7,6 +7,7 @@ import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { CreateQuestionPayload, FeedQuestion } from "@/types/question";
+import { TRIAL } from "@/lib/config";
 
 export async function POST(request: Request) {
   try {
@@ -40,6 +41,36 @@ export async function POST(request: Request) {
     }
 
     await connectToDatabase();
+
+    const user = await User.findById(session.user.id);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Subscription Check Logic
+    const now = new Date();
+    const subEnd = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+    
+    // If they have used their trial and their subscription end date is missing or passed
+    if (user.trialUsed && (!subEnd || subEnd < now)) {
+      if (user.subscriptionStatus !== "EXPIRED") {
+        await User.findByIdAndUpdate(user._id, { subscriptionStatus: "EXPIRED" });
+      }
+      return NextResponse.json(
+        { error: "Subscription expired. Please renew to ask questions." },
+        { status: 403 },
+      );
+    }
+    
+    // Auto-start trial on first question if not used yet and no active sub
+    if (!user.trialUsed && user.subscriptionStatus !== "ACTIVE") {
+      const trialEnd = new Date(now.getTime() + TRIAL.DURATION_DAYS * 24 * 60 * 60 * 1000);
+      await User.findByIdAndUpdate(user._id, {
+        trialUsed: true,
+        subscriptionStatus: "ACTIVE", // Active as it is basically active but trial
+        subscriptionEnd: trialEnd,
+      });
+    }
 
     const question = await Question.create({
       askerId: session.user.id,

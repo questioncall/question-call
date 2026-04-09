@@ -12,6 +12,10 @@ export interface ITransaction extends Document {
   planSlug?: string;
   screenshotUrl?: string;
 
+  reference?: string;
+  gateway?: "ESEWA" | "INTERNAL" | "MANUAL" | "KHALTI";
+  meta?: Record<string, unknown>;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,7 +34,12 @@ const TransactionSchema = new Schema<ITransaction>(
       enum: ["PENDING", "COMPLETED", "FAILED"], 
       required: true 
     },
-    
+    reference: { type: String, index: true },
+    gateway: { 
+      type: String, 
+      enum: ["ESEWA", "INTERNAL", "MANUAL"]
+    },
+    meta: { type: Schema.Types.Mixed, default: {} },
     transactionId: { type: String },
     transactorName: { type: String },
     planSlug: { type: String },

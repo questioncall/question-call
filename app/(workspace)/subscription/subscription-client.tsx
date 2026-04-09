@@ -12,11 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { PlanDef } from "@/lib/plans";
+import { TRIAL } from "@/lib/config";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
-
-export function SubscriptionClient() {
+export function SubscriptionClient({ hydratedPlans }: { hydratedPlans?: PlanDef[] }) {
   const dispatch = useAppDispatch();
   const { 
     subscriptionStatus, 
@@ -187,7 +187,7 @@ export function SubscriptionClient() {
             </h1>
             <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1B7258] dark:text-[#27A883]">
               <Leaf className="h-3.5 w-3.5" />
-              <span>3 days free trial</span>
+              <span>{TRIAL.DURATION_DAYS} days free trial</span>
             </div>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400 max-w-sm mt-3 leading-relaxed">
               Get the right plan for yourself. Plans can be upgraded in the future.
@@ -197,7 +197,7 @@ export function SubscriptionClient() {
 
         {/* Pricing Section */}
         <div className="grid lg:grid-cols-3 gap-6 md:gap-8 pt-4">
-          {SUBSCRIPTION_PLANS.map((plan, index) => (
+          {(hydratedPlans || []).map((plan, index) => (
             <div
               key={index}
               className={`flex flex-col bg-white dark:bg-white/5 dark:backdrop-blur-xl p-8 rounded-3xl border ${

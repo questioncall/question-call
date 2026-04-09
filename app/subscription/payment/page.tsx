@@ -3,7 +3,8 @@ import { getSafeServerSession } from "@/lib/auth";
 import Link from "next/link";
 import { ChevronLeft, QrCode, CheckCircle2, Info } from "lucide-react";
 import { TransactionModal } from "@/components/payment/transaction-modal";
-import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
+import EsewaPayButton from "@/components/payment/esewa-pay-button";
 
 export default async function PaymentPage({
   searchParams,
@@ -20,8 +21,11 @@ export default async function PaymentPage({
   const { plan: planQuery } = await searchParams;
 
   // Retrieve plan safely, defaulting to the 1 Month Plan if not found
+  const config = await getPlatformConfig();
+  const hydratedPlans = getHydratedPlans(config);
+  
   const planSlug = planQuery || "1month";
-  const plan = SUBSCRIPTION_PLANS.find((p) => p.slug === planSlug) || SUBSCRIPTION_PLANS[1];
+  const plan = hydratedPlans.find((p) => p.slug === planSlug) || hydratedPlans[1];
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] text-neutral-900 dark:text-white flex flex-col p-6 md:p-12">
@@ -123,7 +127,20 @@ export default async function PaymentPage({
             </div>
           </div>
 
-          <TransactionModal planSlug={plan.slug} />
+          <div className="flex flex-col gap-4 mt-6">
+            <TransactionModal planSlug={plan.slug} />
+
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700"></div>
+              <span className="flex-shrink-0 mx-4 text-neutral-400 dark:text-neutral-500 text-xs font-medium uppercase tracking-wider">or auto payment</span>
+              <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700"></div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <EsewaPayButton planSlug={plan.slug} amount={plan.price + plan.tax} />
+              <p className="text-[11px] text-center text-neutral-500 font-medium">Note: eSewa is currently in <span className="text-[#1B7258] dark:text-[#27A883]">sandbox mode</span>. Not for real use right now.</p>
+            </div>
+          </div>
 
         </section>
 

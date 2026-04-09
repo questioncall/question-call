@@ -3,7 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
-import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 
 cloudinary.config({
   secure: true,
@@ -26,13 +26,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const plan = SUBSCRIPTION_PLANS.find((p) => p.slug === planSlug);
+    await connectToDatabase();
+    const config = await getPlatformConfig();
+    const hydratedPlans = getHydratedPlans(config);
+
+    const plan = hydratedPlans.find((p) => p.slug === planSlug);
     if (!plan) {
       return NextResponse.json({ error: "Invalid subscription plan" }, { status: 400 });
     }
     const totalAmount = plan.price + plan.tax;
-
-    await connectToDatabase();
 
     // 1. Rule -> Completed Check
     const existingCompleted = await Transaction.findOne({ transactionId, status: "COMPLETED" });
