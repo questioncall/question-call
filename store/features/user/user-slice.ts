@@ -8,6 +8,11 @@ type UserProfileState = {
   role: "STUDENT" | "TEACHER" | "ADMIN";
   userImage?: string;
   isHydrated: boolean;
+  subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | "NONE" | null;
+  subscriptionEnd: string | null;
+  pendingManualPayment: boolean;
+  questionsAsked: number;
+  planSlug: string | null;
 };
 
 const initialState: UserProfileState = {
@@ -18,6 +23,11 @@ const initialState: UserProfileState = {
   role: "STUDENT",
   userImage: "",
   isHydrated: false,
+  subscriptionStatus: null,
+  subscriptionEnd: null,
+  pendingManualPayment: false,
+  questionsAsked: 0,
+  planSlug: null,
 };
 
 const userSlice = createSlice({
@@ -37,6 +47,11 @@ const userSlice = createSlice({
       if (action.payload.name !== undefined) state.name = action.payload.name;
       if (action.payload.userImage !== undefined) state.userImage = action.payload.userImage;
       if (action.payload.username !== undefined) state.username = action.payload.username;
+      if (action.payload.subscriptionStatus !== undefined) state.subscriptionStatus = action.payload.subscriptionStatus;
+      if (action.payload.subscriptionEnd !== undefined) state.subscriptionEnd = action.payload.subscriptionEnd;
+      if (action.payload.pendingManualPayment !== undefined) state.pendingManualPayment = action.payload.pendingManualPayment;
+      if (action.payload.questionsAsked !== undefined) state.questionsAsked = action.payload.questionsAsked;
+      if (action.payload.planSlug !== undefined) state.planSlug = action.payload.planSlug;
     },
     clearProfile(state) {
       state.id = "";
@@ -46,6 +61,11 @@ const userSlice = createSlice({
       state.role = "STUDENT";
       state.userImage = "";
       state.isHydrated = false;
+      state.subscriptionStatus = null;
+      state.subscriptionEnd = null;
+      state.pendingManualPayment = false;
+      state.questionsAsked = 0;
+      state.planSlug = null;
     },
   },
 });

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { generateUniqueUsername } from "@/lib/user-directory";
 import User from "@/models/User";
+import Transaction from "@/models/Transaction";
 
 export const runtime = "nodejs";
 
@@ -62,14 +63,24 @@ export async function POST(request: Request) {
       passwordHash,
       role,
       points: 0,
-      subscriptionStatus: "TRIAL",
-      subscriptionEnd: null,
-      trialUsed: false,
       walletBalance: 0,
       totalAnswered: 0,
       isMonetized: false,
       overallScore: 0,
     });
+
+    // Auto-grant 3-day free trial for students via Transaction record
+    if (role === "STUDENT") {
+      await Transaction.create({
+        userId: user._id,
+        type: "SUBSCRIPTION_MANUAL",
+        amount: 0,
+        status: "COMPLETED",
+        planSlug: "free",
+        transactionId: `TRIAL_${user._id}`,
+        transactorName: name,
+      });
+    }
 
     return NextResponse.json(
       {

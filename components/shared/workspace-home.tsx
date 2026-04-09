@@ -601,12 +601,14 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                   )}
 
                   {/* Open thread link */}
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={getChannelPath(item.id)}>
-                      Open thread
-                      <ArrowUpRightIcon />
-                    </Link>
-                  </Button>
+                  {isOwnQuestion && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href={getChannelPath(item.id)}>
+                        Open thread
+                        <ArrowUpRightIcon />
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </CardFooter>
             </Card>
