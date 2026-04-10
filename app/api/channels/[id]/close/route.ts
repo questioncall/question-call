@@ -87,6 +87,10 @@ export async function POST(
       
       teacher.overallScore = accumulatedTotalScore / (seedVotes + teacher.totalAnswered);
       
+      if (teacher.totalAnswered >= 10) {
+        teacher.teacherModeVerified = true;
+      }
+      
       await teacher.save();
 
       // 3. Create Notification for Teacher

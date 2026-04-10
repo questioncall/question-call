@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
+
 import {
   AwardIcon,
   BookOpenIcon,
   MessageSquareIcon,
   StarIcon,
+  CoinsIcon,
+  CalendarIcon,
+  MailIcon,
+  GraduationCapIcon,
 } from "lucide-react";
+
+import mongoose from "mongoose";
+import { connectToDatabase } from "@/lib/mongodb";
+import Question from "@/models/Question";
+import Answer from "@/models/Answer";
 
 import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
@@ -20,41 +30,6 @@ import {
   getUserHandle,
 } from "@/lib/user-paths";
 
-const studentActivity = [
-  {
-    title: "Electricity revision set",
-    text: "Collected circuit questions, short notes, and answer previews for the next unit test.",
-    meta: "3 public answers • 2 private follow-ups",
-  },
-  {
-    title: "Quadratic formula checkpoint",
-    text: "Saved algebra doubts and reviewed two teacher explanations for faster exam revision.",
-    meta: "1 solved thread • 1 pending clarification",
-  },
-  {
-    title: "Peer answer streak",
-    text: "Shared short concept explanations with classmates to keep points and momentum climbing.",
-    meta: "5 valid peer answers this week",
-  },
-] as const;
-
-const teacherActivity = [
-  {
-    title: "Physics explanation library",
-    text: "Recent channels focused on current flow, resistance intuition, and SEE board preparation.",
-    meta: "8 answered channels • 4.9 average rating",
-  },
-  {
-    title: "Math walkthrough collection",
-    text: "Built a reliable set of algebra and coordinate geometry replies that can later be pinned publicly.",
-    meta: "6 reusable answer patterns",
-  },
-  {
-    title: "Reputation growth",
-    text: "Ratings, response speed, and answer volume are all moving toward monetization-friendly territory.",
-    meta: "Qualification progress tracked from profile",
-  },
-] as const;
 
 function formatJoinedDate(value?: Date | string) {
   if (!value) {
@@ -87,10 +62,14 @@ function maskEmail(email: string) {
 
 export default async function PublicProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { username } = await params;
+  const searchParamsObj = await searchParams;
+  const tab = typeof searchParamsObj.tab === "string" ? searchParamsObj.tab : "overview";
 
   // Prevent hitting the database for obviously invalid or malformed usernames
   // (e.g., random bot spam, missing static files like favicon.ico, or random strings).
@@ -113,7 +92,48 @@ export default async function PublicProfilePage({
 
   const viewerHandle = session?.user ? getUserHandle(session.user) : null;
   const isOwner = viewerHandle === profile.username;
-  const activityItems = profile.role === "STUDENT" ? studentActivity : teacherActivity;
+
+  await connectToDatabase();
+  const isStudent = profile.role === "STUDENT";
+
+  let featureQuestions = await Question.aggregate([
+    { $match: { [isStudent ? "askerId" : "acceptedById"]: new mongoose.Types.ObjectId(profile.id) } },
+    { $addFields: { reactionCount: { $size: { $ifNull: ["$reactions", []] } } } },
+    { $sort: { reactionCount: -1, createdAt: -1 } },
+    { $limit: 3 }
+  ]);
+  featureQuestions = await Question.populate(featureQuestions, { path: "answerId", model: Answer });
+
+  const latestQuestions = await Question.find({
+    [isStudent ? "askerId" : "acceptedById"]: new mongoose.Types.ObjectId(profile.id),
+  })
+    .populate({ path: "answerId", model: Answer })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .lean();
+
+  let totalMediaFiles = 0;
+  const videoUrls: {url: string, questionId: string}[] = [];
+  const photoUrls: {url: string, questionId: string}[] = [];
+
+  if (!isStudent) {
+    const mediaAnswers = await Answer.find({
+      acceptorId: new mongoose.Types.ObjectId(profile.id),
+      mediaUrls: { $exists: true, $not: { $size: 0 } },
+      isPublic: true,
+    }).populate("questionId").sort({ createdAt: -1 }).lean();
+    
+    totalMediaFiles = mediaAnswers.reduce((acc: number, a: any) => acc + (a.mediaUrls?.length || 0), 0);
+    
+    mediaAnswers.forEach((ans: any) => {
+      ans.mediaUrls?.forEach((url: string) => {
+         const isVid = url.match(/\.(mp4|webm|ogg)$/i) || url.includes("video/upload");
+         const qId = ans.questionId?._id?.toString() || ans.questionId?.toString();
+         if (isVid) videoUrls.push({ url, questionId: qId });
+         else photoUrls.push({ url, questionId: qId });
+      });
+    });
+  }
 
   const profileContent = (
     <div className="mx-auto w-full max-w-[1280px] px-4 md:px-8 py-8">
@@ -162,33 +182,39 @@ export default async function PublicProfilePage({
           
           <div className="flex items-center gap-2 text-sm text-foreground">
             <div className="flex items-center hover:text-primary cursor-pointer transition-colors">
-              <span className="font-semibold text-foreground mr-1">
+              <span className="font-semibold text-foreground mr-1 flex items-center gap-1">
+                {profile.role === "STUDENT" ? <CoinsIcon className="size-4 text-emerald-500" /> : <MessageSquareIcon className="size-4" />}
                 {profile.role === "STUDENT" ? profile.points : profile.totalAnswered}
               </span>
-              <span className="text-muted-foreground">{profile.role === "STUDENT" ? "points" : "answers"}</span>
+              <span className="text-muted-foreground ml-1">{profile.role === "STUDENT" ? "points" : "answers"}</span>
             </div>
-            <span>·</span>
-            <div className="flex items-center hover:text-primary cursor-pointer transition-colors">
-              <span className="font-semibold text-foreground mr-1">
-                {profile.overallScore.toFixed(1)}
-              </span>
-              <span className="text-muted-foreground">rating</span>
-            </div>
+            {profile.role === "TEACHER" && (
+              <>
+                <span>·</span>
+                <div className="flex items-center hover:text-primary cursor-pointer transition-colors">
+                  <span className="font-semibold text-foreground mr-1 flex items-center gap-1">
+                    <StarIcon className="size-4 text-amber-500" />
+                    {profile.overallScore.toFixed(1)}
+                  </span>
+                  <span className="text-muted-foreground ml-1">rating</span>
+                </div>
+              </>
+            )}
           </div>
           
           <div className="space-y-3 border-t border-border pt-4 text-sm text-foreground">
             <div className="flex items-center gap-2">
-              <span className="w-5 text-center text-muted-foreground">📅</span>
+              <CalendarIcon className="size-4 text-muted-foreground" />
               <span className="text-muted-foreground">Joined</span>
               <span className="ml-auto font-medium">{formatJoinedDate(profile.createdAt)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 text-center text-muted-foreground">✉️</span>
+              <MailIcon className="size-4 text-muted-foreground" />
               <span className="text-muted-foreground">Email</span>
               <span className="ml-auto truncate font-medium">{isOwner ? profile.email : maskEmail(profile.email)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 text-center text-muted-foreground">🎓</span>
+              <GraduationCapIcon className="size-4 text-muted-foreground" />
               <span className="text-muted-foreground">Role</span>
               <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary capitalize">
                 {profile.role.toLowerCase()}
@@ -218,104 +244,253 @@ export default async function PublicProfilePage({
         <div className="space-y-6 min-w-0">
           {/* GITHUB TABS */}
           <div className="sticky top-0 z-10 -mx-4 overflow-x-auto bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:mx-0 md:px-0">
-            <nav className="flex gap-4 border-b border-border">
-              <button className="flex items-center gap-2 border-b-2 border-primary px-2 py-3 text-sm font-semibold text-foreground">
-                <BookOpenIcon className="size-4" />
+            <nav className="flex gap-2 border-b border-border">
+              <Link href={`/${profile.username}?tab=overview`} className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${tab === "overview" ? "border-primary text-primary bg-primary/5 rounded-t-md" : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground"}`}>
+                <BookOpenIcon className={`size-4 ${tab === "overview" ? "text-primary" : "text-muted-foreground"}`} />
                 Overview
-              </button>
-              <button className="flex items-center gap-2 border-b-2 border-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:border-muted-foreground hover:text-foreground transition-colors">
-                <MessageSquareIcon className="size-4" />
+              </Link>
+              <Link href={`/${profile.username}?tab=questions`} className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${tab === "questions" ? "border-primary text-primary bg-primary/5 rounded-t-md" : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground"}`}>
+                <MessageSquareIcon className={`size-4 ${tab === "questions" ? "text-primary" : "text-muted-foreground"}`} />
                 {profile.role === "STUDENT" ? "Questions Asked" : "Solved Questions"}
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground font-semibold">
+                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider ${tab === "questions" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
                   {profile.role === "STUDENT" ? profile.totalAsked || 0 : profile.totalAnswered}
                 </span>
-              </button>
+              </Link>
               {profile.role === "TEACHER" && (
-                <button className="flex items-center gap-2 border-b-2 border-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:border-muted-foreground hover:text-foreground transition-colors">
-                  <AwardIcon className="size-4" />
+                <Link href={`/${profile.username}?tab=media`} className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${tab === "media" ? "border-primary text-primary bg-primary/5 rounded-t-md" : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground"}`}>
+                  <AwardIcon className={`size-4 ${tab === "media" ? "text-primary" : "text-muted-foreground"}`} />
                   Media Answers
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground font-semibold">6</span>
-                </button>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider ${tab === "media" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                    {totalMediaFiles}
+                  </span>
+                </Link>
               )}
             </nav>
           </div>
 
-          {/* README / OVERVIEW */}
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <p className="text-xs text-muted-foreground mb-4">
-              {profile.username} / <span className="font-semibold text-foreground">README.md</span>
-            </p>
-            <div className="space-y-6">
-              <div className="prose prose-sm md:prose-base dark:prose-invert">
-                <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I&apos;m {profile.name}</h2>
-                <div className="text-muted-foreground leading-7 whitespace-pre-wrap">
-                  {profile.bio || (profile.role === "STUDENT" 
-                    ? "I'm a student using Question Hub to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can."
-                    : "I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on Question Hub.")}                </div>
-                <div className="mt-6">
-                  <h3 className="font-semibold text-lg text-foreground mb-3">Core Skills & Interests</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills?.length ? (
-                      profile.skills.map((tag: string) => (
-                        <span key={tag} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <>
-                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Physics</span>
-                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Calculus</span>
-                        <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Computer Science</span>
-                      </>
-                    )}
-                  </div>
-                  
-                  {profile.interests && profile.interests.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Also interested in:</h4>
+          {tab === "overview" ? (
+            <>
+              {/* README / OVERVIEW */}
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+                <p className="text-xs text-muted-foreground mb-4">
+                  {profile.username} / <span className="font-semibold text-foreground">About.me</span>
+                </p>
+                <div className="space-y-6">
+                  <div className="prose prose-sm md:prose-base dark:prose-invert">
+                    <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I&apos;m {profile.name}</h2>
+                    <div className="text-muted-foreground leading-7 whitespace-pre-wrap">
+                      {profile.bio || (profile.role === "STUDENT" 
+                        ? "I'm a student using Question Hub to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can."
+                        : "I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on Question Hub.")}                </div>
+                    <div className="mt-6">
+                      <h3 className="font-semibold text-lg text-foreground mb-3">Core Skills & Interests</h3>
                       <div className="flex flex-wrap gap-2">
-                        {profile.interests.map((tag: string) => (
-                           <span key={tag} className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                             {tag}
-                           </span>
-                        ))}
+                        {profile.skills?.length ? (
+                          profile.skills.map((tag: string) => (
+                            <span key={tag} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <>
+                            <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Physics</span>
+                            <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Calculus</span>
+                            <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">Computer Science</span>
+                          </>
+                        )}
                       </div>
+                      
+                      {profile.interests && profile.interests.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="font-medium text-sm text-muted-foreground mb-2">Also interested in:</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {profile.interests.map((tag: string) => (
+                               <span key={tag} className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                 {tag}
+                               </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* ACTIVITY GRID */}
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-foreground">Featured Activity</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              {activityItems.map((item) => (
-                <div key={item.title} className="flex flex-col justify-between rounded-lg border border-border bg-card p-5 shadow-sm transition hover:border-muted-foreground/50 cursor-pointer">
-                  <div>
-                    <h4 className="flex items-center gap-2 font-semibold text-primary hover:underline">
-                      <BookOpenIcon className="size-4" />
-                      {item.title}
-                    </h4>
-                    <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.text}</p>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
-                        {profile.role === "STUDENT" ? "Question" : "Solution"}
-                      </span>
-                      <span className="flex items-center gap-1 hover:text-foreground">
-                        <StarIcon className="size-3" />
-                        8
-                      </span>
-                    </div>
+              {/* ACTIVITY GRID */}
+              {featureQuestions.length > 0 && (
+                <div>
+                  <h3 className="mb-4 text-base font-semibold text-foreground">Featured Activity</h3>
+                  <div className="flex flex-col gap-4">
+                    {featureQuestions.map((item: any) => (
+                      <details key={item._id.toString()} className="group rounded-lg border border-border bg-card shadow-sm transition hover:border-muted-foreground/50 overflow-hidden">
+                        <summary className="flex cursor-pointer items-start justify-between p-5 list-none [&::-webkit-details-marker]:hidden focus:outline-none">
+                          <div className="min-w-0 pr-4 flex-1">
+                            <h4 className="flex items-center gap-2 font-semibold text-primary hover:underline line-clamp-1 mb-1">
+                              <BookOpenIcon className="size-4 shrink-0" />
+                              <Link href={`/question/${item._id}`}>{item.title}</Link>
+                            </h4>
+                            <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.body}</p>
+                            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center gap-3">
+                                <span className="flex items-center gap-1.5">
+                                  <span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                  {profile.role === "STUDENT" ? "Question" : "Solution"}
+                                </span>
+                                <span className="flex items-center gap-1 hover:text-foreground">
+                                  <StarIcon className="size-3" />
+                                  {item.reactionCount || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                             <span className="rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors group-hover:bg-muted group-open:bg-primary group-open:text-primary-foreground group-open:border-primary">
+                               <span className="group-open:hidden">Show Answer</span>
+                               <span className="hidden group-open:inline">Hide Answer</span>
+                             </span>
+                          </div>
+                        </summary>
+                        <div className="border-t border-border bg-muted/20 p-5 text-sm text-foreground">
+                           {item.answerId ? (
+                              <div>
+                                 {item.answerId.content && (
+                                    <div className="whitespace-pre-wrap">{item.answerId.content}</div>
+                                 )}
+                                 {item.answerId.mediaUrls && item.answerId.mediaUrls.length > 0 && (
+                                    <div className="mt-4 flex flex-col gap-3">
+                                      {item.answerId.mediaUrls.map((url: string, i: number) => {
+                                         const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || url.includes("video/upload");
+                                         return (
+                                           <div key={i} className="flex flex-col gap-2">
+                                             {isVideo ? (
+                                               <video src={url} controls className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                             ) : (
+                                               <img src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                             )}
+                                           </div>
+                                         );
+                                      })}
+                                    </div>
+                                 )}
+                                 {!item.answerId.content && (!item.answerId.mediaUrls || item.answerId.mediaUrls.length === 0) && (
+                                     <p className="text-muted-foreground italic">Answer content is empty.</p>
+                                 )}
+                              </div>
+                           ) : (
+                              <p className="text-muted-foreground italic">No public answer available for this question.</p>
+                           )}
+                           <div className="mt-4">
+                             <Link href={`/question/${item._id}`} className="text-primary hover:underline text-xs font-medium">View full thread →</Link>
+                           </div>
+                        </div>
+                      </details>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              )}
+            </>
+          ) : tab === "questions" ? (
+             <div className="space-y-4">
+               {latestQuestions.length > 0 ? (
+                 latestQuestions.map((q: any) => (
+                   <details key={q._id.toString()} className="group rounded-lg border border-border bg-card shadow-sm transition hover:border-muted-foreground/50 overflow-hidden">
+                     <summary className="flex cursor-pointer items-start justify-between p-5 list-none [&::-webkit-details-marker]:hidden focus:outline-none">
+                       <div className="min-w-0 pr-4 flex-1">
+                         <Link href={`/question/${q._id}`} className="font-semibold text-primary hover:underline line-clamp-1 block mb-1">{q.title}</Link>
+                         <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{q.body}</p>
+                         <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>{new Date(q.createdAt).toLocaleDateString()}</span>
+                            <span className={`rounded-full px-2 py-0.5 font-medium ${q.status === "SOLVED" ? "bg-emerald-500/10 text-emerald-500" : "bg-muted/60"}`}>{q.status}</span>
+                         </div>
+                       </div>
+                       <div className="flex shrink-0 items-center gap-2 mt-1">
+                         <span className="rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors group-hover:bg-muted group-open:bg-primary group-open:text-primary-foreground group-open:border-primary">
+                           <span className="group-open:hidden">Show Answer</span>
+                           <span className="hidden group-open:inline">Hide Answer</span>
+                         </span>
+                       </div>
+                     </summary>
+                     
+                     <div className="border-t border-border bg-muted/20 p-5 text-sm text-foreground">
+                        {q.answerId ? (
+                           <div>
+                              {q.answerId.content && (
+                                 <div className="whitespace-pre-wrap">{q.answerId.content}</div>
+                              )}
+                              {q.answerId.mediaUrls && q.answerId.mediaUrls.length > 0 && (
+                                 <div className="mt-4 flex flex-col gap-3">
+                                   {q.answerId.mediaUrls.map((url: string, i: number) => {
+                                      const isVideo = url.match(/\.(mp4|webm|ogg)$/i) || url.includes("video/upload");
+                                      return (
+                                        <div key={i} className="flex flex-col gap-2">
+                                          {isVideo ? (
+                                            <video src={url} controls className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                          ) : (
+                                            <img src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                          )}
+                                        </div>
+                                      );
+                                   })}
+                                 </div>
+                              )}
+                              {!q.answerId.content && (!q.answerId.mediaUrls || q.answerId.mediaUrls.length === 0) && (
+                                  <p className="text-muted-foreground italic">Answer content is empty.</p>
+                              )}
+                           </div>
+                        ) : (
+                           <p className="text-muted-foreground italic">No public answer available for this question.</p>
+                        )}
+                        <div className="mt-4">
+                           <Link href={`/question/${q._id}`} className="text-primary hover:underline text-xs font-medium">View full thread →</Link>
+                        </div>
+                     </div>
+                   </details>
+                 ))
+               ) : (
+                 <div className="rounded-lg border border-border border-dashed p-8 text-center text-muted-foreground shadow-sm">
+                   <p>No questions found.</p>
+                 </div>
+               )}
+             </div>
+          ) : null}
+
+           {tab === "media" && profile.role === "TEACHER" && (
+             <div className="space-y-8">
+               {videoUrls.length > 0 && (
+                 <div>
+                   <h3 className="mb-4 text-base font-semibold text-foreground border-b border-border pb-2">Videos</h3>
+                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                     {videoUrls.map((item, i) => (
+                        <Link href={`/question/${item.questionId}`} key={`vid-${i}`} className="block group relative aspect-video bg-black rounded-lg overflow-hidden border border-border shadow-sm">
+                           <video src={item.url} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition" />
+                           <div className="absolute inset-0 flex items-center justify-center p-2 bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                             <span className="text-white text-xs font-medium bg-black/60 px-2 py-1 rounded-md">View Thread</span>
+                           </div>
+                        </Link>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {photoUrls.length > 0 && (
+                 <div>
+                   <h3 className="mb-4 text-base font-semibold text-foreground border-b border-border pb-2">Photos</h3>
+                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                     {photoUrls.map((item, i) => (
+                        <Link href={`/question/${item.questionId}`} key={`img-${i}`} className="block group relative aspect-square bg-muted rounded-lg overflow-hidden border border-border shadow-sm">
+                           <img src={item.url} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                        </Link>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {videoUrls.length === 0 && photoUrls.length === 0 && (
+                 <div className="rounded-lg border border-border border-dashed p-8 text-center text-muted-foreground shadow-sm">
+                   <p>No media answers found.</p>
+                 </div>
+               )}
+             </div>
+           )}
 
         </div>
       </div>
