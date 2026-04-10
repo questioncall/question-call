@@ -13,10 +13,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlanDef } from "@/lib/plans";
-import { TRIAL } from "@/lib/config";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
-export function SubscriptionClient({ hydratedPlans }: { hydratedPlans?: PlanDef[] }) {
+
+export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans?: PlanDef[]; trialDays?: number }) {
   const dispatch = useAppDispatch();
   const { 
     subscriptionStatus, 
@@ -187,7 +187,7 @@ export function SubscriptionClient({ hydratedPlans }: { hydratedPlans?: PlanDef[
             </h1>
             <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1B7258] dark:text-[#27A883]">
               <Leaf className="h-3.5 w-3.5" />
-              <span>{TRIAL.DURATION_DAYS} days free trial</span>
+              <span>{trialDays || 3} days free trial</span>
             </div>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400 max-w-sm mt-3 leading-relaxed">
               Get the right plan for yourself. Plans can be upgraded in the future.

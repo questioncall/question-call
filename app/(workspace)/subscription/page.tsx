@@ -13,5 +13,5 @@ export default async function SubscriptionPage() {
   const config = await getPlatformConfig();
   const hydratedPlans = getHydratedPlans(config);
 
-  return <SubscriptionClient hydratedPlans={JSON.parse(JSON.stringify(hydratedPlans))} />;
+  return <SubscriptionClient hydratedPlans={JSON.parse(JSON.stringify(hydratedPlans))} trialDays={config.trialDays} />;
 }

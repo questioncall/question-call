@@ -1,9 +1,13 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
- * ║                    EduAsk — Platform Config                     ║
+ * ║               QUESTION HUB — Platform Config                     ║
  * ║                                                                  ║
- * ║  Single source of truth for all tunable platform values.         ║
- * ║  Change values HERE and the entire codebase reacts.              ║
+ * ║  INITIAL SEED DATA — values below are used ONLY on first boot   ║
+ * ║  to populate the PlatformConfig collection in MongoDB.           ║
+ * ║  After that, the entire app reads from the DB-cached             ║
+ * ║  PlatformConfig via getPlatformConfig() in                       ║
+ * ║  models/PlatformConfig.ts. Changing values here will NOT affect  ║
+ * ║  an existing deployment — use the Admin Panel instead.           ║
  * ║                                                                  ║
  * ║  ⚙️  Client wants to change trial days? → TRIAL section          ║
  * ║  ⚙️  Client wants to adjust pricing?    → PLANS section          ║
@@ -106,51 +110,32 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────
-// 3. ANSWER FORMAT DURATIONS & PRICING
-//    How long a teacher gets per format, and what they earn per solve.
+// 3. ANSWER FORMAT DURATIONS & POINTS EARNING
+//    Teachers earn POINTS per answer (not cash).
+//    Points convert to NPR at a rate set by admin (default 1:1).
 // ─────────────────────────────────────────────────────────────────────
 
 export const FORMAT = {
   TEXT: {
     /** Minutes allowed for a text answer */
     DURATION_MINUTES: 30,
-    /** NPR the teacher earns (before commission) for a text answer */
-    PRICE: 50,
+    /** Points the teacher earns for a text answer (base, before rating bonus) */
+    POINTS: 5,
   },
   PHOTO: {
     DURATION_MINUTES: 60,
-    PRICE: 100,
+    POINTS: 10,
   },
   VIDEO: {
     DURATION_MINUTES: 180,
-    PRICE: 200,
+    POINTS: 20,
   },
   /** Fallback when student picks "ANY" format */
   ANY: {
     DURATION_MINUTES: 60,   // defaults to PHOTO duration
-    PRICE: 100,             // defaults to PHOTO price
+    POINTS: 10,             // defaults to PHOTO points
   },
 } as const;
-
-/** Helper: get duration in minutes for a given answerFormat string */
-export function getFormatDuration(answerFormat: string): number {
-  switch (answerFormat) {
-    case "TEXT":  return FORMAT.TEXT.DURATION_MINUTES;
-    case "PHOTO": return FORMAT.PHOTO.DURATION_MINUTES;
-    case "VIDEO": return FORMAT.VIDEO.DURATION_MINUTES;
-    default:      return FORMAT.ANY.DURATION_MINUTES;
-  }
-}
-
-/** Helper: get teacher earning price for a given answerFormat string */
-export function getFormatPrice(answerFormat: string): number {
-  switch (answerFormat) {
-    case "TEXT":  return FORMAT.TEXT.PRICE;
-    case "PHOTO": return FORMAT.PHOTO.PRICE;
-    case "VIDEO": return FORMAT.VIDEO.PRICE;
-    default:      return FORMAT.ANY.PRICE;
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────
 // 4. TEACHER & MONETIZATION
@@ -172,23 +157,31 @@ export const TEACHER = {
    * e.g. 1.5 means a 5-star answer earns 1.5× the base rate.
    */
   RATING_BONUS_MULTIPLIER: 1.5,
+
+  /** Bonus points awarded for a 4-star rating */
+  BONUS_POINTS_4_STAR: 2,
+
+  /** Bonus points awarded for a 5-star rating */
+  BONUS_POINTS_5_STAR: 5,
+
+  /** Points deducted for a 1-2 star rating */
+  PENALTY_POINTS_LOW_RATING: 2,
 } as const;
 
-/**
- * Calculate the net teacher earning for a completed answer.
- * @param answerFormat - "TEXT" | "PHOTO" | "VIDEO" | "ANY"
- * @param rating      - Student rating 1–5
- * @returns NPR amount credited to teacher wallet
- */
-export function calculateTeacherEarning(answerFormat: string, rating: number): number {
-  const basePrice = getFormatPrice(answerFormat);
-  const afterCommission = basePrice * (1 - TEACHER.COMMISSION_PERCENT / 100);
-  const ratingFactor = (rating / 5) * TEACHER.RATING_BONUS_MULTIPLIER;
-  return Math.round(afterCommission * ratingFactor * 100) / 100;
-}
+// ─────────────────────────────────────────────────────────────────────
+// 5. WITHDRAWAL / POINTS CONVERSION
+// ─────────────────────────────────────────────────────────────────────
+
+export const WITHDRAWAL = {
+  /** 1 point = this many NPR */
+  POINT_TO_NPR_RATE: 1,
+
+  /** Minimum points required to request a withdrawal */
+  MIN_WITHDRAWAL_POINTS: 50,
+} as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 5. PLATFORM MISC
+// 6. PLATFORM MISC
 // ─────────────────────────────────────────────────────────────────────
 
 export const PLATFORM = {

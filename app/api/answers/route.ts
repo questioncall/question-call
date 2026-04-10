@@ -9,6 +9,8 @@ import Answer from "@/models/Answer";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
 import Notification from "@/models/Notification";
+import User from "@/models/User";
+import { getPlatformConfig } from "@/models/PlatformConfig";
 
 export async function POST(req: Request) {
   try {
@@ -118,6 +120,36 @@ export async function POST(req: Request) {
       isPublic,
       submittedAt: new Date(),
     });
+
+    // ─── Monetization Tracking (Phase 7) ─────────────────────
+    // Check if teacher should unlock monetization
+    const config = await getPlatformConfig();
+    const threshold = config.qualificationThreshold;
+
+    const updatedTeacher = await User.findByIdAndUpdate(
+      session.user.id,
+      { $inc: { totalAnswered: 1 } },
+      { new: true },
+    );
+
+    if (
+      updatedTeacher &&
+      !updatedTeacher.isMonetized &&
+      updatedTeacher.totalAnswered >= threshold
+    ) {
+      await User.findByIdAndUpdate(session.user.id, { isMonetized: true });
+
+      // Notify teacher they are now monetized
+      const monetizationNotif = await Notification.create({
+        userId: session.user.id,
+        type: "CHANNEL_CLOSED",
+        message: `🎉 Congratulations! You've completed ${threshold} answers. You can now earn points for every answer!`,
+      }).catch(() => null);
+
+      if (monetizationNotif) {
+        await emitNotification(session.user.id, monetizationNotif);
+      }
+    }
 
     // Notify the asker perfectly in real-time
     if (pusherServer) {

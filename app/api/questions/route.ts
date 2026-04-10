@@ -7,7 +7,7 @@ import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { CreateQuestionPayload, FeedQuestion } from "@/types/question";
-import { TRIAL } from "@/lib/config";
+import { getPlatformConfig } from "@/models/PlatformConfig";
 
 export async function POST(request: Request) {
   try {
@@ -47,6 +47,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const config = await getPlatformConfig();
+    const trialDays = config.trialDays;
+
     // Subscription Check Logic
     const now = new Date();
     const subEnd = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
     
     // Auto-start trial on first question if not used yet and no active sub
     if (!user.trialUsed && user.subscriptionStatus !== "ACTIVE") {
-      const trialEnd = new Date(now.getTime() + TRIAL.DURATION_DAYS * 24 * 60 * 60 * 1000);
+      const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
       await User.findByIdAndUpdate(user._id, {
         trialUsed: true,
         subscriptionStatus: "ACTIVE", // Active as it is basically active but trial

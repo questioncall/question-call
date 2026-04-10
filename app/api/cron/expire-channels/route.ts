@@ -16,6 +16,11 @@ async function applyBayesianRating(teacherId: string, rating: number) {
 
   teacher.totalAnswered = (teacher.totalAnswered || 0) + 1;
 
+  // Update new Phase 7 rating tracking fields
+  teacher.overallRatingSum = (teacher.overallRatingSum || 0) + rating;
+  teacher.overallRatingCount = (teacher.overallRatingCount || 0) + 1;
+
+  // Legacy overallScore (Bayesian average for backward compat)
   const currentScore = teacher.overallScore || 0;
   const totalRatings = teacher.totalAnswered - 1;
   const seedVotes = 5;

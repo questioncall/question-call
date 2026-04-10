@@ -56,7 +56,10 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    walletBalance: {
+
+    // ─── Teacher fields (Phase 7: points-based) ─────────────────
+    /** Current redeemable point balance (replaces old walletBalance) */
+    pointBalance: {
       type: Number,
       default: 0,
       min: 0,
@@ -70,6 +73,22 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    /** Sum of all ratings received — used to compute average on the fly */
+    overallRatingSum: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /** Count of all ratings received — used to compute average on the fly */
+    overallRatingCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /**
+     * @deprecated Kept for backward compatibility with existing UI reads.
+     * Prefer computing: overallRatingSum / overallRatingCount on the fly.
+     */
     overallScore: {
       type: Number,
       default: 0,

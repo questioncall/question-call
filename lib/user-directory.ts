@@ -13,7 +13,7 @@ type DirectoryUser = {
   username?: string | null;
   role: UserRole;
   points?: number;
-  walletBalance?: number;
+  pointBalance?: number;
   totalAnswered?: number;
   overallScore?: number;
   createdAt?: Date | string;
@@ -32,7 +32,7 @@ export type PublicDirectoryUser = {
   username: string;
   role: UserRole;
   points: number;
-  walletBalance: number;
+  pointBalance: number;
   totalAnswered: number;
   overallScore: number;
   createdAt?: Date | string;
@@ -45,7 +45,7 @@ export type PublicDirectoryUser = {
 };
 
 const publicDirectorySelect =
-  "name email username role points walletBalance totalAnswered overallScore createdAt bio userImage skills interests totalAsked teacherModeVerified";
+  "name email username role points pointBalance totalAnswered overallScore overallRatingSum overallRatingCount createdAt bio userImage skills interests totalAsked teacherModeVerified";
 
 function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
   const id = typeof user._id === "string" ? user._id : user._id.toString();
@@ -62,7 +62,7 @@ function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
     }),
     role: user.role,
     points: user.points ?? 0,
-    walletBalance: user.walletBalance ?? 0,
+    pointBalance: user.pointBalance ?? 0,
     totalAnswered: user.totalAnswered ?? 0,
     overallScore: user.overallScore ?? 0,
     createdAt: user.createdAt,

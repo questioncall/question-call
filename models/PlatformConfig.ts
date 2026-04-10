@@ -1,26 +1,22 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║               PlatformConfig — Initial Seed Data                ║
+ * ║                                                                  ║
+ * ║  The default values in this schema are the INITIAL SEED DATA     ║
+ * ║  used ONLY when the PlatformConfig collection is empty (first    ║
+ * ║  boot / fresh DB). After that, the entire app reads and writes   ║
+ * ║  values through the DB-cached getPlatformConfig() function.      ║
+ * ║                                                                  ║
+ * ║  To change live values, use the Admin Panel — NOT this file.     ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
+
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
-import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS } from "@/lib/config";
+import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
 const platformConfigSchema = new Schema(
   {
-    // Format pricing (in smallest currency unit, e.g. paisa)
-    textFormatPrice: {
-      type: Number,
-      default: FORMAT.TEXT.PRICE,
-      min: 0,
-    },
-    photoFormatPrice: {
-      type: Number,
-      default: FORMAT.PHOTO.PRICE,
-      min: 0,
-    },
-    videoFormatPrice: {
-      type: Number,
-      default: FORMAT.VIDEO.PRICE,
-      min: 0,
-    },
-
     // Format time limits in minutes
     textFormatDuration: {
       type: Number,
@@ -60,7 +56,7 @@ const platformConfigSchema = new Schema(
       default: TRIAL.DURATION_DAYS,
       min: 1,
     },
-    
+
     // Subscription Plan Pricing
     plan1MonthPrice: {
       type: Number,
@@ -79,6 +75,50 @@ const platformConfigSchema = new Schema(
     plan3MonthOriginalPrice: {
       type: Number,
       default: SUBSCRIPTION_PLANS.find(p => p.slug === "3month")?.originalPrice || 250,
+    },
+
+    // ─── Points Earning Config (Phase 7) ──────────────────────────
+    pointsPerTextAnswer: {
+      type: Number,
+      default: FORMAT.TEXT.POINTS,
+      min: 0,
+    },
+    pointsPerPhotoAnswer: {
+      type: Number,
+      default: FORMAT.PHOTO.POINTS,
+      min: 0,
+    },
+    pointsPerVideoAnswer: {
+      type: Number,
+      default: FORMAT.VIDEO.POINTS,
+      min: 0,
+    },
+    bonusPointsFor4Star: {
+      type: Number,
+      default: TEACHER.BONUS_POINTS_4_STAR,
+      min: 0,
+    },
+    bonusPointsFor5Star: {
+      type: Number,
+      default: TEACHER.BONUS_POINTS_5_STAR,
+      min: 0,
+    },
+    penaltyPointsForLowRating: {
+      type: Number,
+      default: TEACHER.PENALTY_POINTS_LOW_RATING,
+      min: 0,
+    },
+
+    // ─── Withdrawal Config (Phase 7) ─────────────────────────────
+    pointToNprRate: {
+      type: Number,
+      default: WITHDRAWAL.POINT_TO_NPR_RATE,
+      min: 0,
+    },
+    minWithdrawalPoints: {
+      type: Number,
+      default: WITHDRAWAL.MIN_WITHDRAWAL_POINTS,
+      min: 1,
     },
   },
   {
@@ -142,6 +182,27 @@ export function getFormatDurationMinutes(
     default:
       // ANY defaults to PHOTO duration
       return config.photoFormatDuration;
+  }
+}
+
+/**
+ * Get base points for an answer format from live config.
+ * Always use this instead of hardcoding point values.
+ */
+export function getFormatPoints(
+  config: PlatformConfigDocument,
+  answerFormat: string,
+): number {
+  switch (answerFormat) {
+    case "TEXT":
+      return config.pointsPerTextAnswer;
+    case "PHOTO":
+      return config.pointsPerPhotoAnswer;
+    case "VIDEO":
+      return config.pointsPerVideoAnswer;
+    default:
+      // ANY defaults to PHOTO points
+      return config.pointsPerPhotoAnswer;
   }
 }
 

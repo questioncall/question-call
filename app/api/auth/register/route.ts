@@ -63,10 +63,12 @@ export async function POST(request: Request) {
       passwordHash,
       role,
       points: 0,
-      walletBalance: 0,
+      pointBalance: 0,
       totalAnswered: 0,
       isMonetized: false,
       overallScore: 0,
+      overallRatingSum: 0,
+      overallRatingCount: 0,
     });
 
     // Auto-grant 3-day free trial for students via Transaction record

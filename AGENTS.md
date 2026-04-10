@@ -4,6 +4,14 @@
 
 ---
 
+## 🚨 IMPORTANT ARCHITECTURE NOTE
+
+> **CRITICAL RULE:** Everywhere in the application, configuration data MUST be fetched from the database using `getPlatformConfig()` (from `models/PlatformConfig.ts`).
+> 
+> Absolutely **NO direct imports** of values from `lib/config.ts` are allowed for app logic. The `lib/config.ts` file acts purely as the initial **seed data** for the database document on first boot. All tunables—pricing, format limits, trial days, point rates, and qualification thresholds—are dynamic and cached via the DB layer.
+
+---
+
 ## 🗂️ Table of Contents
 
 1. [Project Overview](#project-overview)
