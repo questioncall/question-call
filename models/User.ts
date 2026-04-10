@@ -111,6 +111,10 @@ const userSchema = new Schema(
     userImage: {
       type: String,
     },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
     skills: {
       type: [String],
       default: [],

@@ -34,3 +34,10 @@ export const NOTIFICATION_EVENT = "notification:new";
 export function getUserPusherName(userId: string) {
   return `${USER_CHANNEL_PREFIX}${userId}`;
 }
+
+// ──────────────────────────────────────────────────────────
+// Admin specific events
+// ──────────────────────────────────────────────────────────
+export const ADMIN_UPDATES_CHANNEL = "admin-updates";
+export const ADMIN_WITHDRAWAL_EVENT = "admin:withdrawal-requested";
+export const CONFIG_UPDATED_EVENT = "admin:config-updated";

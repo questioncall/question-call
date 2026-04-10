@@ -7,7 +7,8 @@ import User from "@/models/User";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
-import { emitNotification } from "@/lib/pusher/pusherServer";
+import { emitNotification, pusherServer } from "@/lib/pusher/pusherServer";
+import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
 
 export async function POST(req: Request) {
   try {
@@ -87,6 +88,22 @@ export async function POST(req: Request) {
       for (const notif of createdNotifs) {
         await emitNotification(notif.userId.toString(), notif).catch(() => {});
       }
+    }
+
+    if (pusherServer) {
+      await pusherServer.trigger(ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT, { 
+        request: {
+          _id: request._id,
+          teacherId: request.teacherId,
+          pointsRequested: request.pointsRequested,
+          nprEquivalent: request.nprEquivalent,
+          esewaNumber: request.esewaNumber,
+          status: request.status,
+          createdAt: request.createdAt,
+          teacherName: teacher.name, // To easily display in the admin table
+          teacherEmail: teacher.email
+        } 
+      }).catch(console.error);
     }
 
     return NextResponse.json({ success: true, requestId: request._id });

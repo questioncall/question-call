@@ -11,6 +11,10 @@ import {
   BanknoteIcon,
 } from "lucide-react";
 
+import { getPusherClient } from "@/lib/pusher/pusherClient";
+import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
+import { toast } from "sonner";
+
 import {
   Card,
   CardContent,
@@ -91,6 +95,20 @@ export default function AdminWithdrawalsPage() {
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
+
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher) return;
+    const channel = pusher.subscribe(ADMIN_UPDATES_CHANNEL);
+    channel.bind(ADMIN_WITHDRAWAL_EVENT, (data: { request: WithdrawalRequest }) => {
+      setRequests((prev) => [data.request, ...prev.filter(r => r._id !== data.request._id)]);
+      toast.info(`New withdrawal request from ${data.request.teacherId?.name || 'Teacher'}`);
+    });
+
+    return () => {
+      pusher.unsubscribe(ADMIN_UPDATES_CHANNEL);
+    };
+  }, []);
 
   const handleComplete = async () => {
     if (!completeTarget || !txnId.trim() || !amountSent) return;

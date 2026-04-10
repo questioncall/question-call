@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSafeServerSession } from "@/lib/auth";
-import { UsersClient } from "./users-client";
+import { TransactionsClient } from "./transactions-client";
 
-export default async function AdminUsersPage() {
+export default async function AdminTransactionsPage() {
   const session = await getSafeServerSession();
 
   if (!session?.user || session.user.role !== "ADMIN") {
     redirect("/");
   }
 
-  return <UsersClient />;
+  return <TransactionsClient />;
 }

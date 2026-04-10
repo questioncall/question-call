@@ -10,6 +10,8 @@ const adminNavItems = [
   { href: "/admin/format-config", label: "Format config" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
+  { href: "/admin/transactions", label: "Transactions" },
+  { href: "/admin/settings", label: "Settings" },
 ] as const;
 
 export default async function AdminPortalLayout({

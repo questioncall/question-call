@@ -1,0 +1,185 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { UsersIcon, Loader2Icon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
+import { toast } from "sonner";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+type UserRecord = {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  points?: number;
+  pointBalance?: number;
+  totalAnswered?: number;
+  isSuspended?: boolean;
+  createdAt: string;
+};
+
+export function UsersClient() {
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [suspendingId, setSuspendingId] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      setUsers(data);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleToggleSuspend = async (userId: string, currentlySuspended: boolean) => {
+    if (!confirm(`Are you sure you want to ${currentlySuspended ? "UNSUSPEND" : "SUSPEND"} this user?`)) {
+      return;
+    }
+
+    setSuspendingId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/suspend`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update suspension status");
+
+      toast.success(data.message);
+      
+      // Update local state instead of full re-fetch for better UX
+      setUsers(prev => prev.map(u => 
+        u._id === userId ? { ...u, isSuspended: data.isSuspended } : u
+      ));
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSuspendingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2Icon className="size-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <UsersIcon className="mr-2 inline-block size-6 text-primary" />
+          User Management
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          View students and teachers. Suspend accounts that violate platform rules.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Registered Users</CardTitle>
+          <CardDescription>
+            Total: {users.length} users
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Metrics</th>
+                  <th className="px-4 py-3">Joined Date</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {users.map((user) => (
+                  <tr key={user._id} className={`transition-colors ${user.isSuspended ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"}`}>
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium text-foreground">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        user.role === "TEACHER" 
+                          ? "bg-violet-500/10 text-violet-700 dark:text-violet-400" 
+                          : "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                      }`}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 min-w-[140px]">
+                      {user.role === "STUDENT" ? (
+                        <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">
+                          Points: <span className="font-medium text-primary">{user.points || 0}</span>
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            Balance: <span className="font-medium text-primary">{user.pointBalance || 0} pts</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            Answers: <span className="font-medium text-foreground">{user.totalAnswered || 0}</span>
+                          </p>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant={user.isSuspended ? "outline" : "destructive"}
+                        size="sm"
+                        disabled={suspendingId === user._id}
+                        onClick={() => handleToggleSuspend(user._id, !!user.isSuspended)}
+                        className={user.isSuspended ? "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400" : ""}
+                      >
+                        {suspendingId === user._id ? (
+                          <Loader2Icon className="size-4 animate-spin" />
+                        ) : user.isSuspended ? (
+                          <>
+                            <ShieldCheckIcon className="mr-1.5 size-4" />
+                            Unsuspend
+                          </>
+                        ) : (
+                          <>
+                            <ShieldAlertIcon className="mr-1.5 size-4" />
+                            Suspend
+                          </>
+                        )}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                      No users found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

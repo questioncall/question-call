@@ -596,13 +596,13 @@ Student pays → Platform merchant account (Khalti/eSewa)
 
 ### ✅ PHASE 10 — Admin Panel
 
-- [ ] 10.1 Build Admin dashboard (protected by ADMIN role middleware)
-- [ ] 10.2 Tier pricing config page — set Tier I / II / III prices and save to PlatformConfig
-- [ ] 10.3 Time limit config page — set minutes per tier
-- [ ] 10.4 Commission % and score deduction config
-- [ ] 10.5 User management — view all users, suspend accounts
-- [ ] 10.6 Transaction monitoring — all payments, credits, withdrawals
-- [ ] 10.7 `GET/PUT /api/admin/config` — fetch and update PlatformConfig document
+- [x] 10.1 Build Admin dashboard (protected by ADMIN role middleware)
+- [x] 10.2 Tier pricing config page — set Tier I / II / III prices and save to PlatformConfig
+- [x] 10.3 Time limit config page — set minutes per tier
+- [x] 10.4 Commission % and score deduction config
+- [x] 10.5 User management — view all users, suspend accounts
+- [x] 10.6 Transaction monitoring — all payments, credits, withdrawals
+- [x] 10.7 `GET/PUT /api/admin/config` — fetch and update PlatformConfig document
 
 ---
 
