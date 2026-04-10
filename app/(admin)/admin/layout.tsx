@@ -5,6 +5,7 @@ import { Logo } from "@/components/shared/logo";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 import { AdminHeaderClient } from "@/components/admin/admin-header-client";
+import { AdminNav } from "./admin-nav";
 import { connectToDatabase } from "@/lib/mongodb";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import User from "@/models/User";
@@ -37,6 +38,7 @@ const adminNavItems = [
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/notifications", label: "Notifications" },
+  { href: "/admin/ai-keys", label: "AI Keys" },
   { href: "/admin/settings", label: "Settings" },
 ] as const;
 
@@ -72,17 +74,7 @@ if (session.user.role !== "ADMIN") {
             </div>
           </div>
 
-          <nav className="mt-4 flex flex-wrap gap-2">
-            {adminNavItems.map((item) => (
-              <Link
-                key={item.href}
-                className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
-                href={item.href}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <AdminNav items={[...adminNavItems]} />
         </div>
       </header>
 
@@ -90,3 +82,5 @@ if (session.user.role !== "ADMIN") {
     </div>
   );
 }
+
+

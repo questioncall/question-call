@@ -8,6 +8,7 @@ import {
   Loader2Icon,
   Trash2Icon,
   CrownIcon,
+  CpuIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -320,6 +321,22 @@ export function SettingsClient({ user }: { user: any }) {
           </Card>
         )}
       </div>
+
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CpuIcon className="size-5 text-primary" /> AI & Key Management
+          </CardTitle>
+          <CardDescription>
+            Manage AI Providers, setup load balancing, and API key failover logic for the platform.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <a href="/admin/ai-keys">Manage AI Keys</a>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
