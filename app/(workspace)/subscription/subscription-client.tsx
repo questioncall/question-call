@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Clock, ArrowRight, Activity, CalendarDays, HelpCircle } from "lucide-react";
+import { Leaf, Clock, CalendarDays, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
@@ -24,34 +24,45 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
     pendingManualPayment, 
     questionsAsked,
     planSlug,
-  } = useAppSelector((state: any) => state.user);
+  } = useAppSelector((state) => state.user);
 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (subscriptionStatus === null && !loading) {
-      const fetchSub = async () => {
-        setLoading(true);
-        try {
-          const res = await fetch("/api/user/subscription");
-          if (res.ok) {
-            const data = await res.json();
-            dispatch(updateProfile({
-              subscriptionStatus: data.subscriptionStatus,
-              subscriptionEnd: data.subscriptionEnd,
-              pendingManualPayment: data.pendingManualPayment,
-              questionsAsked: data.questionsAsked,
-              planSlug: data.planSlug,
-            }));
-          }
-        } catch (e) {
-          console.error(e);
-        } finally {
+    if (subscriptionStatus !== null) {
+      return;
+    }
+
+    let active = true;
+
+    const fetchSub = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/user/subscription");
+        if (res.ok) {
+          const data = await res.json();
+          dispatch(updateProfile({
+            subscriptionStatus: data.subscriptionStatus,
+            subscriptionEnd: data.subscriptionEnd,
+            pendingManualPayment: data.pendingManualPayment,
+            questionsAsked: data.questionsAsked,
+            planSlug: data.planSlug,
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (active) {
           setLoading(false);
         }
-      };
-      fetchSub();
-    }
+      }
+    };
+
+    void fetchSub();
+
+    return () => {
+      active = false;
+    };
   }, [subscriptionStatus, dispatch]);
 
   if (loading || subscriptionStatus === null) {
@@ -78,7 +89,7 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
           </div>
           <h2 className="text-2xl font-bold mb-3 text-neutral-900 dark:text-white">Plan Under Review</h2>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed mb-8">
-            We are currently verifying your manual transaction. Once approved by our team, your new plan limits will actively unlock. We'll notify you via email immediately!
+            We are currently verifying your manual transaction. Once approved by our team, your new plan limits will actively unlock. We&apos;ll notify you via email immediately!
           </p>
           <Link href="/" className="w-full">
             <Button className="w-full rounded-full h-12 shadow-sm font-semibold">Return Home</Button>
@@ -308,7 +319,7 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
                   </div>
                   <div className="space-y-1.5">
                     <h4 className="font-semibold text-neutral-900 dark:text-white">3. Discount Points & Upgrades</h4>
-                    <p className="leading-relaxed">Points earned by contributing correct answers to the public feed can be redeemed toward subscription renewal discounts. These utility points hold no real-world cash value and cannot be withdrawn externally.</p>
+                    <p className="leading-relaxed">Points earned by contributing correct answers to the public feed can be redeemed toward subscription renewal discounts, and your wallet keeps those points visible in one place. Withdrawal handling is managed separately through the shared wallet flow.</p>
                   </div>
                 </div>
               </DialogContent>

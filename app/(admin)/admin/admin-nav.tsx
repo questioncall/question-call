@@ -24,6 +24,7 @@ export function AdminNav({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             className={cn(
               "rounded-md border px-3 py-2 text-sm font-medium transition",
               isActive

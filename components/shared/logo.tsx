@@ -2,11 +2,17 @@ import Link from "next/link";
 
 type LogoProps = {
   compact?: boolean;
+  href?: string;
+  prefetch?: boolean;
 };
 
-export function Logo({ compact = false }: LogoProps) {
+export function Logo({
+  compact = false,
+  href = "/",
+  prefetch,
+}: LogoProps) {
   return (
-    <Link href="/" className="inline-flex items-center gap-3">
+    <Link href={href} prefetch={prefetch} className="inline-flex items-center gap-3">
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
         QH
       </span>

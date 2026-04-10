@@ -109,6 +109,7 @@ export async function POST(request: Request) {
       reactions: [],
       answerCount: 0,
       reactionCount: 0,
+      commentCount: 0,
       createdAt: question.createdAt.toISOString(),
       updatedAt: question.updatedAt.toISOString(),
     };

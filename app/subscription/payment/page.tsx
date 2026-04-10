@@ -60,10 +60,10 @@ export default async function PaymentPage({
              </div>
              
              <h3 className="font-semibold text-lg text-neutral-800 dark:text-neutral-100 mb-1">
-               EduAsk Official
+               {"Jiban Mijhar"}
              </h3>
              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-6">
-               Khalti / eSewa: 9800000000
+               eSewa: {"9819748466"}
              </p>
 
              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs text-left p-4 rounded-xl flex items-start gap-3 w-full">

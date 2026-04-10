@@ -32,29 +32,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
-type Teacher = {
+type Requester = {
   _id: string;
   name: string;
   email: string;
+  role?: "STUDENT" | "TEACHER" | "ADMIN";
   username?: string;
   userImage?: string;
 };
 
 type WithdrawalRequest = {
   _id: string;
-  teacherId: Teacher;
+  teacherId: Requester;
   pointsRequested: number;
   nprEquivalent: number;
   esewaNumber: string;
@@ -68,6 +58,14 @@ type WithdrawalRequest = {
 };
 
 type FilterStatus = "ALL" | "PENDING" | "COMPLETED" | "REJECTED";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Something went wrong";
+}
 
 export default function AdminWithdrawalsPage() {
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
@@ -96,8 +94,8 @@ export default function AdminWithdrawalsPage() {
       const data = await res.json();
       setRequests(data.requests);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error) {
+      setError(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -113,7 +111,7 @@ export default function AdminWithdrawalsPage() {
     const channel = pusher.subscribe(ADMIN_UPDATES_CHANNEL);
     channel.bind(ADMIN_WITHDRAWAL_EVENT, (data: { request: WithdrawalRequest }) => {
       setRequests((prev) => [data.request, ...prev.filter(r => r._id !== data.request._id)]);
-      toast.info(`New withdrawal request from ${data.request.teacherId?.name || 'Teacher'}`);
+      toast.info(`New withdrawal request from ${data.request.teacherId?.name || "User"}`);
     });
 
     return () => {
@@ -147,8 +145,8 @@ export default function AdminWithdrawalsPage() {
       setAmountSent("");
       setCompleteNote("");
       await fetchRequests();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setCompleting(false);
     }
@@ -176,8 +174,8 @@ export default function AdminWithdrawalsPage() {
       setRejectTarget(null);
       setRejectNote("");
       await fetchRequests();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setRejecting(false);
     }
@@ -205,7 +203,7 @@ export default function AdminWithdrawalsPage() {
           Withdrawal Requests
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage teacher withdrawal requests. Send money via eSewa and mark as complete.
+          Manage student and teacher withdrawal requests. Send money via eSewa and mark as complete.
         </p>
       </div>
 
@@ -282,7 +280,7 @@ export default function AdminWithdrawalsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-3">Teacher</th>
+                    <th className="px-3 py-3">Requester</th>
                     <th className="px-3 py-3">Points</th>
                     <th className="px-3 py-3">NPR</th>
                     <th className="px-3 py-3">eSewa</th>
@@ -305,6 +303,11 @@ export default function AdminWithdrawalsPage() {
                           <p className="text-xs text-muted-foreground">
                             {req.teacherId?.email}
                           </p>
+                          {req.teacherId?.role && (
+                            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                              {req.teacherId.role}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3 font-medium text-foreground">
@@ -379,7 +382,7 @@ export default function AdminWithdrawalsPage() {
             <DialogTitle>Mark Withdrawal as Complete</DialogTitle>
             <DialogDescription>
               Confirm you have sent NPR {completeTarget?.nprEquivalent} to eSewa
-              number {completeTarget?.esewaNumber} for teacher{" "}
+              number {completeTarget?.esewaNumber} for{" "}
               {completeTarget?.teacherId?.name}.
             </DialogDescription>
           </DialogHeader>
@@ -442,7 +445,7 @@ export default function AdminWithdrawalsPage() {
           <DialogHeader>
             <DialogTitle>Reject Withdrawal Request</DialogTitle>
             <DialogDescription>
-              This will NOT deduct any points from the teacher. They can submit a
+              This will NOT deduct any points from the requester. They can submit a
               new request afterward.
             </DialogDescription>
           </DialogHeader>

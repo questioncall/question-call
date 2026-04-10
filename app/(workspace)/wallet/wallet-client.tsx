@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
-  CoinsIcon,
+  AlertCircleIcon,
   BanknoteIcon,
-  StarIcon,
   CheckCircle2Icon,
   ClockIcon,
-  XCircleIcon,
-  WalletIcon,
-  TrendingUpIcon,
-  ShieldCheckIcon,
+  CoinsIcon,
+  CreditCardIcon,
   Loader2Icon,
-  AlertCircleIcon,
   SendIcon,
+  ShieldCheckIcon,
+  StarIcon,
+  TrendingUpIcon,
+  WalletIcon,
+  XCircleIcon,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,7 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 
@@ -41,6 +44,7 @@ type WithdrawalHistoryItem = {
 };
 
 type WalletData = {
+  role: "STUDENT" | "TEACHER";
   pointBalance: number;
   nprEquivalent: number;
   totalAnswered: number;
@@ -49,15 +53,24 @@ type WalletData = {
   pointToNprRate: number;
   minWithdrawalPoints: number;
   qualificationThreshold: number;
+  subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | null;
+  subscriptionEnd: string | null;
+  questionsAsked: number;
   withdrawalHistory: WithdrawalHistoryItem[];
 };
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Something went wrong";
+}
 
 export function WalletClient() {
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Withdraw form
   const [pointsToWithdraw, setPointsToWithdraw] = useState("");
   const [esewaNumber, setEsewaNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -68,12 +81,16 @@ export function WalletClient() {
     try {
       setLoading(true);
       const res = await fetch("/api/wallet");
-      if (!res.ok) throw new Error("Failed to fetch wallet data");
-      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch wallet data");
+      }
+
+      const data = (await res.json()) as WalletData;
       setWallet(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
+    } catch (fetchError) {
+      setError(getErrorMessage(fetchError));
     } finally {
       setLoading(false);
     }
@@ -88,7 +105,8 @@ export function WalletClient() {
     setWithdrawError(null);
     setWithdrawSuccess(false);
 
-    const points = parseInt(pointsToWithdraw, 10);
+    const points = Number.parseInt(pointsToWithdraw, 10);
+
     if (!points || points <= 0) {
       setWithdrawError("Enter a valid number of points.");
       return;
@@ -100,6 +118,7 @@ export function WalletClient() {
     }
 
     setSubmitting(true);
+
     try {
       const res = await fetch("/api/wallet/withdraw", {
         method: "POST",
@@ -110,15 +129,18 @@ export function WalletClient() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Withdrawal failed");
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        throw new Error(data.error || "Withdrawal failed");
+      }
 
       setWithdrawSuccess(true);
       setPointsToWithdraw("");
       setEsewaNumber("");
       await fetchWallet();
-    } catch (err: any) {
-      setWithdrawError(err.message);
+    } catch (submitError) {
+      setWithdrawError(getErrorMessage(submitError));
     } finally {
       setSubmitting(false);
     }
@@ -136,245 +158,274 @@ export function WalletClient() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <AlertCircleIcon className="size-8 text-destructive" />
-        <p className="text-sm text-muted-foreground">{error || "Failed to load wallet"}</p>
-        <Button variant="outline" size="sm" onClick={fetchWallet}>Retry</Button>
+        <p className="text-sm text-muted-foreground">
+          {error || "Failed to load wallet"}
+        </p>
+        <Button variant="outline" size="sm" onClick={fetchWallet}>
+          Retry
+        </Button>
       </div>
     );
   }
 
+  const isTeacher = wallet.role === "TEACHER";
   const hasPendingRequest = wallet.withdrawalHistory.some(
-    (w) => w.status === "PENDING"
+    (request) => request.status === "PENDING",
   );
-
-  const qualificationProgress = Math.min(
-    100,
-    (wallet.totalAnswered / wallet.qualificationThreshold) * 100
-  );
-
-  const nprPreview = parseInt(pointsToWithdraw, 10) * wallet.pointToNprRate || 0;
+  const withdrawalUnlocked = isTeacher ? wallet.isMonetized : true;
+  const qualificationProgress = wallet.qualificationThreshold
+    ? Math.min(100, (wallet.totalAnswered / wallet.qualificationThreshold) * 100)
+    : 0;
+  const nprPreview =
+    Number.parseInt(pointsToWithdraw, 10) * wallet.pointToNprRate || 0;
+  const subscriptionStatusLabel =
+    wallet.subscriptionStatus === "ACTIVE"
+      ? "Active"
+      : wallet.subscriptionStatus === "TRIAL"
+        ? "Trial"
+        : wallet.subscriptionStatus === "EXPIRED"
+          ? "Expired"
+          : "Not active";
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
           <WalletIcon className="mr-2 inline-block size-6 text-primary" />
-          Your Wallet
+          Wallet
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Track your points, earnings, and withdrawal requests.
+          {isTeacher
+            ? "Track your earned points, performance, and withdrawal requests."
+            : "Track your points, subscription status, and withdrawal requests."}
         </p>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2.5">
-                <CoinsIcon className="size-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Point Balance
-                </p>
-                <p className="text-xl font-bold text-foreground">
-                  {wallet.pointBalance} pts
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-emerald-500/10 p-2.5">
-                <BanknoteIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  NPR Equivalent
-                </p>
-                <p className="text-xl font-bold text-foreground">
-                  NPR {wallet.nprEquivalent}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-amber-500/10">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-500/10 p-2.5">
+        <SummaryCard
+          icon={<CoinsIcon className="size-5 text-primary" />}
+          iconClassName="bg-primary/10"
+          title="Point Balance"
+          value={`${wallet.pointBalance} pts`}
+          cardClassName="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
+        />
+        <SummaryCard
+          icon={
+            <BanknoteIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
+          }
+          iconClassName="bg-emerald-500/10"
+          title="NPR Equivalent"
+          value={`NPR ${wallet.nprEquivalent}`}
+          cardClassName="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
+        />
+        {isTeacher ? (
+          <>
+            <SummaryCard
+              icon={
                 <StarIcon className="size-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Avg Rating
-                </p>
-                <p className="text-xl font-bold text-foreground">
-                  {wallet.overallScore} / 5
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-violet-500/10">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-violet-500/10 p-2.5">
+              }
+              iconClassName="bg-amber-500/10"
+              title="Avg Rating"
+              value={`${wallet.overallScore} / 5`}
+              cardClassName="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-amber-500/10"
+            />
+            <SummaryCard
+              icon={
                 <TrendingUpIcon className="size-5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Total Answers
-                </p>
-                <p className="text-xl font-bold text-foreground">
-                  {wallet.totalAnswered}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              }
+              iconClassName="bg-violet-500/10"
+              title="Total Answers"
+              value={`${wallet.totalAnswered}`}
+              cardClassName="border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-violet-500/10"
+            />
+          </>
+        ) : (
+          <>
+            <SummaryCard
+              icon={
+                <CreditCardIcon className="size-5 text-sky-600 dark:text-sky-400" />
+              }
+              iconClassName="bg-sky-500/10"
+              title="Subscription"
+              value={subscriptionStatusLabel}
+              cardClassName="border-sky-500/20 bg-gradient-to-br from-sky-500/5 to-sky-500/10"
+            />
+            <SummaryCard
+              icon={
+                <TrendingUpIcon className="size-5 text-violet-600 dark:text-violet-400" />
+              }
+              iconClassName="bg-violet-500/10"
+              title="Questions Asked"
+              value={`${wallet.questionsAsked}`}
+              cardClassName="border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-violet-500/10"
+            />
+          </>
+        )}
       </div>
 
-      {/* Monetization Status */}
-      <Card className="border-border/70 shadow-sm">
-        <CardContent className="pt-5">
-          {wallet.isMonetized ? (
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-              <ShieldCheckIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
-              <div>
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                  Monetization Active
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  You earn points for every answer. Keep going!
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="size-4 text-amber-500" />
-                  <span className="text-sm font-medium text-foreground">
-                    Qualification Progress
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-primary">
-                  {wallet.totalAnswered} / {wallet.qualificationThreshold} answers
-                </span>
-              </div>
-              <Progress value={qualificationProgress} />
-              <p className="text-xs text-muted-foreground">
-                Complete {wallet.qualificationThreshold} answers to unlock earnings.
-                {wallet.qualificationThreshold - wallet.totalAnswered > 0 &&
-                  ` ${wallet.qualificationThreshold - wallet.totalAnswered} more to go!`}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Withdrawal Section */}
-      {wallet.isMonetized && (
+      {isTeacher ? (
         <Card className="border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">Request Withdrawal</CardTitle>
-            <CardDescription>
-              Minimum withdrawal: {wallet.minWithdrawalPoints} pts · Rate: {wallet.pointToNprRate} NPR/pt
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {hasPendingRequest ? (
-              <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                <ClockIcon className="size-5 text-amber-500" />
+          <CardContent className="pt-5">
+            {wallet.isMonetized ? (
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <ShieldCheckIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                    Pending Request
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    Monetization Active
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    You have a pending withdrawal request. Wait for admin to process it before requesting again.
+                    Your answer points are ready to cash out through the shared wallet flow.
                   </p>
                 </div>
-              </div>
-            ) : wallet.pointBalance < wallet.minWithdrawalPoints ? (
-              <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
-                <AlertCircleIcon className="size-5 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  You need at least {wallet.minWithdrawalPoints} points to withdraw. 
-                  Currently you have {wallet.pointBalance} points.
-                </p>
               </div>
             ) : (
-              <form onSubmit={handleWithdraw} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">
-                      Points to withdraw
-                    </label>
-                    <Input
-                      type="number"
-                      min={wallet.minWithdrawalPoints}
-                      max={wallet.pointBalance}
-                      placeholder={`Min ${wallet.minWithdrawalPoints}`}
-                      value={pointsToWithdraw}
-                      onChange={(e) => setPointsToWithdraw(e.target.value)}
-                      required
-                    />
-                    {nprPreview > 0 && (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                        You will receive: NPR {nprPreview}
-                      </p>
-                    )}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="size-4 text-amber-500" />
+                    <span className="text-sm font-medium text-foreground">
+                      Qualification Progress
+                    </span>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">
-                      Your eSewa number
-                    </label>
-                    <Input
-                      type="tel"
-                      placeholder="98XXXXXXXX"
-                      value={esewaNumber}
-                      onChange={(e) => setEsewaNumber(e.target.value)}
-                      required
-                    />
-                  </div>
+                  <span className="text-sm font-medium text-primary">
+                    {wallet.totalAnswered} / {wallet.qualificationThreshold} answers
+                  </span>
                 </div>
-
-                {withdrawError && (
-                  <p className="text-sm text-destructive">{withdrawError}</p>
-                )}
-                {withdrawSuccess && (
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                    ✅ Withdrawal request submitted! Admin will process it shortly.
-                  </p>
-                )}
-
-                <Button type="submit" disabled={submitting} className="gap-2">
-                  {submitting ? (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
-                    <SendIcon className="size-4" />
-                  )}
-                  Request Withdrawal
-                </Button>
-              </form>
+                <Progress value={qualificationProgress} />
+                <p className="text-xs text-muted-foreground">
+                  Complete {wallet.qualificationThreshold} answers to unlock withdrawals.
+                  {wallet.qualificationThreshold - wallet.totalAnswered > 0
+                    ? ` ${wallet.qualificationThreshold - wallet.totalAnswered} more to go.`
+                    : ""}
+                </p>
+              </div>
             )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Subscription</CardTitle>
+            <CardDescription>
+              Subscription plans stay on their own student route, while your points and withdrawals live here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Status: {subscriptionStatusLabel}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {wallet.subscriptionEnd
+                  ? `Access runs until ${new Date(wallet.subscriptionEnd).toLocaleDateString()}.`
+                  : "Choose a plan when you are ready to renew or upgrade."}
+              </p>
+            </div>
+            <Button asChild>
+              <Link href="/subscription">Manage Subscription</Link>
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Withdrawal History */}
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Request Withdrawal</CardTitle>
+          <CardDescription>
+            Minimum withdrawal: {wallet.minWithdrawalPoints} pts. Conversion rate:{" "}
+            {wallet.pointToNprRate} NPR per point.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!withdrawalUnlocked ? (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+              <AlertCircleIcon className="size-5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Teacher withdrawals unlock after you complete {wallet.qualificationThreshold} answers.
+              </p>
+            </div>
+          ) : hasPendingRequest ? (
+            <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <ClockIcon className="size-5 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  Pending Request
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  You already have a pending withdrawal request. Wait for admin to process it before creating another one.
+                </p>
+              </div>
+            </div>
+          ) : wallet.pointBalance < wallet.minWithdrawalPoints ? (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+              <AlertCircleIcon className="size-5 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                You need at least {wallet.minWithdrawalPoints} points to withdraw. You currently have {wallet.pointBalance} points.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleWithdraw} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Points to withdraw
+                  </label>
+                  <Input
+                    type="number"
+                    min={wallet.minWithdrawalPoints}
+                    max={wallet.pointBalance}
+                    placeholder={`Min ${wallet.minWithdrawalPoints}`}
+                    value={pointsToWithdraw}
+                    onChange={(e) => setPointsToWithdraw(e.target.value)}
+                    required
+                  />
+                  {nprPreview > 0 ? (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      You will receive NPR {nprPreview}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Your eSewa number
+                  </label>
+                  <Input
+                    type="tel"
+                    placeholder="98XXXXXXXX"
+                    value={esewaNumber}
+                    onChange={(e) => setEsewaNumber(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {withdrawError ? (
+                <p className="text-sm text-destructive">{withdrawError}</p>
+              ) : null}
+              {withdrawSuccess ? (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                  Withdrawal request submitted. Admin will process it shortly.
+                </p>
+              ) : null}
+
+              <Button type="submit" disabled={submitting} className="gap-2">
+                {submitting ? (
+                  <Loader2Icon className="size-4 animate-spin" />
+                ) : (
+                  <SendIcon className="size-4" />
+                )}
+                Request Withdrawal
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Withdrawal History</CardTitle>
           <CardDescription>
-            Track all your withdrawal requests and their status.
+            Track all of your withdrawal requests and their current status.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -396,28 +447,28 @@ export function WalletClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {wallet.withdrawalHistory.map((w) => (
+                  {wallet.withdrawalHistory.map((request) => (
                     <tr
-                      key={w._id}
+                      key={request._id}
                       className="border-b border-border/50 transition-colors hover:bg-muted/30"
                     >
                       <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
-                        {new Date(w.createdAt).toLocaleDateString()}
+                        {new Date(request.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-3 py-3 font-medium text-foreground">
-                        {w.pointsRequested}
+                        {request.pointsRequested}
                       </td>
                       <td className="px-3 py-3 text-foreground">
-                        {w.nprEquivalent}
+                        {request.nprEquivalent}
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">
-                        {w.esewaNumber}
+                        {request.esewaNumber}
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">
-                        {w.transactionId || "—"}
+                        {request.transactionId || "-"}
                       </td>
                       <td className="px-3 py-3">
-                        <WithdrawalStatusBadge status={w.status} />
+                        <WithdrawalStatusBadge status={request.status} />
                       </td>
                     </tr>
                   ))}
@@ -431,6 +482,36 @@ export function WalletClient() {
   );
 }
 
+function SummaryCard({
+  title,
+  value,
+  icon,
+  iconClassName,
+  cardClassName,
+}: {
+  title: string;
+  value: string;
+  icon: ReactNode;
+  iconClassName: string;
+  cardClassName: string;
+}) {
+  return (
+    <Card className={cardClassName}>
+      <CardContent className="pt-5">
+        <div className="flex items-center gap-3">
+          <div className={`rounded-lg p-2.5 ${iconClassName}`}>{icon}</div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {title}
+            </p>
+            <p className="text-xl font-bold text-foreground">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function WithdrawalStatusBadge({ status }: { status: string }) {
   if (status === "COMPLETED") {
     return (
@@ -440,6 +521,7 @@ function WithdrawalStatusBadge({ status }: { status: string }) {
       </span>
     );
   }
+
   if (status === "REJECTED") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
@@ -448,6 +530,7 @@ function WithdrawalStatusBadge({ status }: { status: string }) {
       </span>
     );
   }
+
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
       <ClockIcon className="size-3" />

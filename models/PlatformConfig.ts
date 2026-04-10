@@ -12,7 +12,7 @@
  */
 
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
-import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL } from "@/lib/config";
+import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL, PEER_COMMENTS } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
 const platformConfigSchema = new Schema(
@@ -119,6 +119,23 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: WITHDRAWAL.MIN_WITHDRAWAL_POINTS,
       min: 1,
+    },
+
+    // ─── Peer Comments Config (Phase 8) ──────────────────────────
+    peerCommentPointThreshold: {
+      type: Number,
+      default: PEER_COMMENTS.POINT_THRESHOLD,
+      min: 1,
+    },
+    peerCommentMinPointReward: {
+      type: Number,
+      default: PEER_COMMENTS.MIN_POINT_REWARD,
+      min: 0,
+    },
+    peerCommentMaxPointReward: {
+      type: Number,
+      default: PEER_COMMENTS.MAX_POINT_REWARD,
+      min: 0,
     },
   },
   {

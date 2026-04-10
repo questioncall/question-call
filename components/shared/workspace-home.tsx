@@ -14,7 +14,10 @@ import {
   StarIcon,
   ThumbsUpIcon,
   HelpCircleIcon,
+  SendIcon,
 } from "lucide-react";
+
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +39,6 @@ import {
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { getChannelPath } from "@/lib/user-paths";
 import {
-  hydrateFeed,
   prependFeedQuestion,
   setFeedConnectionStatus,
   setFeedQuestions,
@@ -115,6 +117,10 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
+  const [commentInput, setCommentInput] = useState<Record<string, string>>({});
+  const [isSubmittingComment, setIsSubmittingComment] = useState<string | null>(null);
 
   const toggleAnswer = (questionId: string) => {
     setExpandedAnswers((prev) => {
@@ -123,6 +129,73 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       else next.add(questionId);
       return next;
     });
+  };
+
+  const fetchComments = async (questionId: string) => {
+    try {
+      const res = await fetch(`/api/questions/${questionId}/comments`);
+      if (res.ok) {
+        const data = await res.json();
+        setCommentsMap(prev => ({ ...prev, [questionId]: data }));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleComments = (questionId: string) => {
+    setExpandedComments((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) {
+        next.delete(questionId);
+      } else {
+        next.add(questionId);
+        if (!commentsMap[questionId]) {
+          fetchComments(questionId);
+        }
+      }
+      return next;
+    });
+  };
+
+  const submitComment = async (questionId: string) => {
+    const text = commentInput[questionId]?.trim();
+    if (!text) return;
+
+    setIsSubmittingComment(questionId);
+    try {
+      const res = await fetch(`/api/questions/${questionId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setCommentsMap(prev => {
+          const existing = prev[questionId] || [];
+          return { ...prev, [questionId]: [data.comment, ...existing] };
+        });
+        setCommentInput(prev => ({ ...prev, [questionId]: "" }));
+        
+        // Optimistically update the comment count on the question feed item
+        const qIndex = feedItems.findIndex(q => q.id === questionId);
+        if (qIndex >= 0) {
+          const updatedQ = { ...feedItems[qIndex], commentCount: (feedItems[qIndex].commentCount || 0) + 1 };
+          dispatch(upsertFeedQuestion(updatedQ));
+        }
+
+        if (data.milestoneReached) {
+          toast.success(data.milestoneMessage || `Milestone! You earned ${data.pointsAwarded} points.`);
+        }
+      } else {
+        toast.error(data.error || "Failed to post comment");
+      }
+    } catch (err) {
+      toast.error("Failed to post comment");
+    } finally {
+      setIsSubmittingComment(null);
+    }
   };
 
   // Fetch feed from API on mount
@@ -230,7 +303,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
 
     // Optimistically calculate new reactions
     const userReactionIndex = targetQuestion.reactions.findIndex(r => r.userId === userId);
-    let newReactions = [...targetQuestion.reactions];
+    const newReactions = [...targetQuestion.reactions];
 
     if (userReactionIndex >= 0) {
       if (newReactions[userReactionIndex].type === type) {
@@ -242,7 +315,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       }
     } else {
       // No prior reaction, add it
-      newReactions.push({ userId, type } as any);
+      newReactions.push({ userId, type });
     }
 
     const optimisticQuestion = { ...targetQuestion, reactions: newReactions };
@@ -297,7 +370,10 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
           <CardHeader>
             <CardTitle>Home feed</CardTitle>
             <CardDescription>
-              Welcome back{typeof name === "string" && name ? `, ${name}` : ""}. Browse questions, react, or accept one to start helping.
+              Welcome back{typeof name === "string" && name ? `, ${name}` : ""}.{" "}
+              {role === "TEACHER"
+                ? "Browse questions, react, or accept one to start helping."
+                : "Browse questions, react, and keep an eye on your active threads."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -356,7 +432,11 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
           const isAccepted = item.status === "ACCEPTED";
           const isSolved = item.status === "SOLVED";
           const isOwnQuestion = userId === item.askerId;
-          const canAccept = !isOwnQuestion && (item.status === "OPEN" || item.status === "RESET");
+          const canAccept = !isOwnQuestion && (item.status === "OPEN" || item.status === "RESET") && role === "TEACHER";
+          const canOpenThread = isOwnQuestion && Boolean(item.channelId);
+          const canComment = !isOwnQuestion;
+          const isExpandedComments = expandedComments.has(item.id);
+          const comments = commentsMap[item.id] || [];
           const isAcceptLoading = acceptingId === item.id;
 
           // Determine which reaction the current user has (if any)
@@ -584,6 +664,14 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                     {item.answerCount} answers
                   </span>
 
+                  {/* Comment count toggle */}
+                  <button
+                    onClick={() => toggleComments(item.id)}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    💬 {item.commentCount} comments
+                  </button>
+
                   {/* Accept button */}
                   {canAccept && (
                     <Button
@@ -600,10 +688,22 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                     </Button>
                   )}
 
+                  {/* Comment button */}
+                  {canComment && (
+                    <Button
+                      onClick={() => toggleComments(item.id)}
+                      size="sm"
+                      variant={isExpandedComments ? "secondary" : "outline"}
+                    >
+                      <MessageSquareIcon className="mr-1 size-3.5" />
+                      Comment
+                    </Button>
+                  )}
+
                   {/* Open thread link */}
-                  {isOwnQuestion && (
+                  {canOpenThread && (
                     <Button asChild size="sm" variant="ghost">
-                      <Link href={getChannelPath(item.id)}>
+                      <Link href={getChannelPath(item.channelId)}>
                         Open thread
                         <ArrowUpRightIcon />
                       </Link>
@@ -611,6 +711,73 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
                   )}
                 </div>
               </CardFooter>
+              
+              {/* Expanded Comments Section */}
+              {isExpandedComments && (
+                <div className="bg-muted/10 border-t border-border/50 px-6 py-4 space-y-4">
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                    {comments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">No comments yet. Be the first!</p>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c._id} className="flex gap-3">
+                          {c.studentId?.userImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.studentId.userImage} alt="User" className="size-7 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                              {(c.studentId?.name || "U").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 bg-background rounded-2xl rounded-tl-none border border-border/60 px-4 py-2.5">
+                            <div className="flex items-baseline justify-between gap-2 mb-1">
+                              <span className="text-sm font-semibold">{c.studentId?.name || "Anonymous"}</span>
+                              <span className="text-[10px] text-muted-foreground">{formatTimeAgo(c.createdAt)}</span>
+                            </div>
+                            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Add Comment Input */}
+                  {canComment && (
+                    <div className="flex gap-3 mt-4">
+                      <div className="flex-1 relative">
+                        <textarea
+                          placeholder="Write a comment..."
+                          className="w-full resize-none rounded-xl border border-border bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary min-h-[44px] pr-12"
+                          rows={1}
+                          value={commentInput[item.id] || ""}
+                          onChange={(e) => {
+                            setCommentInput(prev => ({ ...prev, [item.id]: e.target.value }));
+                            e.target.style.height = "auto";
+                            e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              submitComment(item.id);
+                            }
+                          }}
+                        />
+                        <button
+                          className="absolute right-2 top-1.5 p-1.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                          disabled={isSubmittingComment === item.id || !commentInput[item.id]?.trim()}
+                          onClick={() => submitComment(item.id)}
+                        >
+                          {isSubmittingComment === item.id ? (
+                            <Loader2Icon className="size-4 animate-spin" />
+                          ) : (
+                            <SendIcon className="size-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           );
         })}

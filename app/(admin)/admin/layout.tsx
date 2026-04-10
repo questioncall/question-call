@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/shared/logo";
@@ -53,7 +52,7 @@ export default async function AdminPortalLayout({
     redirect("/");
   }
 
-if (session.user.role !== "ADMIN") {
+  if (session.user.role !== "ADMIN") {
     redirect(getProfilePath(session.user));
   }
 
@@ -64,8 +63,8 @@ if (session.user.role !== "ADMIN") {
       <header className="border-b border-border bg-background">
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-<div>
-              <Logo />
+            <div>
+              <Logo href="/admin/pricing" prefetch={false} />
               <p className="mt-3 text-sm text-muted-foreground">Admin portal</p>
             </div>
             <div className="flex items-center gap-4">

@@ -3,11 +3,34 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitQuestionUpdated, emitChannelStatusUpdate, emitNotification } from "@/lib/pusher/pusherServer";
 import Channel from "@/models/Channel";
-import Question from "@/models/Question";
 import User from "@/models/User";
 import Answer from "@/models/Answer";
 import Notification from "@/models/Notification";
 import type { FeedQuestion } from "@/types/question";
+
+type PopulatedQuestion = {
+  _id: { toString(): string };
+  askerId?: { toString(): string } | string | null;
+  title: string;
+  body: string;
+  answerFormat: FeedQuestion["answerFormat"];
+  answerVisibility: FeedQuestion["answerVisibility"];
+  subject?: string;
+  stream?: string;
+  level?: string;
+  resetCount: number;
+  reactions?: Array<{
+    userId?: { toString(): string } | string | null;
+    type: string;
+  }>;
+  acceptedById?: { toString(): string } | string | null;
+  acceptedAt?: Date | null;
+  answerId?: { toString(): string } | string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  status: FeedQuestion["status"];
+  save: () => Promise<unknown>;
+};
 
 /** Apply Bayesian rating to teacher. Seed: 5 votes of 1.0 for bottom-up growth. */
 async function applyBayesianRating(teacherId: string, rating: number) {
@@ -78,7 +101,7 @@ export async function POST(request: Request) {
         existingAnswer.rating = AUTO_CLOSE_RATING;
         await existingAnswer.save();
 
-        const question = channel.questionId as any;
+        const question = channel.questionId as PopulatedQuestion | null;
         if (question) {
           question.status = "SOLVED";
           if (existingAnswer.isPublic) question.answerId = existingAnswer._id;
@@ -86,6 +109,7 @@ export async function POST(request: Request) {
 
           await emitQuestionUpdated({
             id: question._id.toString(),
+            channelId: channel._id.toString(),
             askerId: question.askerId?.toString() || "",
             askerName: "",
             title: question.title,
@@ -103,6 +127,7 @@ export async function POST(request: Request) {
             acceptedByName: null,
             answerCount: 1,
             reactionCount: 0,
+            commentCount: 0,
             createdAt: new Date(question.createdAt).toISOString(),
             updatedAt: new Date().toISOString(),
           }).catch(() => {});
@@ -147,7 +172,7 @@ export async function POST(request: Request) {
       if (penaltyNotif) await emitNotification(channel.acceptorId._id.toString(), penaltyNotif);
 
       // Reset the question back to OPEN feed
-      const question = channel.questionId as any;
+      const question = channel.questionId as PopulatedQuestion | null;
       if (question) {
         question.status = "RESET";
         question.acceptedById = null;
@@ -166,6 +191,7 @@ export async function POST(request: Request) {
 
         const feedQuestion: FeedQuestion = {
           id: question._id.toString(),
+          channelId: channel._id.toString(),
           askerId: asker._id.toString(),
           askerName: asker.name || "Anonymous",
           askerUsername: asker.username || undefined,
@@ -179,7 +205,7 @@ export async function POST(request: Request) {
           stream: question.stream || undefined,
           level: question.level || undefined,
           resetCount: question.resetCount,
-          reactions: reactions.map((r: { userId: { toString(): string }; type: string }) => ({
+          reactions: reactions.map((r: { userId?: { toString(): string } | string | null; type: string }) => ({
             userId: r.userId?.toString() || "",
             type: r.type as "like" | "insightful" | "same_doubt",
           })),
@@ -188,6 +214,7 @@ export async function POST(request: Request) {
           acceptedByName: null,
           answerCount: 0,
           reactionCount: reactions.length,
+          commentCount: 0,
           createdAt: new Date(question.createdAt).toISOString(),
           updatedAt: new Date(question.updatedAt).toISOString(),
         };

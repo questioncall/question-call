@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { REACTION_TYPES } from "@/lib/question-types";
 import { emitQuestionUpdated } from "@/lib/pusher/pusherServer";
+import Channel from "@/models/Channel";
 import Question from "@/models/Question";
 import type { FeedQuestion, ReactToQuestionPayload } from "@/types/question";
 
@@ -75,9 +76,14 @@ export async function POST(request: Request, context: RouteParams) {
     const acceptor = question.acceptedById
       ? { _id: question.acceptedById, name: undefined as string | undefined }
       : null;
+    const latestChannel = await Channel.findOne({ questionId: question._id })
+      .sort({ updatedAt: -1, openedAt: -1, createdAt: -1 })
+      .select("_id")
+      .lean();
 
     const feedQuestion: FeedQuestion = {
       id: question._id.toString(),
+      channelId: latestChannel?._id?.toString() ?? null,
       askerId: asker._id.toString(),
       askerName: asker.name || "Anonymous",
       askerUsername: asker.username || undefined,
@@ -102,6 +108,7 @@ export async function POST(request: Request, context: RouteParams) {
       acceptedByName: acceptor?.name || null,
       answerCount: 0,
       reactionCount: reactions.length,
+      commentCount: 0,
       createdAt: question.createdAt.toISOString(),
       updatedAt: question.updatedAt.toISOString(),
     };

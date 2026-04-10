@@ -44,26 +44,32 @@ export async function POST(
       );
     }
 
-    // Deduct points from teacher
-    const teacher = await User.findById(withdrawalRequest.teacherId);
+    const requester = await User.findById(withdrawalRequest.teacherId).select(
+      "role points pointBalance",
+    );
 
-    if (!teacher) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
+    if (!requester) {
+      return NextResponse.json({ error: "Requester not found" }, { status: 404 });
     }
 
-    if ((teacher.pointBalance ?? 0) < withdrawalRequest.pointsRequested) {
+    const balanceField =
+      requester.role === "STUDENT" ? "points" : "pointBalance";
+    const currentBalance =
+      requester.role === "STUDENT"
+        ? requester.points ?? 0
+        : requester.pointBalance ?? 0;
+
+    if (currentBalance < withdrawalRequest.pointsRequested) {
       return NextResponse.json(
-        { error: "Teacher no longer has enough points (balance may have changed)" },
+        { error: "Requester no longer has enough points (balance may have changed)" },
         { status: 400 }
       );
     }
 
-    // Atomic deduction to prevent race conditions
     await User.findByIdAndUpdate(withdrawalRequest.teacherId, {
-      $inc: { pointBalance: -withdrawalRequest.pointsRequested },
+      $inc: { [balanceField]: -withdrawalRequest.pointsRequested },
     });
 
-    // Mark request as COMPLETED with admin-filled details
     withdrawalRequest.status = "COMPLETED";
     withdrawalRequest.transactionId = transactionId;
     withdrawalRequest.amountSent = amountSent;
@@ -72,7 +78,6 @@ export async function POST(
     withdrawalRequest.adminNote = adminNote || null;
     await withdrawalRequest.save();
 
-    // Notify teacher
     const notif = await Notification.create({
       userId: withdrawalRequest.teacherId,
       type: "PAYMENT",

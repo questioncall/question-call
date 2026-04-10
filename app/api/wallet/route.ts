@@ -3,26 +3,41 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getPlatformConfig } from "@/models/PlatformConfig";
+import Question from "@/models/Question";
 import User from "@/models/User";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
-import { getPlatformConfig } from "@/models/PlatformConfig";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id || session.user.role !== "TEACHER") {
+    if (
+      !session?.user?.id ||
+      (session.user.role !== "STUDENT" && session.user.role !== "TEACHER")
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const teacher = await User.findById(session.user.id).select(
-      "pointBalance totalAnswered isMonetized overallRatingSum overallRatingCount overallScore"
+    const user = await User.findById(session.user.id).select(
+      [
+        "role",
+        "points",
+        "pointBalance",
+        "totalAnswered",
+        "isMonetized",
+        "overallRatingSum",
+        "overallRatingCount",
+        "overallScore",
+        "subscriptionStatus",
+        "subscriptionEnd",
+      ].join(" ")
     );
 
-    if (!teacher) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const config = await getPlatformConfig();
@@ -31,20 +46,34 @@ export async function GET() {
       teacherId: session.user.id,
     }).sort({ createdAt: -1 });
 
+    const pointBalance =
+      session.user.role === "TEACHER"
+        ? user.pointBalance ?? 0
+        : user.points ?? 0;
+
     const overallScore =
-      teacher.overallRatingCount > 0
-        ? (teacher.overallRatingSum / teacher.overallRatingCount).toFixed(1)
-        : teacher.overallScore?.toFixed(1) ?? "0.0";
+      (user.overallRatingCount ?? 0) > 0
+        ? ((user.overallRatingSum ?? 0) / (user.overallRatingCount ?? 0)).toFixed(1)
+        : user.overallScore?.toFixed(1) ?? "0.0";
+
+    const questionsAsked =
+      session.user.role === "STUDENT"
+        ? await Question.countDocuments({ askerId: session.user.id })
+        : 0;
 
     return NextResponse.json({
-      pointBalance: teacher.pointBalance ?? 0,
-      nprEquivalent: (teacher.pointBalance ?? 0) * config.pointToNprRate,
-      totalAnswered: teacher.totalAnswered ?? 0,
-      isMonetized: teacher.isMonetized ?? false,
+      role: session.user.role,
+      pointBalance,
+      nprEquivalent: pointBalance * config.pointToNprRate,
+      totalAnswered: user.totalAnswered ?? 0,
+      isMonetized: user.isMonetized ?? false,
       overallScore,
       pointToNprRate: config.pointToNprRate,
       minWithdrawalPoints: config.minWithdrawalPoints,
       qualificationThreshold: config.qualificationThreshold,
+      subscriptionStatus: user.subscriptionStatus ?? null,
+      subscriptionEnd: user.subscriptionEnd ?? null,
+      questionsAsked,
       withdrawalHistory,
     });
   } catch (error) {

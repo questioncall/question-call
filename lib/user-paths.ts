@@ -80,11 +80,15 @@ export function getSubscriptionPath(user?: UserPathInput | null) {
     return "/admin/pricing";
   }
 
-  if (user?.role === "TEACHER") {
-    return "/wallet";
+  return "/subscription";
+}
+
+export function getWalletPath(user?: UserPathInput | null) {
+  if (user?.role === "ADMIN") {
+    return "/admin/pricing";
   }
 
-  return "/subscription";
+  return "/wallet";
 }
 
 export function getMessagesPath(user?: UserPathInput | null) {

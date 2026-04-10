@@ -197,3 +197,17 @@ export const PLATFORM = {
   /** Max file upload size in MB (for screenshots, answers, etc.) */
   MAX_UPLOAD_SIZE_MB: 10,
 } as const;
+
+// ─────────────────────────────────────────────────────────────────────
+// 7. PEER COMMENTS & MILESTONE POINTS (Phase 8)
+// ─────────────────────────────────────────────────────────────────────
+
+export const PEER_COMMENTS = {
+  /** Unique questions commented on before AI evaluation triggers */
+  POINT_THRESHOLD: 10,
+  /** Minimum points AI can award per milestone */
+  MIN_POINT_REWARD: 0.5,
+  /** Maximum points AI can award per milestone */
+  MAX_POINT_REWARD: 1.0,
+} as const;
+

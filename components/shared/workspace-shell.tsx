@@ -13,6 +13,7 @@ import {
   SparklesIcon,
   TrophyIcon,
   UserCircle2Icon,
+  WalletIcon,
 } from "lucide-react";
 
 import { AuthenticatedHeader } from "@/components/shared/authenticated-header";
@@ -43,6 +44,7 @@ import {
   getProfilePath,
   getSettingsPath,
   getSubscriptionPath,
+  getWalletPath,
   getUserHandle,
 } from "@/lib/user-paths";
 import { setProfile } from "@/store/features/user/user-slice";
@@ -74,6 +76,18 @@ type WorkspaceShellProps = {
   user: WorkspaceUser;
   defaultOpen?: boolean;
   children: ReactNode;
+};
+
+type ChannelUpdatedPayload = {
+  channelId: string;
+  unreadCountCleared?: boolean;
+  unreadCountIncrement?: number;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
+};
+
+type NewChannelPayload = {
+  channel?: ChannelListItem;
 };
 
 export function WorkspaceShell({ user, defaultOpen = true, children }: WorkspaceShellProps) {
@@ -116,11 +130,11 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     const userChannel = getUserPusherName(user.id);
     const channel = pusherClient.subscribe(userChannel);
 
-    channel.bind(CHANNEL_UPDATED_EVENT, (data: any) => {
+    channel.bind(CHANNEL_UPDATED_EVENT, (data: ChannelUpdatedPayload) => {
       if (data.unreadCountCleared) {
         dispatch(clearChannelUnread(data.channelId));
       } else {
-        if (data.lastMessagePreview) {
+        if (data.lastMessagePreview && data.lastMessageAt) {
           dispatch(
             updateChannelPreview({
               channelId: data.channelId,
@@ -144,7 +158,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       }
     });
 
-    channel.bind(NEW_CHANNEL_EVENT, (data: any) => {
+    channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
       if (data.channel) {
         dispatch(upsertChannelItem(data.channel));
       }
@@ -202,11 +216,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
   const profileHref = getProfilePath(resolvedUser);
   const settingsHref = getSettingsPath(resolvedUser);
   const subscriptionHref = getSubscriptionPath(resolvedUser);
-  const billingLabel = resolvedUser.role === "TEACHER" ? "Wallet" : "Subscription";
-  const billingBadge = resolvedUser.role === "STUDENT" ? "plan" : "wallet";
-  const isBillingActive = resolvedUser.role === "TEACHER"
-    ? pathname.startsWith("/wallet")
-    : pathname.startsWith("/subscription");
+  const walletHref = getWalletPath(resolvedUser);
   const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
   const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
   const useModalForPrimary = resolvedUser.role === "STUDENT";
@@ -268,13 +278,24 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       isActive: pathname.startsWith("/settings"),
       collapseSidebarOnClick: true,
     },
+    ...(resolvedUser.role === "STUDENT"
+      ? [{
+          href: subscriptionHref,
+          icon: CreditCardIcon,
+          label: "Subscription",
+          badge: "plan",
+          badgeClassName: "text-muted-foreground bg-muted",
+          isActive: pathname.startsWith("/subscription"),
+          collapseSidebarOnClick: true,
+        }]
+      : []),
     {
-      href: subscriptionHref,
-      icon: CreditCardIcon,
-      label: billingLabel,
-      badge: billingBadge,
+      href: walletHref,
+      icon: WalletIcon,
+      label: "Wallet",
+      badge: resolvedUser.role === "STUDENT" ? "points" : "cashout",
       badgeClassName: "text-muted-foreground bg-muted",
-      isActive: isBillingActive,
+      isActive: pathname.startsWith("/wallet"),
       collapseSidebarOnClick: true,
     },
   ] as const;

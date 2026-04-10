@@ -122,6 +122,7 @@ export async function POST(_request: Request, context: RouteParams) {
 
     const feedQuestion: FeedQuestion = {
       id: question._id.toString(),
+      channelId: channel._id.toString(),
       askerId: asker._id.toString(),
       askerName: asker.name || "Anonymous",
       askerUsername: asker.username || undefined,
@@ -144,6 +145,7 @@ export async function POST(_request: Request, context: RouteParams) {
       acceptedByName: acceptorName,
       answerCount: 0,
       reactionCount: reactions.length,
+      commentCount: 0,
       createdAt: question.createdAt.toISOString(),
       updatedAt: question.updatedAt.toISOString(),
     };

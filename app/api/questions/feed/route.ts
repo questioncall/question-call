@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
 import Answer from "@/models/Answer";
+import Channel from "@/models/Channel";
+import PeerComment from "@/models/PeerComment";
 import type { FeedQuestion } from "@/types/question";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,34 @@ export async function GET() {
       .populate("acceptedById", "name username")
       .populate("answerId") // populate linked public answer
       .lean();
+
+    const questionIds = questions.map((question) => question._id);
+    const latestChannels = questionIds.length
+      ? await Channel.find({ questionId: { $in: questionIds } })
+          .sort({ updatedAt: -1, openedAt: -1, createdAt: -1 })
+          .select("_id questionId")
+          .lean()
+      : [];
+
+    const channelIdByQuestionId = new Map<string, string>();
+    for (const channel of latestChannels) {
+      const questionId = channel.questionId.toString();
+      if (!channelIdByQuestionId.has(questionId)) {
+        channelIdByQuestionId.set(questionId, channel._id.toString());
+      }
+    }
+
+    const commentCounts = questionIds.length
+      ? await PeerComment.aggregate([
+          { $match: { questionId: { $in: questionIds } } },
+          { $group: { _id: "$questionId", count: { $sum: 1 } } }
+        ])
+      : [];
+      
+    const commentCountMap = new Map<string, number>();
+    for (const cc of commentCounts) {
+      commentCountMap.set(cc._id.toString(), cc.count);
+    }
 
     const feedQuestions: FeedQuestion[] = await Promise.all(
       questions.map(async (q) => {
@@ -72,6 +102,7 @@ export async function GET() {
 
         return {
           id: q._id.toString(),
+          channelId: channelIdByQuestionId.get(q._id.toString()) ?? null,
           askerId: asker?._id?.toString() || "",
           askerName: asker?.name || "Anonymous",
           askerUsername: asker?.username || undefined,
@@ -95,6 +126,7 @@ export async function GET() {
           acceptedByName: acceptor?.name || null,
           answerCount: linkedAnswer ? 1 : 0,
           reactionCount: reactions.length,
+          commentCount: commentCountMap.get(q._id.toString()) || 0,
           createdAt: new Date(q.createdAt).toISOString(),
           updatedAt: new Date(q.updatedAt).toISOString(),
           ...(answerData ? { answer: answerData } : {}),

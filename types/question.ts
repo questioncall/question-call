@@ -47,11 +47,13 @@ export type QuestionRecordShape = {
 
 /** Extended shape used in the feed UI */
 export type FeedQuestion = QuestionRecordShape & {
+  channelId?: string | null;
   askerName: string;
   askerUsername?: string;
   askerImage?: string;
   answerCount: number;
   reactionCount: number;
+  commentCount: number;
   acceptedByName?: string | null;
   previewAuthor?: string;
   previewText?: string;

@@ -18,6 +18,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     reactions: [],
     answerCount: 8,
     reactionCount: 21,
+    commentCount: 0,
     previewAuthor: "Rohit Sir",
     previewText:
       "Think of each branch as a different path width. Lower resistance behaves like a wider road, so more charge moves there in the same time.",
@@ -42,6 +43,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     reactions: [],
     answerCount: 3,
     reactionCount: 12,
+    commentCount: 0,
     previewAuthor: "Meera Tutor",
     previewText:
       "I would sketch the square blocks first, then show how the missing corner becomes the constant you add and subtract.",
@@ -66,6 +68,7 @@ export const sampleFeedQuestions: FeedQuestion[] = [
     reactions: [],
     answerCount: 5,
     reactionCount: 17,
+    commentCount: 0,
     previewAuthor: "Kiran Faculty",
     previewText:
       "Start by separating oxidation and reduction clearly, then equalize oxygen with water and hydrogen with H+ before balancing charge.",

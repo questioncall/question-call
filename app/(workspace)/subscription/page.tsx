@@ -5,9 +5,17 @@ import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 
 export default async function SubscriptionPage() {
   const session = await getSafeServerSession();
-  
-  if (session?.user?.role === "TEACHER") {
+
+  if (!session?.user) {
+    redirect("/auth/signin");
+  }
+
+  if (session.user.role === "TEACHER") {
     redirect("/wallet");
+  }
+
+  if (session.user.role === "ADMIN") {
+    redirect("/admin/pricing");
   }
 
   const config = await getPlatformConfig();

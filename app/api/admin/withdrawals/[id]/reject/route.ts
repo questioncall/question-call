@@ -38,7 +38,6 @@ export async function POST(
     withdrawalRequest.adminNote = adminNote || null;
     await withdrawalRequest.save();
 
-    // Notify teacher — points are NOT deducted on rejection
     const notif = await Notification.create({
       userId: withdrawalRequest.teacherId,
       type: "PAYMENT",

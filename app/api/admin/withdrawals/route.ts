@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const filter = status ? { status } : {};
 
     const requests = await WithdrawalRequest.find(filter)
-      .populate("teacherId", "name email username userImage")
+      .populate("teacherId", "name email username userImage role")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ requests });
