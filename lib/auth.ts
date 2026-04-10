@@ -91,6 +91,7 @@ export const authOptions: NextAuthOptions = {
           email: string;
           role: UserRole;
           username?: string;
+          isMasterAdmin?: boolean;
         } | null
       > {
         const email = credentials?.email?.trim().toLowerCase();
@@ -120,6 +121,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           username: user.username,
+          isMasterAdmin: user.isMasterAdmin,
         };
       },
     }),
@@ -130,6 +132,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.username = user.username;
+        token.isMasterAdmin = (user as any).isMasterAdmin;
       }
 
       return token;
@@ -140,6 +143,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as UserRole;
         session.user.username =
           typeof token.username === "string" ? token.username : undefined;
+        session.user.isMasterAdmin = token.isMasterAdmin as boolean;
       }
 
       return session;

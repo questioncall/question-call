@@ -38,6 +38,10 @@ const userSchema = new Schema(
       enum: ["STUDENT", "TEACHER", "ADMIN"],
       required: true,
     },
+    isMasterAdmin: {
+      type: Boolean,
+      default: false,
+    },
     points: {
       type: Number,
       default: 0,

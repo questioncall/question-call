@@ -6,6 +6,17 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type UserRecord = {
   _id: string;
@@ -23,6 +34,7 @@ export function UsersClient() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [suspendingId, setSuspendingId] = useState<string | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<UserRecord | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -41,14 +53,12 @@ export function UsersClient() {
     fetchUsers();
   }, []);
 
-  const handleToggleSuspend = async (userId: string, currentlySuspended: boolean) => {
-    if (!confirm(`Are you sure you want to ${currentlySuspended ? "UNSUSPEND" : "SUSPEND"} this user?`)) {
-      return;
-    }
+  const handleToggleSuspend = async () => {
+    if (!suspendTarget) return;
 
-    setSuspendingId(userId);
+    setSuspendingId(suspendTarget._id);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/suspend`, {
+      const res = await fetch(`/api/admin/users/${suspendTarget._id}/suspend`, {
         method: "POST",
       });
       const data = await res.json();
@@ -56,10 +66,10 @@ export function UsersClient() {
 
       toast.success(data.message);
       
-      // Update local state instead of full re-fetch for better UX
       setUsers(prev => prev.map(u => 
-        u._id === userId ? { ...u, isSuspended: data.isSuspended } : u
+        u._id === suspendTarget._id ? { ...u, isSuspended: data.isSuspended } : u
       ));
+      setSuspendTarget(null);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -144,27 +154,50 @@ export function UsersClient() {
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        variant={user.isSuspended ? "outline" : "destructive"}
-                        size="sm"
-                        disabled={suspendingId === user._id}
-                        onClick={() => handleToggleSuspend(user._id, !!user.isSuspended)}
-                        className={user.isSuspended ? "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400" : ""}
-                      >
-                        {suspendingId === user._id ? (
-                          <Loader2Icon className="size-4 animate-spin" />
-                        ) : user.isSuspended ? (
-                          <>
-                            <ShieldCheckIcon className="mr-1.5 size-4" />
-                            Unsuspend
-                          </>
-                        ) : (
-                          <>
-                            <ShieldAlertIcon className="mr-1.5 size-4" />
-                            Suspend
-                          </>
-                        )}
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant={user.isSuspended ? "outline" : "destructive"}
+                            size="sm"
+                            disabled={suspendingId === user._id}
+                            className={user.isSuspended ? "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400" : ""}
+                            onClick={() => setSuspendTarget(user)}
+                          >
+                            {suspendingId === user._id ? (
+                              <Loader2Icon className="size-4 animate-spin" />
+                            ) : user.isSuspended ? (
+                              <>
+                                <ShieldCheckIcon className="mr-1.5 size-4" />
+                                Unsuspend
+                              </>
+                            ) : (
+                              <>
+                                <ShieldAlertIcon className="mr-1.5 size-4" />
+                                Suspend
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {user.isSuspended ? "Unsuspend User?" : "Suspend User?"}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {user.isSuspended 
+                                ? `Are you sure you want to unsuspend ${user.name}? They will regain access to the platform.`
+                                : `Are you sure you want to suspend ${user.name}? They will lose access to the platform immediately.`
+                              }
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setSuspendTarget(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleToggleSuspend} className={user.isSuspended ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}>
+                              {user.isSuspended ? "Yes, Unsuspend" : "Yes, Suspend"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </td>
                   </tr>
                 ))}

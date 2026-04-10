@@ -16,6 +16,7 @@ import {
   InfoIcon,
   StarIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
@@ -299,7 +300,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      alert("File is too large. Maximum size is 10MB.");
+      toast.error("File is too large. Maximum size is 10MB.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -375,7 +376,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       } catch (err) {
         console.error(err);
         dispatch(removeMessage(tempId));
-        alert("Failed to upload the attached file.");
+        toast.error("Failed to upload the attached file.");
         return;
       }
     }
@@ -428,7 +429,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         const file = new File([audioBlob], `voice-${Date.now()}.wav`, { type: "audio/wav" });
 
         if (file.size > MAX_FILE_SIZE) {
-          alert("Audio recording exceeded 10MB limit.");
+          toast.error("Audio recording exceeded 10MB limit.");
           return;
         }
 
@@ -475,7 +476,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           }
         } catch {
           dispatch(removeMessage(tempId));
-          alert("Failed to send audio message.");
+          toast.error("Failed to send audio message.");
         }
 
         stream.getTracks().forEach((track) => track.stop());
@@ -489,7 +490,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
     } catch {
-      alert("Microphone access denied or error occurred.");
+      toast.error("Microphone access denied or error occurred.");
     }
   };
 
@@ -535,7 +536,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
   const handleSubmitAnswer = async () => {
     if (markedMessagesCount === 0) {
-      alert("Please mark at least one message as the answer.");
+      toast.error("Please mark at least one message as the answer.");
       return;
     }
     setIsSubmittingAnswer(true);
@@ -549,10 +550,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         dispatch(setAnswerSubmitted(true));
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to submit answer.");
+        toast.error(data.error || "Failed to submit answer.");
       }
     } catch {
-      alert("Network error.");
+      toast.error("Network error.");
     } finally {
       setIsSubmittingAnswer(false);
     }
@@ -560,7 +561,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
   const handleCloseChannel = async () => {
     if (ratingValue < 1 || ratingValue > 5) {
-      alert("Please provide a rating (1-5 stars).");
+      toast.error("Please provide a rating (1-5 stars).");
       return;
     }
     try {
@@ -575,10 +576,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         dispatch(setChannelRating(ratingValue));
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to close channel.");
+        toast.error(data.error || "Failed to close channel.");
       }
     } catch {
-      alert("Network error.");
+      toast.error("Network error.");
     }
   };
 

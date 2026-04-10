@@ -8,6 +8,7 @@ declare module "next-auth" {
       id: string;
       role: AppRole;
       username?: string;
+      isMasterAdmin?: boolean;
     };
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     id: string;
     role: AppRole;
     username?: string;
+    isMasterAdmin?: boolean;
   }
 }
 
@@ -23,6 +25,7 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: AppRole;
     username?: string;
+    isMasterAdmin?: boolean;
   }
 }
 

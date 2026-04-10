@@ -32,6 +32,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Teacher = {
   _id: string;
@@ -137,7 +148,7 @@ export default function AdminWithdrawalsPage() {
       setCompleteNote("");
       await fetchRequests();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setCompleting(false);
     }
@@ -166,7 +177,7 @@ export default function AdminWithdrawalsPage() {
       setRejectNote("");
       await fetchRequests();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setRejecting(false);
     }

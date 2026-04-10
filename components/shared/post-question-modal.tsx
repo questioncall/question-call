@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import { Loader2Icon, SparklesIcon, XIcon, ImageIcon, PlusIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,7 +106,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
     if (!files.length) return;
 
     if (pendingImages.length + files.length > 4) {
-      alert("You can only attach up to 4 images per question.");
+      toast.error("You can only attach up to 4 images per question.");
       return;
     }
 
