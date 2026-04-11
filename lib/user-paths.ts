@@ -17,6 +17,7 @@ const reservedHandleSegments = new Set([
   "leaderboard",
   "login",
   "message",
+  "quiz",
   "register",
   "settings",
   "student",

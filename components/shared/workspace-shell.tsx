@@ -382,6 +382,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           isScrolled={isScrolled}
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}
+          showQuizLink={resolvedUser.role === "STUDENT"}
           showQuestionFilter={showQuestionFilter}
           useModalForPrimary={useModalForPrimary}
           userId={resolvedUser.id}

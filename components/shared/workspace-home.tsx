@@ -58,6 +58,19 @@ type FeedEventPayload = {
   question?: FeedQuestion;
 };
 
+type PeerCommentItem = {
+  _id: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+  studentId?: {
+    _id?: string;
+    name?: string;
+    userImage?: string | null;
+    username?: string;
+  } | null;
+};
+
 const formatLabelMap: Record<AnswerFormat, string> = {
   ANY: "Any format",
   TEXT: "Text format",
@@ -110,6 +123,21 @@ function getQuestionChips(question: FeedQuestion) {
   return [question.level, question.stream, question.subject].filter(Boolean) as string[];
 }
 
+function dedupeComments(comments: PeerCommentItem[]) {
+  const unique = new Map<string, PeerCommentItem>();
+
+  for (const comment of comments) {
+    if (comment?._id) {
+      unique.set(comment._id, comment);
+    }
+  }
+
+  return Array.from(unique.values()).sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
 export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -118,7 +146,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
-  const [commentsMap, setCommentsMap] = useState<Record<string, any[]>>({});
+  const [commentsMap, setCommentsMap] = useState<Record<string, PeerCommentItem[]>>({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [isSubmittingComment, setIsSubmittingComment] = useState<string | null>(null);
 
@@ -135,8 +163,8 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
     try {
       const res = await fetch(`/api/questions/${questionId}/comments`);
       if (res.ok) {
-        const data = await res.json();
-        setCommentsMap(prev => ({ ...prev, [questionId]: data }));
+        const data = (await res.json()) as PeerCommentItem[];
+        setCommentsMap(prev => ({ ...prev, [questionId]: dedupeComments(data) }));
       }
     } catch (err) {
       console.error(err);
@@ -172,15 +200,21 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       const data = await res.json();
       
       if (res.ok) {
+        const incomingComment = data.comment as PeerCommentItem;
+        const alreadyExists = (commentsMap[questionId] || []).some(
+          (comment) => comment._id === incomingComment._id,
+        );
+
         setCommentsMap(prev => {
           const existing = prev[questionId] || [];
-          return { ...prev, [questionId]: [data.comment, ...existing] };
+          const nextComments = dedupeComments([incomingComment, ...existing]);
+          return { ...prev, [questionId]: nextComments };
         });
         setCommentInput(prev => ({ ...prev, [questionId]: "" }));
         
         // Optimistically update the comment count on the question feed item
         const qIndex = feedItems.findIndex(q => q.id === questionId);
-        if (qIndex >= 0) {
+        if (!alreadyExists && qIndex >= 0) {
           const updatedQ = { ...feedItems[qIndex], commentCount: (feedItems[qIndex].commentCount || 0) + 1 };
           dispatch(upsertFeedQuestion(updatedQ));
         }
@@ -191,7 +225,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
       } else {
         toast.error(data.error || "Failed to post comment");
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to post comment");
     } finally {
       setIsSubmittingComment(null);
@@ -436,7 +470,7 @@ export function WorkspaceHome({ role, name, userId }: WorkspaceHomeProps) {
           const canOpenThread = isOwnQuestion && Boolean(item.channelId);
           const canComment = !isOwnQuestion;
           const isExpandedComments = expandedComments.has(item.id);
-          const comments = commentsMap[item.id] || [];
+          const comments = dedupeComments(commentsMap[item.id] || []);
           const isAcceptLoading = acceptingId === item.id;
 
           // Determine which reaction the current user has (if any)

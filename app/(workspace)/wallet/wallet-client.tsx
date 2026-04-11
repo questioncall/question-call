@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { formatPoints } from "@/lib/points";
 
 type WithdrawalHistoryItem = {
   _id: string;
@@ -53,7 +54,7 @@ type WalletData = {
   pointToNprRate: number;
   minWithdrawalPoints: number;
   qualificationThreshold: number;
-  subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | null;
+  subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | "NONE" | null;
   subscriptionEnd: string | null;
   questionsAsked: number;
   withdrawalHistory: WithdrawalHistoryItem[];
@@ -105,7 +106,7 @@ export function WalletClient() {
     setWithdrawError(null);
     setWithdrawSuccess(false);
 
-    const points = Number.parseInt(pointsToWithdraw, 10);
+    const points = Number.parseFloat(pointsToWithdraw);
 
     if (!points || points <= 0) {
       setWithdrawError("Enter a valid number of points.");
@@ -177,7 +178,7 @@ export function WalletClient() {
     ? Math.min(100, (wallet.totalAnswered / wallet.qualificationThreshold) * 100)
     : 0;
   const nprPreview =
-    Number.parseInt(pointsToWithdraw, 10) * wallet.pointToNprRate || 0;
+    Number.parseFloat(pointsToWithdraw) * wallet.pointToNprRate || 0;
   const subscriptionStatusLabel =
     wallet.subscriptionStatus === "ACTIVE"
       ? "Active"
@@ -206,7 +207,7 @@ export function WalletClient() {
           icon={<CoinsIcon className="size-5 text-primary" />}
           iconClassName="bg-primary/10"
           title="Point Balance"
-          value={`${wallet.pointBalance} pts`}
+          value={`${formatPoints(wallet.pointBalance)} pts`}
           cardClassName="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
         />
         <SummaryCard
@@ -215,7 +216,7 @@ export function WalletClient() {
           }
           iconClassName="bg-emerald-500/10"
           title="NPR Equivalent"
-          value={`NPR ${wallet.nprEquivalent}`}
+          value={`NPR ${wallet.nprEquivalent.toFixed(2)}`}
           cardClassName="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
         />
         {isTeacher ? (
@@ -332,7 +333,7 @@ export function WalletClient() {
         <CardHeader>
           <CardTitle className="text-base">Request Withdrawal</CardTitle>
           <CardDescription>
-            Minimum withdrawal: {wallet.minWithdrawalPoints} pts. Conversion rate:{" "}
+            Minimum withdrawal: {formatPoints(wallet.minWithdrawalPoints)} pts. Conversion rate:{" "}
             {wallet.pointToNprRate} NPR per point.
           </CardDescription>
         </CardHeader>
@@ -360,7 +361,7 @@ export function WalletClient() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
               <AlertCircleIcon className="size-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                You need at least {wallet.minWithdrawalPoints} points to withdraw. You currently have {wallet.pointBalance} points.
+                You need at least {formatPoints(wallet.minWithdrawalPoints)} points to withdraw. You currently have {formatPoints(wallet.pointBalance)} points.
               </p>
             </div>
           ) : (
@@ -372,16 +373,17 @@ export function WalletClient() {
                   </label>
                   <Input
                     type="number"
+                    step="0.01"
                     min={wallet.minWithdrawalPoints}
                     max={wallet.pointBalance}
-                    placeholder={`Min ${wallet.minWithdrawalPoints}`}
+                    placeholder={`Min ${formatPoints(wallet.minWithdrawalPoints)}`}
                     value={pointsToWithdraw}
                     onChange={(e) => setPointsToWithdraw(e.target.value)}
                     required
                   />
                   {nprPreview > 0 ? (
                     <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                      You will receive NPR {nprPreview}
+                      You will receive NPR {nprPreview.toFixed(2)}
                     </p>
                   ) : null}
                 </div>
@@ -456,10 +458,10 @@ export function WalletClient() {
                         {new Date(request.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-3 py-3 font-medium text-foreground">
-                        {request.pointsRequested}
+                        {formatPoints(request.pointsRequested)}
                       </td>
                       <td className="px-3 py-3 text-foreground">
-                        {request.nprEquivalent}
+                        {request.nprEquivalent.toFixed(2)}
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">
                         {request.esewaNumber}

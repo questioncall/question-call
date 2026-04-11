@@ -212,7 +212,34 @@ export const PEER_COMMENTS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 8. LEGAL CONTENT
+// 8. QUIZ SERVICE (Phase 12)
+// ─────────────────────────────────────────────────────────────────────
+
+export const QUIZ = {
+  /** Questions per quiz session */
+  QUESTION_COUNT: 20,
+  /** Total seconds allowed in a single session */
+  TIME_LIMIT_SECONDS: 20 * 60,
+  /** Days before served questions can be reused for the same student */
+  REPEAT_RESET_DAYS: 15,
+  /** Same-day free quiz session cap (Asia/Kathmandu day boundary) */
+  FREE_DAILY_SESSION_LIMIT: 1,
+  /** Minimum score required to earn the free-quiz reward */
+  FREE_PASS_PERCENT: 90,
+  /** Decimal points awarded for passing the free quiz */
+  FREE_POINT_REWARD: 0.2,
+  /** Same-day premium quiz session cap (Asia/Kathmandu day boundary) */
+  PREMIUM_DAILY_SESSION_LIMIT: 3,
+  /** Minimum score required to earn the premium-quiz reward */
+  PREMIUM_PASS_PERCENT: 90,
+  /** Decimal points awarded for passing the premium quiz */
+  PREMIUM_POINT_REWARD: 2,
+  /** Violations allowed before the next one forces auto-submit */
+  VIOLATION_WARNING_LIMIT: 2,
+} as const;
+
+// ─────────────────────────────────────────────────────────────────────
+// 9. LEGAL CONTENT
 //    Seeded into PlatformConfig and editable later from the admin panel.
 // ─────────────────────────────────────────────────────────────────────
 

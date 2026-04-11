@@ -12,7 +12,16 @@
  */
 
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
-import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL, PEER_COMMENTS, LEGAL } from "@/lib/config";
+import {
+  FORMAT,
+  TEACHER,
+  TRIAL,
+  SUBSCRIPTION_PLANS,
+  WITHDRAWAL,
+  PEER_COMMENTS,
+  LEGAL,
+  QUIZ,
+} from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
 const platformConfigSchema = new Schema(
@@ -152,6 +161,60 @@ const platformConfigSchema = new Schema(
     peerCommentMaxPointReward: {
       type: Number,
       default: PEER_COMMENTS.MAX_POINT_REWARD,
+      min: 0,
+    },
+
+    // ─── Quiz Service Config (Phase 12) ───────────────────────────
+    quizQuestionCount: {
+      type: Number,
+      default: QUIZ.QUESTION_COUNT,
+      min: 1,
+    },
+    quizTimeLimitSeconds: {
+      type: Number,
+      default: QUIZ.TIME_LIMIT_SECONDS,
+      min: 60,
+    },
+    quizRepeatResetDays: {
+      type: Number,
+      default: QUIZ.REPEAT_RESET_DAYS,
+      min: 1,
+    },
+    freeQuizDailySessionLimit: {
+      type: Number,
+      default: QUIZ.FREE_DAILY_SESSION_LIMIT,
+      min: 0,
+    },
+    freeQuizPassPercent: {
+      type: Number,
+      default: QUIZ.FREE_PASS_PERCENT,
+      min: 0,
+      max: 100,
+    },
+    freeQuizPointReward: {
+      type: Number,
+      default: QUIZ.FREE_POINT_REWARD,
+      min: 0,
+    },
+    premiumQuizDailySessionLimit: {
+      type: Number,
+      default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT,
+      min: 0,
+    },
+    premiumQuizPassPercent: {
+      type: Number,
+      default: QUIZ.PREMIUM_PASS_PERCENT,
+      min: 0,
+      max: 100,
+    },
+    premiumQuizPointReward: {
+      type: Number,
+      default: QUIZ.PREMIUM_POINT_REWARD,
+      min: 0,
+    },
+    quizViolationWarningLimit: {
+      type: Number,
+      default: QUIZ.VIOLATION_WARNING_LIMIT,
       min: 0,
     },
 

@@ -38,6 +38,7 @@ const adminNavItems = [
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/notifications", label: "Notifications" },
+  { href: "/admin/quiz-management", label: "Quiz management" },
   { href: "/admin/ai-keys", label: "AI Keys" },
   { href: "/admin/legal", label: "Legal" },
   { href: "/admin/settings", label: "Settings" },

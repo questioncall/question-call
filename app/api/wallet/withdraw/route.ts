@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
 import { connectToDatabase } from "@/lib/mongodb";
+import { roundPoints } from "@/lib/points";
 import { emitNotification, pusherServer } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
@@ -22,8 +23,9 @@ export async function POST(req: Request) {
     }
 
     const { pointsRequested, esewaNumber } = await req.json();
+    const requestedPoints = Number(pointsRequested);
 
-    if (!pointsRequested || !esewaNumber) {
+    if (!requestedPoints || requestedPoints <= 0 || !esewaNumber) {
       return NextResponse.json(
         { error: "pointsRequested and esewaNumber are required" },
         { status: 400 },
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
     const minPoints = config.minWithdrawalPoints;
     const rate = config.pointToNprRate;
 
-    if (pointsRequested < minPoints) {
+    if (requestedPoints < minPoints) {
       return NextResponse.json(
         { error: `Minimum withdrawal is ${minPoints} points` },
         { status: 400 },
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
         ? user.pointBalance ?? 0
         : user.points ?? 0;
 
-    if (availablePoints < pointsRequested) {
+    if (availablePoints < requestedPoints) {
       return NextResponse.json(
         { error: "Insufficient point balance" },
         { status: 400 },
@@ -85,13 +87,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const nprEquivalent = pointsRequested * rate;
+    const nprEquivalent = roundPoints(requestedPoints * rate);
     const requesterLabel =
       session.user.role === "TEACHER" ? "Teacher" : "Student";
 
     const request = await WithdrawalRequest.create({
       teacherId: session.user.id,
-      pointsRequested,
+      pointsRequested: roundPoints(requestedPoints),
       nprEquivalent,
       esewaNumber,
       status: "PENDING",
@@ -101,7 +103,7 @@ export async function POST(req: Request) {
     const adminNotifications = admins.map((admin) => ({
       userId: admin._id,
       type: "PAYMENT",
-      message: `${requesterLabel} ${user.name} requested a withdrawal of ${pointsRequested} pts (NPR ${nprEquivalent}). eSewa: ${esewaNumber}`,
+      message: `${requesterLabel} ${user.name} requested a withdrawal of ${roundPoints(requestedPoints)} pts (NPR ${nprEquivalent}). eSewa: ${esewaNumber}`,
       isRead: false,
     }));
 

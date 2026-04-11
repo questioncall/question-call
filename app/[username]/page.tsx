@@ -22,6 +22,7 @@ import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { Button } from "@/components/ui/button";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
+import { formatPoints } from "@/lib/points";
 import { getPublicUserByUsername } from "@/lib/user-directory";
 import {
   getMessagesPath,
@@ -184,7 +185,7 @@ export default async function PublicProfilePage({
             <div className="flex items-center hover:text-primary cursor-pointer transition-colors">
               <span className="font-semibold text-foreground mr-1 flex items-center gap-1">
                 {profile.role === "STUDENT" ? <CoinsIcon className="size-4 text-emerald-500" /> : <MessageSquareIcon className="size-4" />}
-                {profile.role === "STUDENT" ? profile.points : profile.totalAnswered}
+                {profile.role === "STUDENT" ? formatPoints(profile.points) : profile.totalAnswered}
               </span>
               <span className="text-muted-foreground ml-1">{profile.role === "STUDENT" ? "points" : "answers"}</span>
             </div>
@@ -512,5 +513,4 @@ export default async function PublicProfilePage({
     </div>
   );
 }
-
 

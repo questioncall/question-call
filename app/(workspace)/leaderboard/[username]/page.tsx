@@ -13,6 +13,7 @@ import {
   getLeaderboardScore,
   getPublicUserByUsername,
 } from "@/lib/user-directory";
+import { formatPoints } from "@/lib/points";
 
 export default async function LeaderboardUserPage({
   params,
@@ -82,7 +83,7 @@ export default async function LeaderboardUserPage({
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   <span>{profile.totalAnswered} solved</span>
-                  <span>{profile.points} pts</span>
+                  <span>{formatPoints(profile.points)} pts</span>
                   <span>{profile.overallScore.toFixed(1)}/5</span>
                   <Link className="font-medium text-foreground underline decoration-primary/40 underline-offset-4" href={`/${profile.username}`}>
                     View profile

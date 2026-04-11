@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatPoints } from "@/lib/points";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -140,13 +141,13 @@ export function UsersClient() {
                     </td>
                     <td className="px-4 py-3 min-w-[140px]">
                       {user.role === "STUDENT" ? (
-                        <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">
-                          Points: <span className="font-medium text-primary">{user.points || 0}</span>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">
+                          Points: <span className="font-medium text-primary">{formatPoints(user.points || 0)}</span>
                         </p>
                       ) : (
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground whitespace-nowrap">
-                            Balance: <span className="font-medium text-primary">{user.pointBalance || 0} pts</span>
+                            Balance: <span className="font-medium text-primary">{formatPoints(user.pointBalance || 0)} pts</span>
                           </p>
                           <p className="text-xs text-muted-foreground whitespace-nowrap">
                             Answers: <span className="font-medium text-foreground">{user.totalAnswered || 0}</span>

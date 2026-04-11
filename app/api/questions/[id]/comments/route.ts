@@ -28,6 +28,38 @@ type UnevaluatedComment = {
   content: string;
 };
 
+type SerializedComment = {
+  _id: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+  milestoneGroup?: number | null;
+  questionId?: string | null;
+  studentId?: {
+    _id?: string;
+    name?: string;
+    userImage?: string | null;
+    username?: string;
+  } | null;
+};
+
+type RawCommentLike = {
+  _id?: { toString?: () => string } | string;
+  content?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  milestoneGroup?: number | null;
+  questionId?: { _id?: { toString?: () => string }; toString?: () => string } | string | null;
+  studentId?:
+    | {
+        _id?: { toString?: () => string } | string;
+        name?: string;
+        userImage?: string | null;
+        username?: string;
+      }
+    | null;
+};
+
 function parseLimit(rawLimit: string | null): number {
   const limit = Number.parseInt(rawLimit ?? "20", 10);
 
@@ -66,6 +98,47 @@ function parseAiScore(rawResponse: string, minReward: number, maxReward: number)
   }
 }
 
+function serializeComment(comment: RawCommentLike): SerializedComment {
+  const student = comment?.studentId;
+  const questionId = comment?.questionId;
+
+  return {
+    _id: comment?._id?.toString?.() ?? String(comment?._id ?? ""),
+    content: String(comment?.content ?? ""),
+    createdAt: new Date(comment?.createdAt ?? Date.now()).toISOString(),
+    updatedAt: comment?.updatedAt
+      ? new Date(comment.updatedAt).toISOString()
+      : undefined,
+    milestoneGroup: comment?.milestoneGroup ?? null,
+    questionId:
+      typeof questionId === "string"
+        ? questionId
+        : questionId?._id?.toString?.() ?? questionId?.toString?.() ?? null,
+    studentId:
+      student && typeof student === "object"
+        ? {
+            _id: student._id?.toString?.() ?? undefined,
+            name: student.name,
+            userImage: student.userImage ?? null,
+            username: student.username,
+          }
+        : null,
+  };
+}
+
+function dedupeCommentsById(comments: SerializedComment[]): SerializedComment[] {
+  const unique = new Map<string, SerializedComment>();
+
+  for (const comment of comments) {
+    unique.set(comment._id, comment);
+  }
+
+  return Array.from(unique.values()).sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
 export async function GET(request: Request, context: RouteParams) {
   try {
     const { id: questionId } = await context.params;
@@ -80,7 +153,9 @@ export async function GET(request: Request, context: RouteParams) {
       .populate("studentId", "name userImage username")
       .lean();
 
-    return NextResponse.json(comments);
+    return NextResponse.json(
+      dedupeCommentsById(comments.map((comment) => serializeComment(comment))),
+    );
   } catch (error) {
     console.error("[GET /api/questions/[id]/comments]", error);
 
@@ -224,7 +299,7 @@ export async function POST(request: Request, context: RouteParams) {
 
     return NextResponse.json({
       success: true,
-      comment: newComment,
+      comment: serializeComment(newComment.toObject()),
       milestoneReached: milestoneReached && pointsAwarded > 0,
       pointsAwarded,
       milestoneMessage,

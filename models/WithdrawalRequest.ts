@@ -12,7 +12,7 @@ const withdrawalRequestSchema = new Schema(
     pointsRequested: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0.01,
     },
     /** pointsRequested × pointToNprRate at time of request (locked) */
     nprEquivalent: {

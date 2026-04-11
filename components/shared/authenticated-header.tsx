@@ -45,6 +45,7 @@ type AuthenticatedHeaderProps = {
   isScrolled: boolean;
   primaryHref: string;
   primaryLabel: string;
+  showQuizLink?: boolean;
   showQuestionFilter?: boolean;
   useModalForPrimary?: boolean;
   userId?: string;
@@ -54,6 +55,7 @@ export function AuthenticatedHeader({
   isScrolled,
   primaryHref,
   primaryLabel,
+  showQuizLink = false,
   showQuestionFilter = false,
   useModalForPrimary = false,
   userId,
@@ -167,6 +169,11 @@ export function AuthenticatedHeader({
             />
           </div>
           <div className="ml-auto flex items-center gap-3">
+            {showQuizLink ? (
+              <Button asChild className="hidden sm:inline-flex" variant="outline">
+                <Link href="/quiz">Play Quiz</Link>
+              </Button>
+            ) : null}
             {useModalForPrimary ? (
               <Button
                 className="hidden sm:inline-flex"

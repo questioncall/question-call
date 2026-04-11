@@ -13,6 +13,7 @@ import {
 
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
+import { formatPoints } from "@/lib/points";
 import { toast } from "sonner";
 
 import {
@@ -183,7 +184,7 @@ export default function AdminWithdrawalsPage() {
 
   const openCompleteModal = (req: WithdrawalRequest) => {
     setCompleteTarget(req);
-    setAmountSent(req.nprEquivalent.toString());
+    setAmountSent(req.nprEquivalent.toFixed(2));
     setTxnId("");
     setCompleteNote("");
   };
@@ -311,10 +312,10 @@ export default function AdminWithdrawalsPage() {
                         </div>
                       </td>
                       <td className="px-3 py-3 font-normal text-foreground">
-                        {req.pointsRequested}
+                        {formatPoints(req.pointsRequested)}
                       </td>
                       <td className="px-3 py-3 text-foreground">
-                        {req.nprEquivalent}
+                        {req.nprEquivalent.toFixed(2)}
                       </td>
                       <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                         {req.esewaNumber}
@@ -350,7 +351,7 @@ export default function AdminWithdrawalsPage() {
                         ) : req.status === "COMPLETED" ? (
                           <div className="text-xs text-muted-foreground">
                             <p>Txn: {req.transactionId}</p>
-                            <p>Sent: NPR {req.amountSent}</p>
+                              <p>Sent: NPR {req.amountSent?.toFixed(2)}</p>
                             {req.processedAt && (
                               <p>
                                 {new Date(req.processedAt).toLocaleDateString()}
@@ -381,9 +382,9 @@ export default function AdminWithdrawalsPage() {
           <DialogHeader>
             <DialogTitle>Mark Withdrawal as Complete</DialogTitle>
             <DialogDescription>
-              Confirm you have sent NPR {completeTarget?.nprEquivalent} to eSewa
-              number {completeTarget?.esewaNumber} for{" "}
-              {completeTarget?.teacherId?.name}.
+              Confirm you have sent NPR{" "}
+              {completeTarget ? completeTarget.nprEquivalent.toFixed(2) : "0.00"} to eSewa
+              number {completeTarget?.esewaNumber} for {completeTarget?.teacherId?.name}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

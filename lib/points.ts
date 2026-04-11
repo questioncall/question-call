@@ -1,6 +1,18 @@
 import type { PlatformConfigDocument } from "@/models/PlatformConfig";
 
-type AnswerFormat = "TEXT" | "PHOTO" | "VIDEO" | "ANY";
+export function roundPoints(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function formatPoints(value: number) {
+  const rounded = roundPoints(value);
+
+  if (Number.isInteger(rounded)) {
+    return `${rounded}`;
+  }
+
+  return rounded.toFixed(2);
+}
 
 /**
  * Calculate base points earned for submitting an answer.
@@ -60,5 +72,5 @@ export function pointsToNpr(
   points: number,
   config: PlatformConfigDocument,
 ): number {
-  return points * config.pointToNprRate;
+  return roundPoints(points * config.pointToNprRate);
 }

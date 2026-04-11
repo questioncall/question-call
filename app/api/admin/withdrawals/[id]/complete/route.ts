@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { roundPoints } from "@/lib/points";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
@@ -21,8 +22,9 @@ export async function POST(
     }
 
     const { transactionId, amountSent, adminNote } = await req.json();
+    const amountSentValue = Number(amountSent);
 
-    if (!transactionId || !amountSent) {
+    if (!transactionId || !amountSentValue || amountSentValue <= 0) {
       return NextResponse.json(
         { error: "transactionId and amountSent are required" },
         { status: 400 }
@@ -66,13 +68,16 @@ export async function POST(
       );
     }
 
+    const updatedBalance = roundPoints(
+      currentBalance - (withdrawalRequest.pointsRequested ?? 0),
+    );
     await User.findByIdAndUpdate(withdrawalRequest.teacherId, {
-      $inc: { [balanceField]: -withdrawalRequest.pointsRequested },
+      $set: { [balanceField]: updatedBalance },
     });
 
     withdrawalRequest.status = "COMPLETED";
     withdrawalRequest.transactionId = transactionId;
-    withdrawalRequest.amountSent = amountSent;
+    withdrawalRequest.amountSent = roundPoints(amountSentValue);
     withdrawalRequest.processedAt = new Date();
     withdrawalRequest.processedBy = session.user.id;
     withdrawalRequest.adminNote = adminNote || null;
@@ -81,7 +86,7 @@ export async function POST(
     const notif = await Notification.create({
       userId: withdrawalRequest.teacherId,
       type: "PAYMENT",
-      message: `Your withdrawal of NPR ${amountSent} has been processed. eSewa Txn ID: ${transactionId}`,
+      message: `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`,
       isRead: false,
     }).catch(() => null);
 

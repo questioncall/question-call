@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { pointsToNpr, roundPoints } from "@/lib/points";
+import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import Question from "@/models/Question";
 import User from "@/models/User";
@@ -41,6 +43,10 @@ export async function GET() {
     }
 
     const config = await getPlatformConfig();
+    const subscription =
+      session.user.role === "STUDENT"
+        ? await getQuizSubscriptionSnapshot(session.user.id)
+        : null;
 
     const withdrawalHistory = await WithdrawalRequest.find({
       teacherId: session.user.id,
@@ -63,16 +69,22 @@ export async function GET() {
 
     return NextResponse.json({
       role: session.user.role,
-      pointBalance,
-      nprEquivalent: pointBalance * config.pointToNprRate,
+      pointBalance: roundPoints(pointBalance),
+      nprEquivalent: pointsToNpr(pointBalance, config),
       totalAnswered: user.totalAnswered ?? 0,
       isMonetized: user.isMonetized ?? false,
       overallScore,
       pointToNprRate: config.pointToNprRate,
       minWithdrawalPoints: config.minWithdrawalPoints,
       qualificationThreshold: config.qualificationThreshold,
-      subscriptionStatus: user.subscriptionStatus ?? null,
-      subscriptionEnd: user.subscriptionEnd ?? null,
+      subscriptionStatus:
+        session.user.role === "STUDENT"
+          ? subscription?.subscriptionStatus ?? null
+          : user.subscriptionStatus ?? null,
+      subscriptionEnd:
+        session.user.role === "STUDENT"
+          ? subscription?.subscriptionEnd ?? null
+          : user.subscriptionEnd ?? null,
       questionsAsked,
       withdrawalHistory,
     });
