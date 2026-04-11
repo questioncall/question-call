@@ -12,7 +12,7 @@
  */
 
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
-import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL, PEER_COMMENTS } from "@/lib/config";
+import { FORMAT, TEACHER, TRIAL, SUBSCRIPTION_PLANS, WITHDRAWAL, PEER_COMMENTS, LEGAL } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
 const platformConfigSchema = new Schema(
@@ -77,6 +77,23 @@ const platformConfigSchema = new Schema(
       default: SUBSCRIPTION_PLANS.find(p => p.slug === "3month")?.originalPrice || 250,
     },
 
+    // ─── Manual Payment Display Config ───────────────────────────
+    manualPaymentRecipientName: {
+      type: String,
+      default: "Jiban Mijhar",
+      trim: true,
+    },
+    manualPaymentEsewaNumber: {
+      type: String,
+      default: "9819748466",
+      trim: true,
+    },
+    manualPaymentQrCodeUrl: {
+      type: String,
+      default: "/QUESTION_HUB_PAYMENT_QR_CODE.jpeg",
+      trim: true,
+    },
+
     // ─── Points Earning Config (Phase 7) ──────────────────────────
     pointsPerTextAnswer: {
       type: Number,
@@ -136,6 +153,18 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: PEER_COMMENTS.MAX_POINT_REWARD,
       min: 0,
+    },
+
+    // ─── Legal Content (publicly shown, admin editable) ────────────
+    termsOfUseContent: {
+      type: String,
+      default: LEGAL.TERMS_OF_USE,
+      trim: true,
+    },
+    privacyPolicyContent: {
+      type: String,
+      default: LEGAL.PRIVACY_POLICY,
+      trim: true,
     },
   },
   {
@@ -243,6 +272,27 @@ export function getHydratedPlans(config: PlatformConfigDocument) {
     }
     return plan;
   });
+}
+
+export function getManualPaymentDetails(config: Partial<PlatformConfigRecord> | null | undefined) {
+  return {
+    recipientName:
+      config?.manualPaymentRecipientName?.trim() || "Jiban Mijhar",
+    esewaNumber:
+      config?.manualPaymentEsewaNumber?.trim() || "9819748466",
+    qrCodeUrl:
+      config?.manualPaymentQrCodeUrl?.trim() || "/QUESTION_HUB_PAYMENT_QR_CODE.jpeg",
+  };
+}
+
+export function getLegalContent(config: Partial<PlatformConfigRecord> | null | undefined) {
+  return {
+    termsOfUseContent:
+      config?.termsOfUseContent?.trim() || LEGAL.TERMS_OF_USE,
+    privacyPolicyContent:
+      config?.privacyPolicyContent?.trim() || LEGAL.PRIVACY_POLICY,
+    updatedAt: config && "updatedAt" in config ? config.updatedAt ?? null : null,
+  };
 }
 
 export default PlatformConfig;

@@ -1,13 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BellIcon,
-  CheckCircle2Icon,
-  Loader2Icon,
   AlertCircleIcon,
+  ArrowRightIcon,
+  BanknoteIcon,
+  BellIcon,
+  CreditCardIcon,
+  Loader2Icon,
+  ShieldAlertIcon,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,88 +20,125 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 type AdminNotification = {
-  _id: string;
-  type: string;
+  id: string;
+  category: "WITHDRAWAL" | "PAYMENT" | "EXPIRY";
+  title: string;
   message: string;
-  isRead: boolean;
   createdAt: string;
+  href: string;
 };
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Something went wrong";
+}
 
 export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"ALL" | AdminNotification["category"]>("ALL");
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/notifications");
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await fetch("/api/admin/notifications");
+      if (!res.ok) {
+        throw new Error("Failed to fetch");
+      }
+
       const data = await res.json();
       setNotifications(data.notifications || []);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    void fetchNotifications();
   }, []);
 
-  const markAsRead = async (id: string) => {
-    try {
-      const res = await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-      if (!res.ok) throw new Error("Failed to mark as read");
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  useEffect(() => {
+    const markNotificationsAsRead = async () => {
+      try {
+        await fetch("/api/notifications/all", { method: "POST" });
+        window.dispatchEvent(new Event("admin-notifications-read"));
+      } catch {
+        // Non-blocking: admin alerts page should still render even if read-sync fails.
+      }
+    };
 
-  const markAllAsRead = async () => {
-    try {
-      const res = await fetch("/api/notifications/all", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to mark all as read");
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    void markNotificationsAsRead();
+  }, []);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const filteredNotifications =
+    filter === "ALL"
+      ? notifications
+      : notifications.filter((notification) => notification.category === filter);
+
+  const counts = {
+    WITHDRAWAL: notifications.filter((item) => item.category === "WITHDRAWAL").length,
+    PAYMENT: notifications.filter((item) => item.category === "PAYMENT").length,
+    EXPIRY: notifications.filter((item) => item.category === "EXPIRY").length,
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
             <BellIcon className="mr-2 inline-block size-6 text-primary" />
             Notifications
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Stay updated with platform activity.
+            Review the same alerts that power the admin notification badge.
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllAsRead}>
-            Mark all as read
-          </Button>
-        )}
+        <Button variant="outline" size="sm" onClick={fetchNotifications}>
+          Refresh
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant={filter === "ALL" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("ALL")}
+        >
+          All ({notifications.length})
+        </Button>
+        <Button
+          variant={filter === "WITHDRAWAL" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("WITHDRAWAL")}
+        >
+          Withdrawals ({counts.WITHDRAWAL})
+        </Button>
+        <Button
+          variant={filter === "PAYMENT" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("PAYMENT")}
+        >
+          Payments ({counts.PAYMENT})
+        </Button>
+        <Button
+          variant={filter === "EXPIRY" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setFilter("EXPIRY")}
+        >
+          Expired ({counts.EXPIRY})
+        </Button>
       </div>
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">All Notifications</CardTitle>
+          <CardTitle className="text-base">Admin Alerts</CardTitle>
           <CardDescription>
-            {notifications.length} total, {unreadCount} unread
+            {filteredNotifications.length} visible out of {notifications.length} total alerts
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -112,44 +154,45 @@ export default function AdminNotificationsPage() {
                 Retry
               </Button>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : filteredNotifications.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No notifications yet.
+              No alerts in this category right now.
             </p>
           ) : (
-            <div className="space-y-1">
-              {notifications.map((notification) => (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
                 <div
-                  key={notification._id}
-                  className={`flex items-start justify-between rounded-md p-3 ${
-                    notification.isRead
-                      ? "bg-background"
-                      : "bg-muted/50"
-                  }`}
+                  key={notification.id}
+                  className="flex flex-col gap-4 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between"
                 >
-                  <div className="flex-1">
-                    <p
-                      className={`text-sm ${
-                        notification.isRead
-                          ? "text-muted-foreground"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {notification.message}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-primary/10 p-2 text-primary">
+                      {notification.category === "WITHDRAWAL" ? (
+                        <BanknoteIcon className="size-4" />
+                      ) : notification.category === "PAYMENT" ? (
+                        <CreditCardIcon className="size-4" />
+                      ) : (
+                        <ShieldAlertIcon className="size-4" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {notification.title}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {notification.message}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  {!notification.isRead && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => markAsRead(notification._id)}
-                    >
-                      <CheckCircle2Icon className="size-4" />
-                    </Button>
-                  )}
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={notification.href}>
+                      Open
+                      <ArrowRightIcon className="ml-1 size-4" />
+                    </Link>
+                  </Button>
                 </div>
               ))}
             </div>

@@ -11,7 +11,7 @@ import User from "@/models/User";
 import Transaction from "@/models/Transaction";
 import Notification from "@/models/Notification";
 
-async function getAdminCounts() {
+async function getAdminCounts(adminUserId: string) {
   await connectToDatabase();
 
   const [pendingWithdrawals, expiredSubscriptions, pendingManualSubscriptions, unreadNotifications] =
@@ -19,7 +19,7 @@ async function getAdminCounts() {
       WithdrawalRequest.countDocuments({ status: "PENDING" }),
       User.countDocuments({ role: "STUDENT", subscriptionStatus: "EXPIRED" }),
       Transaction.countDocuments({ type: "SUBSCRIPTION_MANUAL", status: "PENDING" }),
-      Notification.countDocuments({ isRead: false }),
+      Notification.countDocuments({ userId: adminUserId, isRead: false }),
     ]);
 
   return {
@@ -32,12 +32,14 @@ async function getAdminCounts() {
 
 const adminNavItems = [
   { href: "/admin/pricing", label: "Pricing" },
+  { href: "/admin/payment-config", label: "Payment config" },
   { href: "/admin/format-config", label: "Format config" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/ai-keys", label: "AI Keys" },
+  { href: "/admin/legal", label: "Legal" },
   { href: "/admin/settings", label: "Settings" },
 ] as const;
 
@@ -56,12 +58,12 @@ export default async function AdminPortalLayout({
     redirect(getProfilePath(session.user));
   }
 
-  const counts = await getAdminCounts();
+  const counts = await getAdminCounts(session.user.id);
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Logo href="/admin/pricing" prefetch={false} />
@@ -77,7 +79,7 @@ export default async function AdminPortalLayout({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }

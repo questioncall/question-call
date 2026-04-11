@@ -21,6 +21,7 @@ export default async function SignOutPage() {
         "The session is cleared immediately on page load",
         "After sign-out you return to /auth/signin",
       ]}
+      imageQuote="Rest well. Your next session can bring new questions, stronger answers, and fresh progress."
       portalLabel="Secure logout"
       title="Signing you out"
     >

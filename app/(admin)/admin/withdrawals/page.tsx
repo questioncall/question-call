@@ -195,7 +195,7 @@ export default function AdminWithdrawalsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-fit max-w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
@@ -253,7 +253,7 @@ export default function AdminWithdrawalsPage() {
       </div>
 
       {/* Table */}
-      <Card className="border-border/70 shadow-sm">
+      <Card className="mx-auto w-fit max-w-full border-border/70 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Requests</CardTitle>
           <CardDescription>{requests.length} total</CardDescription>
@@ -277,16 +277,16 @@ export default function AdminWithdrawalsPage() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-max min-w-[1320px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-3">Requester</th>
-                    <th className="px-3 py-3">Points</th>
-                    <th className="px-3 py-3">NPR</th>
-                    <th className="px-3 py-3">eSewa</th>
-                    <th className="px-3 py-3">Date</th>
-                    <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3">Actions</th>
+                    <th className="px-3 py-3 font-normal">Requester</th>
+                    <th className="px-3 py-3 font-normal">Points</th>
+                    <th className="px-3 py-3 font-normal">NPR</th>
+                    <th className="px-3 py-3 font-normal">eSewa</th>
+                    <th className="px-3 py-3 font-normal">Date</th>
+                    <th className="px-3 py-3 font-normal">Status</th>
+                    <th className="px-3 py-3 font-normal">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,20 +297,20 @@ export default function AdminWithdrawalsPage() {
                     >
                       <td className="px-3 py-3">
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="font-normal text-foreground">
                             {req.teacherId?.name || "Unknown"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {req.teacherId?.email}
                           </p>
                           {req.teacherId?.role && (
-                            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            <p className="mt-1 text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
                               {req.teacherId.role}
                             </p>
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-3 font-medium text-foreground">
+                      <td className="px-3 py-3 font-normal text-foreground">
                         {req.pointsRequested}
                       </td>
                       <td className="px-3 py-3 text-foreground">
@@ -331,7 +331,7 @@ export default function AdminWithdrawalsPage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 gap-1 text-xs"
+                              className="h-7 gap-1 text-xs font-normal"
                               onClick={() => openCompleteModal(req)}
                             >
                               <CheckCircle2Icon className="size-3" />
@@ -340,7 +340,7 @@ export default function AdminWithdrawalsPage() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              className="h-7 gap-1 text-xs"
+                              className="h-7 gap-1 text-xs font-normal"
                               onClick={() => setRejectTarget(req)}
                             >
                               <XCircleIcon className="size-3" />
@@ -488,7 +488,7 @@ export default function AdminWithdrawalsPage() {
 function StatusBadge({ status }: { status: string }) {
   if (status === "COMPLETED") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-normal text-emerald-700 dark:text-emerald-400">
         <CheckCircle2Icon className="size-3" />
         Completed
       </span>
@@ -496,14 +496,14 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "REJECTED") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-normal text-red-700 dark:text-red-400">
         <XCircleIcon className="size-3" />
         Rejected
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-normal text-amber-700 dark:text-amber-400">
       <ClockIcon className="size-3" />
       Pending
     </span>

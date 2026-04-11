@@ -30,6 +30,10 @@ type UserRecord = {
   createdAt: string;
 };
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Something went wrong";
+}
+
 export function UsersClient() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +46,8 @@ export function UsersClient() {
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setUsers(data);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -70,8 +74,8 @@ export function UsersClient() {
         u._id === suspendTarget._id ? { ...u, isSuspended: data.isSuspended } : u
       ));
       setSuspendTarget(null);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setSuspendingId(null);
     }
@@ -86,7 +90,7 @@ export function UsersClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-fit max-w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           <UsersIcon className="mr-2 inline-block size-6 text-primary" />
@@ -97,7 +101,7 @@ export function UsersClient() {
         </p>
       </div>
 
-      <Card>
+      <Card className="mx-auto w-fit max-w-full">
         <CardHeader>
           <CardTitle>Registered Users</CardTitle>
           <CardDescription>
@@ -106,7 +110,7 @@ export function UsersClient() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-max min-w-[980px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Name</th>

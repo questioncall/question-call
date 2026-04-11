@@ -2,16 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Leaf, Clock, CalendarDays, HelpCircle } from "lucide-react";
+import { LegalDialog } from "@/components/shared/legal-dialog";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { PlanDef } from "@/lib/plans";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
@@ -297,33 +290,10 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
         <div className="mt-12 text-center pb-8">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             By choosing a plan, you agree to our{" "}
-            <Dialog>
-              <DialogTrigger className="font-semibold text-[#1B7258] dark:text-[#27A883] hover:underline underline-offset-4 focus:outline-none">
-                Subscription Policy
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] md:max-w-[600px] bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-2xl">
-                <DialogHeader className="mb-4">
-                  <DialogTitle className="text-xl text-neutral-900 dark:text-white">Subscription & Payment Policy</DialogTitle>
-                  <DialogDescription className="text-neutral-500 dark:text-neutral-400">
-                    Please review our policies regarding your platform subscription, payments, and discounts.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-5 text-[13px] md:text-sm text-neutral-700 dark:text-neutral-300 max-h-[60vh] overflow-y-auto pr-4 text-left">
-                  <div className="space-y-1.5">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white">1. Subscriptions & Billing</h4>
-                    <p className="leading-relaxed">All payments are securely processed through supported gateways (e.g., Khalti, eSewa). Subscriptions will prompt for renewal upon expiration; auto-recurring billing is currently non-binding unless explicitly authorized.</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white">2. Free Trial & Refunds</h4>
-                    <p className="leading-relaxed">The free trial period is applicable once per newly registered account. Once a payment is finalized and a plan starts, refunds will generally not be accommodated unless there are platform errors.</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white">3. Discount Points & Upgrades</h4>
-                    <p className="leading-relaxed">Points earned by contributing correct answers to the public feed can be redeemed toward subscription renewal discounts, and your wallet keeps those points visible in one place. Withdrawal handling is managed separately through the shared wallet flow.</p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <LegalDialog
+              triggerClassName="font-semibold text-[#1B7258] dark:text-[#27A883] hover:underline underline-offset-4 focus:outline-none"
+              triggerLabel="Terms and Policies"
+            />
             .
           </p>
         </div>

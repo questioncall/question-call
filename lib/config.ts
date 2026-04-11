@@ -211,3 +211,39 @@ export const PEER_COMMENTS = {
   MAX_POINT_REWARD: 1.0,
 } as const;
 
+// ─────────────────────────────────────────────────────────────────────
+// 8. LEGAL CONTENT
+//    Seeded into PlatformConfig and editable later from the admin panel.
+// ─────────────────────────────────────────────────────────────────────
+
+export const LEGAL = {
+  TERMS_OF_USE: `1. Using the platform fairly
+Question Hub is built for real academic learning, respectful collaboration, and honest communication. You agree not to misuse the platform, impersonate another person, or submit abusive, misleading, or unlawful content.
+
+2. Accounts and access
+You are responsible for the information you provide during sign up and for keeping your login credentials secure. You should not share your account with anyone else.
+
+3. Questions, answers, and learning content
+Questions, answers, quizzes, and courses are provided to support learning. Students and teachers should only upload material they are allowed to share and should avoid posting harmful, plagiarized, or inappropriate content.
+
+4. Payments, earnings, and rewards
+Subscriptions, discounts, teacher earnings, withdrawals, and other wallet-related actions follow the active rules stored by the platform. Platform misuse, fraudulent payment activity, or policy abuse may lead to restrictions or account suspension.
+
+5. Platform decisions and updates
+We may update features, rules, moderation standards, or access requirements when needed to protect users and improve the service. Continued use of the platform means you accept the latest active version of these terms.`,
+
+  PRIVACY_POLICY: `1. Information we collect
+We may collect basic account information such as your name, email address, role, profile details, subscription records, and learning activity inside the platform.
+
+2. How your information is used
+Your information is used to create your account, operate student and teacher features, process subscriptions and earnings, deliver notifications, improve product experience, and help keep the platform safe.
+
+3. Shared and private content
+Questions may appear in shared feeds depending on the feature flow, while private answer and inbox content is handled according to the visibility choice selected in the app. Administrative and moderation staff may review content when required for support, abuse prevention, or legal compliance.
+
+4. Payments and service providers
+Payment-related data may be processed through supported third-party providers such as eSewa, Khalti, or other services connected to the platform. We only use the information necessary to complete those flows and support the account experience.
+
+5. Retention and policy changes
+We keep information for as long as it is reasonably needed to provide the platform, maintain records, resolve disputes, and meet legal obligations. This policy may be updated over time, and the latest version available in the app will apply.`,
+} as const;

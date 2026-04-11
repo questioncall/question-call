@@ -20,6 +20,7 @@ export default async function StudentSignUpPage() {
         "The shared home route is the first stop after sign-in",
         "Each account receives a clean public username path",
       ]}
+      imageQuote="Start curious, stay consistent, and let every question, course, and quiz move you closer to the future you want."
       portalLabel="Student signup"
       title="Register as a student"
     >

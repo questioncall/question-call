@@ -29,8 +29,9 @@ export default async function SignInPage({ searchParams }: LoginPageProps) {
         "Authenticated users land on the app home",
         "Public profiles use the top-level username path",
       ]}
+      imageQuote="Every sign-in opens something valuable: answers from teachers, quizzes to sharpen your skills, courses to explore, and chances to turn knowledge into earnings."
       portalLabel="Student + Teacher"
-      title="Sign in to enter Question Hub"
+      title="Sign in to continue"
     >
       <AuthForm callbackUrl={callbackUrl} mode="login" />
     </AuthShell>

@@ -811,7 +811,7 @@ Student pays → Platform merchant account (Khalti/eSewa)
 
 ---
 
-### ✅ PHASE 11 — Polish & Production
+### ✅ PHASE 11 but last - now completes the pahse 12 and 13 then this phase. — Polish & Production
 
 - [ ] 11.1 Loading skeletons and empty states across all pages
 - [ ] 11.2 Fully mobile responsive for both portals

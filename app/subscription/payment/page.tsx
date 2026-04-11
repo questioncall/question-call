@@ -1,9 +1,15 @@
+/* eslint-disable @next/next/no-img-element */
 import { redirect } from "next/navigation";
 import { getSafeServerSession } from "@/lib/auth";
 import Link from "next/link";
-import { ChevronLeft, QrCode, CheckCircle2, Info } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Info } from "lucide-react";
+import { LegalDialog } from "@/components/shared/legal-dialog";
 import { TransactionModal } from "@/components/payment/transaction-modal";
-import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
+import {
+  getHydratedPlans,
+  getManualPaymentDetails,
+  getPlatformConfig,
+} from "@/models/PlatformConfig";
 import EsewaPayButton from "@/components/payment/esewa-pay-button";
 
 export default async function PaymentPage({
@@ -23,6 +29,7 @@ export default async function PaymentPage({
   // Retrieve plan safely, defaulting to the 1 Month Plan if not found
   const config = await getPlatformConfig();
   const hydratedPlans = getHydratedPlans(config);
+  const manualPayment = getManualPaymentDetails(config);
   
   const planSlug = planQuery || "1month";
   const plan = hydratedPlans.find((p) => p.slug === planSlug) || hydratedPlans[1];
@@ -53,17 +60,17 @@ export default async function PaymentPage({
           <div className="bg-white dark:bg-[#2A2A2A] rounded-2xl p-8 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col items-center justify-center text-center">
              <div className="w-48 h-48 bg-white p-2 rounded-xl border border-neutral-100 shadow-sm mb-6 flex items-center justify-center">
                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=EduAsk%20Payment`} 
+                    src={manualPayment.qrCodeUrl} 
                     alt="Payment QR Code" 
-                    className="w-full h-full object-contain mix-blend-multiply"
+                    className="w-full h-full object-contain"
                  />
              </div>
              
              <h3 className="font-semibold text-lg text-neutral-800 dark:text-neutral-100 mb-1">
-               {"Jiban Mijhar"}
+               {manualPayment.recipientName}
              </h3>
              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-6">
-               eSewa: {"9819748466"}
+               eSewa: {manualPayment.esewaNumber}
              </p>
 
              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs text-left p-4 rounded-xl flex items-start gap-3 w-full">
@@ -75,8 +82,13 @@ export default async function PaymentPage({
           </div>
           
           <div className="mt-6 flex flex-col gap-3">
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 leading-relaxed opacity-80">
-              By paying, you agree to our Terms of Use and Privacy Policy. Payments are manually verified.
+            <p className="text-xs leading-relaxed text-muted-foreground opacity-80">
+              By paying, you agree to our{" "}
+              <LegalDialog
+                triggerClassName="font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+                triggerLabel="Terms and Policies"
+              />
+              . Payments are manually verified.
             </p>
             <div className="bg-emerald-50 dark:bg-[#1B7258]/10 border border-emerald-100 dark:border-[#1B7258]/20 rounded-lg p-3 flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#1B7258] dark:text-[#27A883] shrink-0 mt-0.5" />

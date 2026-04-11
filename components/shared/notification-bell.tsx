@@ -11,7 +11,9 @@ type NotificationType =
   | "QUESTION_ACCEPTED"
   | "QUESTION_RESET"
   | "CHANNEL_CLOSED"
-  | "PAYMENT";
+  | "PAYMENT"
+  | "ANSWER_SUBMITTED"
+  | "DEADLINE_WARNING";
 
 type Notification = {
   id: string;
@@ -27,6 +29,8 @@ const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   QUESTION_RESET: "🔄",
   CHANNEL_CLOSED: "🔒",
   PAYMENT: "💳",
+  ANSWER_SUBMITTED: "📝",
+  DEADLINE_WARNING: "⏰",
 };
 
 function formatTimeAgo(date: string) {
@@ -48,6 +52,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const isMarkingAllReadRef = useRef(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -107,10 +112,31 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     await fetch(`/api/notifications/${id}`, { method: "PATCH" });
   };
 
-  const markAllRead = async () => {
+  const markAllRead = useCallback(async () => {
+    if (isMarkingAllReadRef.current || !notifications.some((n) => !n.isRead)) {
+      return;
+    }
+
+    isMarkingAllReadRef.current = true;
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    await fetch("/api/notifications/all", { method: "POST" });
-  };
+
+    try {
+      const response = await fetch("/api/notifications/all", { method: "POST" });
+      if (!response.ok) {
+        await fetchNotifications();
+      }
+    } finally {
+      isMarkingAllReadRef.current = false;
+    }
+  }, [fetchNotifications, notifications]);
+
+  useEffect(() => {
+    if (!isOpen || isLoading || unreadCount === 0) {
+      return;
+    }
+
+    void markAllRead();
+  }, [isLoading, isOpen, markAllRead, unreadCount]);
 
   return (
     <div className="relative" ref={panelRef}>
@@ -129,22 +155,21 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[24rem] max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 sm:w-[26rem]">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={markAllRead}
-                >
-                  <CheckCheckIcon className="size-3.5" />
-                  Mark all read
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                disabled={unreadCount === 0}
+                onClick={() => { void markAllRead(); }}
+              >
+                <CheckCheckIcon className="size-3.5" />
+                Mark all read
+              </Button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

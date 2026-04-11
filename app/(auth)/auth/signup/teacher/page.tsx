@@ -20,6 +20,7 @@ export default async function TeacherSignUpPage() {
         "The home feed replaces the old dashboard-first flow",
         "Profiles now follow the public /username route style",
       ]}
+      imageQuote="Teach with clarity, earn with confidence, and build a reputation students remember long after the answer is solved."
       portalLabel="Teacher signup"
       title="Register as a teacher"
     >

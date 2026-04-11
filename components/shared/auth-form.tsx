@@ -7,6 +7,11 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
+import { LegalDialog } from "@/components/shared/legal-dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import {
   clearAuthState,
@@ -123,52 +128,61 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <form className="space-y-4" onSubmit={handleSubmit}>
         {isRegister ? (
-          <label className="block space-y-1.5">
-            <span className="text-sm font-semibold text-gray-800">Name</span>
-            <input
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-foreground" htmlFor="auth-name">
+              Name
+            </Label>
+            <Input
+              id="auth-name"
               required
               autoComplete="name"
-              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
+              className="h-11 rounded-xl bg-background px-3 py-2.5 text-sm shadow-sm md:text-sm"
               onChange={(event) => setName(event.target.value)}
               placeholder="Enter your name"
               type="text"
               value={name}
             />
-          </label>
+          </div>
         ) : null}
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-semibold text-gray-800">Email address</span>
-          <input
+        <div className="space-y-1.5">
+          <Label className="text-sm font-semibold text-foreground" htmlFor="auth-email">
+            Email address
+          </Label>
+          <Input
+            id="auth-email"
             required
             autoComplete="email"
-            className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
+            className="h-11 rounded-xl bg-background px-3 py-2.5 text-sm shadow-sm md:text-sm"
             onChange={(event) => setEmail(event.target.value)}
             placeholder="Enter your email"
             type="email"
             value={email}
           />
-        </label>
+        </div>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-semibold text-gray-800">Password</span>
+        <div className="space-y-1.5">
+          <Label className="text-sm font-semibold text-foreground" htmlFor="auth-password">
+            Password
+          </Label>
           <div className="relative">
-            <input
+            <Input
+              id="auth-password"
               required
               autoComplete={isRegister ? "new-password" : "current-password"}
-              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-[#405f31] focus:ring-1 focus:ring-[#405f31] placeholder:text-gray-400"
+              className="h-11 rounded-xl bg-background px-3 py-2.5 pr-10 text-sm shadow-sm md:text-sm"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder={isRegister ? "Name" : "At least 8 characters"}
+              placeholder={isRegister ? "Create a password" : "Enter your password"}
               type={showPassword ? "text" : "password"}
               value={password}
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -178,36 +192,44 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
               )}
             </button>
           </div>
-        </label>
+        </div>
 
         {isRegister && (
-          <label className="flex items-center space-x-2.5 mt-2">
-            <input 
-              type="checkbox" 
-              checked={termsAgreed}
-              onChange={(e) => setTermsAgreed(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-[#405f31] focus:ring-[#405f31]" 
-            />
-            <span className="text-xs text-gray-700">
-              I agree to the <span className="underline cursor-pointer">terms & policy</span>
-            </span>
-          </label>
+          <div className="mt-2 rounded-xl border border-border bg-muted/20 p-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="auth-terms"
+                checked={termsAgreed}
+                onCheckedChange={(checked) => setTermsAgreed(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label className="text-xs leading-5 text-muted-foreground" htmlFor="auth-terms">
+                  I agree to the legal terms required for using this platform.
+                </Label>
+                <LegalDialog
+                  triggerClassName="text-xs font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+                  triggerLabel="Terms and Policies"
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {activeError ? (
-          <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+          <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             {activeError}
           </div>
         ) : null}
 
         {success ? (
-          <div className="rounded-xl border border-green-100 bg-green-50 p-3 text-sm text-green-700">
+          <div className="rounded-xl border border-primary/20 bg-primary/10 p-3 text-sm text-foreground">
             {success}
           </div>
         ) : null}
 
-        <button
-          className="w-full rounded-xl bg-[#405f31] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#344b27] disabled:cursor-not-allowed disabled:opacity-70 mt-4"
+        <Button
+          className="mt-4 h-11 w-full rounded-xl text-sm font-semibold shadow-sm"
           disabled={isSubmitting}
           type="submit"
         >
@@ -218,32 +240,38 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
             : isRegister
               ? "Signup"
               : "Sign In"}
-        </button>
+        </Button>
       </form>
 
-      <div className="mt-6 text-center text-sm font-medium text-gray-800">
+      <div className="rounded-2xl border border-border bg-muted/20 px-5 py-4 text-center text-sm text-muted-foreground">
         {isRegister ? (
           <>
             Have an account?{" "}
-            <Link href={getSignInPath()} className="text-blue-600 hover:text-blue-700 ml-1 font-bold">
+            <Link href={getSignInPath()} className="ml-1 font-semibold text-primary hover:underline">
               Sign In
             </Link>
-            <div className="mt-4 text-sm text-gray-500">
+            <div className="mt-3 text-sm text-muted-foreground">
               Registering differently?{" "}
-              <Link href={getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT")} className="font-semibold text-gray-900 underline hover:text-gray-700">
+              <Link
+                href={getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT")}
+                className="font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+              >
                 Switch Role
               </Link>
             </div>
           </>
         ) : (
           <>
-            Don't have an account?{" "}
-            <Link href={getSignUpPath("STUDENT")} className="text-blue-600 hover:text-blue-700 ml-1 font-bold">
+            Don&apos;t have an account?{" "}
+            <Link href={getSignUpPath("STUDENT")} className="ml-1 font-semibold text-primary hover:underline">
               Sign Up
             </Link>
-            <p className="mt-4 text-sm text-gray-500">
+            <p className="mt-3 text-sm text-muted-foreground">
               Want to teach instead?{" "}
-              <Link href={getSignUpPath("TEACHER")} className="font-semibold text-gray-900 underline hover:text-gray-700">
+              <Link
+                href={getSignUpPath("TEACHER")}
+                className="font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+              >
                 Register as teacher
               </Link>
             </p>

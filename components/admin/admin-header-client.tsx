@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 interface AdminCounts {
   pendingWithdrawals: number;
@@ -45,10 +44,22 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
     return () => clearInterval(interval);
   }, []);
 
-  const totalNotifications =
-    counts.pendingWithdrawals +
-    counts.expiredSubscriptions +
-    counts.pendingManualSubscriptions;
+  useEffect(() => {
+    const handleAdminNotificationsRead = () => {
+      setCounts((prev) => ({ ...prev, unreadNotifications: 0 }));
+    };
+
+    window.addEventListener("admin-notifications-read", handleAdminNotificationsRead);
+    return () => {
+      window.removeEventListener("admin-notifications-read", handleAdminNotificationsRead);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pathname === "/admin/notifications") {
+      setCounts((prev) => ({ ...prev, unreadNotifications: 0 }));
+    }
+  }, [pathname]);
 
   return (
     <div className="flex items-center gap-3">
@@ -58,9 +69,9 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
             <BellIcon className="size-5" />
           </Link>
         </Button>
-        {totalNotifications > 0 && (
+        {counts.unreadNotifications > 0 && (
           <span className="absolute -right-1 -top-1 flex size-5 animate-pulse items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-            {totalNotifications > 9 ? "9+" : totalNotifications}
+            {counts.unreadNotifications > 9 ? "9+" : counts.unreadNotifications}
           </span>
         )}
       </div>

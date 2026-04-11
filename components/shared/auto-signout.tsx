@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { getSignInPath } from "@/lib/user-paths";
-import { LogOutIcon } from "lucide-react";
+import { LoaderCircleIcon, LogOutIcon } from "lucide-react";
 
 export function AutoSignOut() {
   useEffect(() => {
@@ -15,14 +15,18 @@ export function AutoSignOut() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 py-12 text-center shadow-sm">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600 shrink-0">
-         <LogOutIcon className="h-6 w-6 ml-1" />
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-border bg-card px-6 py-12 text-center shadow-sm">
+      <div className="mb-4 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+         <LogOutIcon className="ml-1 h-6 w-6" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">Signout in progress</h3>
-      <p className="mt-2 text-sm text-gray-500 max-w-sm px-4">
+      <h3 className="text-lg font-semibold text-foreground">Signing out</h3>
+      <p className="mt-2 max-w-sm px-4 text-sm leading-6 text-muted-foreground">
         Clearing your session and preparing to return you to the login screen safely.
       </p>
+      <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+        <LoaderCircleIcon className="h-3.5 w-3.5 animate-spin" />
+        Finishing your session
+      </div>
     </div>
   );
 }

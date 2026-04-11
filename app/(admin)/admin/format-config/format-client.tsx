@@ -65,7 +65,7 @@ export function FormatClient() {
   if (!config) return null;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           <SlidersIcon className="mr-2 inline-block size-6 text-primary" />
