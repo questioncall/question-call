@@ -8,8 +8,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+type FormatConfig = {
+  textFormatDuration: number;
+  photoFormatDuration: number;
+  videoFormatDuration: number;
+  maxVideoDurationMinutes: number;
+  pointsPerTextAnswer: number;
+  pointsPerPhotoAnswer: number;
+  pointsPerVideoAnswer: number;
+  pointToNprRate: number;
+  minWithdrawalPoints: number;
+  qualificationThreshold: number;
+  commissionPercent: number;
+  scoreDeductionAmount: number;
+  bonusPointsFor4Star: number;
+  bonusPointsFor5Star: number;
+  penaltyPointsForLowRating: number;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Something went wrong";
+}
+
 export function FormatClient() {
-  const [config, setConfig] = useState<any>(null);
+  const [config, setConfig] = useState<FormatConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -18,10 +40,10 @@ export function FormatClient() {
       try {
         const res = await fetch("/api/admin/config");
         if (!res.ok) throw new Error("Failed to fetch configuration");
-        const data = await res.json();
+        const data = (await res.json()) as FormatConfig;
         setConfig(data);
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (error) {
+        toast.error(getErrorMessage(error));
       } finally {
         setLoading(false);
       }
@@ -29,8 +51,8 @@ export function FormatClient() {
     fetchConfig();
   }, []);
 
-  const handleChange = (field: string, value: string) => {
-    setConfig((prev: any) => ({ ...prev, [field]: Number(value) }));
+  const handleChange = (field: keyof FormatConfig, value: string) => {
+    setConfig((prev) => (prev ? { ...prev, [field]: Number(value) } : prev));
   };
 
   const handleSave = async () => {
@@ -43,12 +65,15 @@ export function FormatClient() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update format config");
+      if (!res.ok) {
+        const errorData = data as { error?: string };
+        throw new Error(errorData.error || "Failed to update format config");
+      }
 
       toast.success("Format configuration updated successfully! This is now live.");
-      setConfig(data);
-    } catch (err: any) {
-      toast.error(err.message);
+      setConfig(data as FormatConfig);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -110,6 +135,18 @@ export function FormatClient() {
                 value={config.videoFormatDuration || 0}
                 onChange={(e) => handleChange("videoFormatDuration", e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Max Video Upload Length (Minutes)</label>
+              <Input
+                type="number"
+                min={1}
+                value={config.maxVideoDurationMinutes || 0}
+                onChange={(e) => handleChange("maxVideoDurationMinutes", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Rejects video attachments longer than this before they finish uploading.
+              </p>
             </div>
           </CardContent>
         </Card>

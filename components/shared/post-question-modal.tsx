@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { uploadFileViaServer } from "@/lib/client-upload";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +73,10 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    value: number;
+    detail: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,8 +137,9 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   // Upload sequential helper
   const _uploadFiles = async (): Promise<string[]> => {
     const uploadedUrls: string[] = [];
+    const totalFiles = pendingImages.length;
     
-    for (const pending of pendingImages) {
+    for (const [index, pending] of pendingImages.entries()) {
       let fileToUpload = pending.file;
       
       // Compress if eligible
@@ -147,17 +154,17 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
            console.error("Compression failed:", err);
          }
       }
-
-      const formData = new FormData();
-      formData.append("file", fileToUpload);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+      
+      const data = await uploadFileViaServer<{ secure_url: string }>(fileToUpload, {
+        onProgress: ({ percent }) => {
+          const overallProgress = ((index + percent / 100) / totalFiles) * 100;
+          setUploadProgress({
+            value: overallProgress,
+            detail: `Uploading image ${index + 1} of ${totalFiles}`,
+          });
+        },
       });
 
-      if (!res.ok) throw new Error("Failed to upload an image");
-      const data = await res.json();
       uploadedUrls.push(data.secure_url);
     }
     
@@ -169,6 +176,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
     setIsSubmitting(true);
     setError(null);
+    setUploadProgress(null);
 
     try {
       // 1. First upload any pending images to Cloudinary
@@ -208,6 +216,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -329,6 +338,15 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                 )}
               </div>
             )}
+
+            {isSubmitting && uploadProgress ? (
+              <UploadProgressBar
+                className="mt-3"
+                label="Uploading question images"
+                value={uploadProgress.value}
+                detail={uploadProgress.detail}
+              />
+            ) : null}
           </div>
 
           {/* Configuration Grid */}

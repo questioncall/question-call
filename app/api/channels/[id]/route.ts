@@ -120,6 +120,7 @@ export async function GET(_request: Request, context: RouteParams) {
       acceptorUsername: acceptor.username || undefined,
       acceptorImage: acceptor.userImage || undefined,
       formatDurationMinutes,
+      maxVideoDurationMinutes: config.maxVideoDurationMinutes,
       isAnswerSubmitted: !!isAnswerSubmitted,
     };
 

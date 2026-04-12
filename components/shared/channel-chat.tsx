@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
   CHANNEL_MESSAGE_EVENT,
@@ -55,6 +57,7 @@ type PendingFile = {
   file: File;
   type: "image" | "video" | "audio" | "raw";
   previewUrl: string;
+  durationSeconds?: number | null;
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -78,6 +81,19 @@ function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function getUploadLabel(type: PendingFile["type"] | "audio") {
+  switch (type) {
+    case "image":
+      return "Uploading image";
+    case "video":
+      return "Uploading video";
+    case "audio":
+      return "Uploading audio";
+    default:
+      return "Uploading attachment";
+  }
 }
 
 function formatMessageDate(dateString: string) {
@@ -126,6 +142,11 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [ratingValue, setRatingValue] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<{
+    label: string;
+    value: number;
+    detail?: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -270,8 +291,24 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   }, [pendingFile]);
 
   // ─── Upload file ──────────────────────────────────────
-  const uploadFileToServer = async (file: File): Promise<string> => {
+  const uploadFileToServer = async (
+    file: File,
+    options?: {
+      durationSeconds?: number | null;
+      onProgress?: (percent: number) => void;
+    },
+  ): Promise<string> => {
     let fileToUpload = file;
+    const durationSeconds = options?.durationSeconds ?? null;
+
+    if (
+      file.type.startsWith("video/") &&
+      typeof durationSeconds === "number" &&
+      channel?.maxVideoDurationMinutes &&
+      durationSeconds > channel.maxVideoDurationMinutes * 60
+    ) {
+      throw new Error(`Video must be ${channel.maxVideoDurationMinutes} minutes or shorter.`);
+    }
 
     if (file.type.startsWith("image/") && !file.type.includes("gif")) {
       try {
@@ -285,17 +322,21 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       }
     }
 
-    const formData = new FormData();
-    formData.append("file", fileToUpload);
+    const data = await uploadFileViaServer<{ secure_url: string }>(fileToUpload, {
+      fields:
+        typeof durationSeconds === "number"
+          ? { videoDurationSeconds: String(durationSeconds) }
+          : undefined,
+      onProgress: ({ percent }) => {
+        options?.onProgress?.(percent);
+      },
+    });
 
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    if (!res.ok) throw new Error("Upload failed");
-    const data = await res.json();
     return data.secure_url;
   };
 
   // ─── File select ──────────────────────────────────────
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -310,12 +351,37 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     else if (file.type.startsWith("video/")) mediaType = "video";
     else if (file.type.startsWith("audio/")) mediaType = "audio";
 
+    let durationSeconds: number | null = null;
+
+    if (mediaType === "video") {
+      try {
+        durationSeconds = await getVideoDurationSeconds(file);
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "We couldn't read the selected video length.",
+        );
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const maxVideoDurationMinutes = channel?.maxVideoDurationMinutes ?? 30;
+
+      if (durationSeconds > maxVideoDurationMinutes * 60) {
+        toast.error(`Video must be ${maxVideoDurationMinutes} minutes or shorter.`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+
     if (pendingFile?.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl);
 
     setPendingFile({
       file,
       type: mediaType,
       previewUrl: URL.createObjectURL(file),
+      durationSeconds,
     });
 
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -325,6 +391,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const handleSend = async () => {
     if (!text.trim() && !pendingFile) return;
     if (channel?.status !== "ACTIVE") return;
+    if (uploadProgress) return;
 
     const messageText = text.trim();
     const currentPendingFile = pendingFile;
@@ -366,7 +433,28 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     // Upload file if present
     if (currentPendingFile) {
       try {
-        mediaUrl = await uploadFileToServer(currentPendingFile.file);
+        setUploadProgress({
+          label: getUploadLabel(currentPendingFile.type),
+          value: 0,
+          detail:
+            currentPendingFile.type === "video" && channel?.maxVideoDurationMinutes
+              ? `Max ${channel.maxVideoDurationMinutes} minutes per video`
+              : undefined,
+        });
+
+        mediaUrl = await uploadFileToServer(currentPendingFile.file, {
+          durationSeconds: currentPendingFile.durationSeconds,
+          onProgress: (percent) => {
+            setUploadProgress({
+              label: getUploadLabel(currentPendingFile.type),
+              value: percent,
+              detail:
+                currentPendingFile.type === "video" && channel?.maxVideoDurationMinutes
+                  ? `Max ${channel.maxVideoDurationMinutes} minutes per video`
+                  : undefined,
+            });
+          },
+        });
         dispatch(
           updateMessage({
             id: tempId,
@@ -376,8 +464,12 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       } catch (err) {
         console.error(err);
         dispatch(removeMessage(tempId));
-        toast.error("Failed to upload the attached file.");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to upload the attached file.",
+        );
         return;
+      } finally {
+        setUploadProgress(null);
       }
     }
 
@@ -455,7 +547,19 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         );
 
         try {
-          const secureUrl = await uploadFileToServer(file);
+          setUploadProgress({
+            label: getUploadLabel("audio"),
+            value: 0,
+          });
+
+          const secureUrl = await uploadFileToServer(file, {
+            onProgress: (percent) => {
+              setUploadProgress({
+                label: getUploadLabel("audio"),
+                value: percent,
+              });
+            },
+          });
 
           const res = await fetch(`/api/channels/${channelId}/messages`, {
             method: "POST",
@@ -477,6 +581,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         } catch {
           dispatch(removeMessage(tempId));
           toast.error("Failed to send audio message.");
+        } finally {
+          setUploadProgress(null);
         }
 
         stream.getTracks().forEach((track) => track.stop());
@@ -974,11 +1080,27 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                 </div>
               )}
 
-              <div className="truncate text-xs font-medium text-foreground">
-                {pendingFile.file.name}
+              <div className="min-w-0">
+                <div className="truncate text-xs font-medium text-foreground">
+                  {pendingFile.file.name}
+                </div>
+                {pendingFile.type === "video" && channel?.maxVideoDurationMinutes ? (
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    Max {channel.maxVideoDurationMinutes} minutes
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
+
+          {uploadProgress ? (
+            <UploadProgressBar
+              label={uploadProgress.label}
+              value={uploadProgress.value}
+              detail={uploadProgress.detail}
+              className="max-w-sm"
+            />
+          ) : null}
 
           {/* Hidden file input */}
           <input
@@ -1032,6 +1154,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                 size="icon"
                 className="shrink-0 rounded-full border-border bg-background hover:bg-muted text-foreground transition-transform active:scale-95"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={!!uploadProgress}
               >
                 <PaperclipIcon className="size-4" />
                 <span className="sr-only">Attach file</span>
@@ -1053,6 +1176,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                   size="icon"
                   className="shrink-0 rounded-full size-10 bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-transform active:scale-95"
                   onClick={() => void handleSend()}
+                  disabled={!!uploadProgress}
                 >
                   <SendIcon className="size-4 ml-0.5" />
                 </Button>
@@ -1063,6 +1187,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                   size="icon"
                   className="shrink-0 rounded-full size-10 border-border bg-background shadow-sm hover:bg-muted transition-transform active:scale-95"
                   onClick={startRecording}
+                  disabled={!!uploadProgress}
                 >
                   <MicIcon className="size-5 text-foreground" />
                 </Button>

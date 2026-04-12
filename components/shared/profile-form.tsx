@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { uploadFileViaServer } from "@/lib/client-upload";
 import { UserRecord } from "@/models/User";
 
 const profileFormSchema = z.object({
@@ -31,6 +33,7 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
   const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultSkills = user.skills?.join(", ") || "";
@@ -61,34 +64,27 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
     if (!file) return;
 
     setIsUploadingImage(true);
-    const toastId = toast.loading("Uploading image...");
+    setImageUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // We now call our own secure backend endpoint!
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+      const data = await uploadFileViaServer<{ secure_url: string }>(file, {
+        onProgress: ({ percent }) => {
+          setImageUploadProgress(percent);
+        },
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData?.error || "Image upload failed");
-      }
-
-      const data = await response.json();
       
       const newImage = data.secure_url;
       setValue("userImage", newImage, { shouldDirty: true, shouldValidate: true });
       dispatch(updateProfile({ userImage: newImage }));
-      toast.success("Image uploaded successfully!", { id: toastId });
-    } catch (error: any) {
+      toast.success("Image uploaded successfully!");
+    } catch (error: unknown) {
       console.error("Upload error:", error);
-      toast.error(error.message || "Failed to upload image", { id: toastId });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload image",
+      );
     } finally {
       setIsUploadingImage(false);
+      setImageUploadProgress(null);
       // Reset input so the same file could be picked again if needed
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -168,6 +164,13 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
           >
             {isUploadingImage ? "Uploading..." : "Change Avatar"}
           </Button>
+          {isUploadingImage && imageUploadProgress !== null ? (
+            <UploadProgressBar
+              className="mt-3 w-[240px]"
+              label="Uploading avatar"
+              value={imageUploadProgress}
+            />
+          ) : null}
           <p className="mt-2 text-xs text-muted-foreground">
             Must be a valid image file. Max 5MB.
           </p>

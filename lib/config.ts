@@ -196,6 +196,9 @@ export const PLATFORM = {
 
   /** Max file upload size in MB (for screenshots, answers, etc.) */
   MAX_UPLOAD_SIZE_MB: 10,
+
+  /** Max allowed duration for uploaded video attachments */
+  MAX_VIDEO_DURATION_MINUTES: 30,
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────

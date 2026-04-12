@@ -38,6 +38,7 @@ export type ChannelDetail = ChannelRecord & {
   acceptorUsername?: string;
   acceptorImage?: string;
   formatDurationMinutes: number;
+  maxVideoDurationMinutes: number;
   isAnswerSubmitted: boolean;
 };
 

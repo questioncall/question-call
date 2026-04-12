@@ -21,6 +21,7 @@ import {
   PEER_COMMENTS,
   LEGAL,
   QUIZ,
+  PLATFORM,
 } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
@@ -40,6 +41,11 @@ const platformConfigSchema = new Schema(
     videoFormatDuration: {
       type: Number,
       default: FORMAT.VIDEO.DURATION_MINUTES,
+      min: 1,
+    },
+    maxVideoDurationMinutes: {
+      type: Number,
+      default: PLATFORM.MAX_VIDEO_DURATION_MINUTES,
       min: 1,
     },
 

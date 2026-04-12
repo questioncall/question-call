@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { postMultipartWithProgress } from "@/lib/client-upload";
 
 type ManualPaymentConfig = {
   manualPaymentRecipientName?: string;
@@ -29,6 +31,7 @@ export function PaymentConfigClient() {
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -72,6 +75,7 @@ export function PaymentConfigClient() {
     }
 
     setSaving(true);
+    setUploadProgress(qrFile ? 0 : null);
     try {
       const formData = new FormData();
       formData.append("recipientName", recipientName.trim());
@@ -81,15 +85,17 @@ export function PaymentConfigClient() {
         formData.append("qrCode", qrFile);
       }
 
-      const res = await fetch("/api/admin/config/manual-payment", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to update payment configuration");
-      }
+      const data = await postMultipartWithProgress<ManualPaymentConfig>(
+        "/api/admin/config/manual-payment",
+        formData,
+        qrFile
+          ? {
+              onProgress: ({ percent }) => {
+                setUploadProgress(percent);
+              },
+            }
+          : {},
+      );
 
       setConfig(data);
       setRecipientName(data.manualPaymentRecipientName || recipientName.trim());
@@ -101,6 +107,7 @@ export function PaymentConfigClient() {
       toast.error(getErrorMessage(error));
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -167,6 +174,13 @@ export function PaymentConfigClient() {
                 <p className="mt-2 text-xs text-muted-foreground">
                   Uploading a new image replaces the currently stored Cloudinary QR code.
                 </p>
+                {saving && uploadProgress !== null ? (
+                  <UploadProgressBar
+                    className="mt-3"
+                    label="Uploading QR image"
+                    value={uploadProgress}
+                  />
+                ) : null}
               </div>
             </div>
           </div>
