@@ -4,26 +4,25 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { markChannelMessageAsAnswer } from "@/lib/channel-answer-marking";
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string; messageId: string }> }
-) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function POST(request: Request, context: RouteParams) {
   try {
-    const { id, messageId } = await params;
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { isMarkedAsAnswer } = await req.json();
+    const { id: channelId } = await context.params;
+    const { messageId, isMarkedAsAnswer } = await request.json();
 
-    if (typeof isMarkedAsAnswer !== "boolean") {
+    if (!messageId || typeof messageId !== "string" || typeof isMarkedAsAnswer !== "boolean") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     const result = await markChannelMessageAsAnswer({
-      channelId: id,
+      channelId,
       messageId,
       userId: session.user.id,
       isMarkedAsAnswer,
@@ -35,10 +34,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, isMarkedAsAnswer: result.isMarkedAsAnswer });
   } catch (error) {
-    console.error("[POST /api/channels/messages/mark-answer]", error);
-    return NextResponse.json(
-      { error: "Failed to mark message" },
-      { status: 500 }
-    );
+    console.error("[POST /api/channels/[id]/mark-answer]", error);
+    return NextResponse.json({ error: "Failed to mark message" }, { status: 500 });
   }
 }

@@ -510,19 +510,27 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   };
 
   // ─── Derived state ────────────────────────────────────
-  const markedMessagesCount = messages.filter((m) => m.isMarkedAsAnswer).length;
+  const markedMessages = useMemo(
+    () => messages.filter((m) => m.isOwn && !m.isSending && m.isMarkedAsAnswer),
+    [messages],
+  );
+  const markedMessagesCount = markedMessages.length;
 
   // ─── Handlers ─────────────────────────────────────────
 
-  // Fire-and-forget background sync — UI updates instantly via dispatch above
+  // UI updates instantly; submit also sends the selected message IDs as a fallback.
   const syncMarkToServer = (messageId: string, nextMark: boolean) => {
-    fetch(`/api/channels/${channelId}/messages/${messageId}/mark-answer`, {
+    fetch(`/api/channels/${channelId}/mark-answer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isMarkedAsAnswer: nextMark }),
-    }).catch(() => {
-      // Silently revert on network error
-      dispatch(toggleMessageMarked({ messageId, isMarkedAsAnswer: !nextMark }));
+      body: JSON.stringify({ messageId, isMarkedAsAnswer: nextMark }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        console.error("[channel-chat] mark-answer sync failed", data?.error ?? res.statusText);
+      }
+    }).catch((error) => {
+      console.error("[channel-chat] mark-answer request failed", error);
     });
   };
 
@@ -544,7 +552,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       const res = await fetch("/api/answers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId }),
+        body: JSON.stringify({
+          channelId,
+          markedMessageIds: markedMessages.map((message) => message.id),
+        }),
       });
       if (res.ok) {
         dispatch(setAnswerSubmitted(true));
@@ -587,7 +598,6 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const isActive = channel?.status === "ACTIVE";
   const isClosed = channel?.status === "CLOSED";
   const isExpired = channel?.status === "EXPIRED";
-  const timerExpired = countdown <= 0 && channel?.status === "ACTIVE";
   const isAsker = userId === channel?.askerId;
   const counterpartName = isAsker ? channel?.acceptorName : channel?.askerName;
   const groupedMessages = useMemo(() => {

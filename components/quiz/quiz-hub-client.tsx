@@ -6,13 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
-  BrainCircuitIcon,
-  BookOpenIcon,
-  GraduationCapIcon,
   Loader2Icon,
   LockIcon,
   PlayCircleIcon,
-  SearchIcon,
   SparklesIcon,
   TimerResetIcon,
 } from "lucide-react";
@@ -221,28 +217,7 @@ export function QuizHubClient() {
     ) ?? null;
   }, [level, subject, topic, topics]);
 
-  const trimmedSearchQuery = searchQuery.trim();
-  const hasSearchQuery = trimmedSearchQuery.length > 0;
-  const searchSummary = hasSearchQuery
-    ? `${topics.length} close ${topics.length === 1 ? "match" : "matches"} for "${trimmedSearchQuery}"`
-    : `${topics.length} active ${topics.length === 1 ? "topic" : "topics"} ready to explore`;
-  const quickSuggestionGroups = [
-    {
-      title: "Fields",
-      icon: <SparklesIcon className="size-3.5 text-emerald-600 dark:text-emerald-300" />,
-      items: topicSuggestions?.fields.slice(0, 5) ?? [],
-    },
-    {
-      title: "Subjects",
-      icon: <BookOpenIcon className="size-3.5 text-sky-600 dark:text-sky-300" />,
-      items: topicSuggestions?.subjects.slice(0, 5) ?? [],
-    },
-    {
-      title: "Levels",
-      icon: <GraduationCapIcon className="size-3.5 text-amber-600 dark:text-amber-300" />,
-      items: topicSuggestions?.levels.slice(0, 5) ?? [],
-    },
-  ].filter((group) => group.items.length > 0);
+  const hasSearchQuery = searchQuery.trim().length > 0;
 
   async function handleStart(mode: QuizType) {
     if (!selectedTopic) {
@@ -355,243 +330,115 @@ export function QuizHubClient() {
           </Card>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[1.25fr_0.95fr]">
-          <Card className="overflow-hidden border-border/70 bg-background/95 shadow-sm">
-            <CardHeader className="space-y-4 border-b border-border/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(239,246,255,0.98),rgba(236,253,245,0.98))] pb-6 dark:bg-[linear-gradient(135deg,rgba(17,24,39,0.98),rgba(15,23,42,0.98),rgba(6,78,59,0.18))]">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="rounded-2xl bg-primary/10 p-3 text-primary ring-1 ring-primary/15">
-                    <BrainCircuitIcon className="size-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="h-6 rounded-full px-3 text-[11px]">
-                        Topic picker
-                      </Badge>
-                      <Badge variant="outline" className="h-6 rounded-full px-3 text-[11px]">
-                        {topics.length} matches
-                      </Badge>
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">Choose your quiz topic</CardTitle>
-                      <CardDescription className="mt-1 max-w-2xl text-sm">
-                        Search first, then refine the exact subject, topic, and level you want to practice.
-                      </CardDescription>
-                    </div>
-                  </div>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="h-6 w-fit rounded-full px-3 text-[11px] text-muted-foreground"
-                >
-                  {hasSearchQuery ? "Search active" : "Browse all topics"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6">
-              <section className="space-y-4 rounded-3xl border border-border/70 bg-muted/20 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-2xl bg-background p-2.5 text-primary shadow-sm ring-1 ring-border/60">
-                    <SearchIcon className="size-4" />
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-base font-semibold text-foreground">Start with a quick search</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Type any field, subject, or level and we&apos;ll narrow the topic list before you fine-tune it.
-                    </p>
-                  </div>
-                </div>
+        <Card className="overflow-hidden border-border/70 bg-background/95 shadow-sm">
+          <CardHeader className="border-b border-border/60 pb-4">
+            <h2 className="text-xl font-semibold">Topic Picker</h2>
+          </CardHeader>
+          <CardContent className="space-y-4 p-6">
+            <Input
+              className="h-12 rounded-xl border-border/80 bg-background/90"
+              value={searchQuery}
+              onChange={(event) => {
+                setActionError(null);
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Search topics..."
+            />
 
-                <label className="space-y-2 text-sm">
-                  <span className="font-medium text-foreground">Search by field, subject, or level</span>
-                  <Input
-                    className="h-12 rounded-2xl border-border/80 bg-background/90 shadow-sm"
-                    value={searchQuery}
-                    onChange={(event) => {
-                      setActionError(null);
-                      setSearchQuery(event.target.value);
+            <div className="grid gap-4 md:grid-cols-3">
+              <SelectField
+                label="Subject"
+                value={subject}
+                onChange={setSubject}
+                options={subjectOptions}
+              />
+              <SelectField
+                label="Topic"
+                value={topic}
+                onChange={setTopic}
+                options={topicOptions}
+              />
+              <SelectField
+                label="Level"
+                value={level}
+                onChange={setLevel}
+                options={levelOptions}
+              />
+            </div>
+
+            {topics.length === 0 ? (
+              <EmptyState
+                message={
+                  hasSearchQuery
+                    ? "No topics found for that search."
+                    : "No quiz topics available."
+                }
+              />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {topics.slice(0, 12).map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSubject(item.subject);
+                      setTopic(item.topic);
+                      setLevel(item.level);
                     }}
-                    placeholder="Try: plus 2 management, class 7 math, bachelor law"
-                  />
-                </label>
-
-                <div className="flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
-                  <p className="font-medium text-foreground">{searchSummary}</p>
-                  {hasSearchQuery ? (
-                    <button
-                      type="button"
-                      className="w-fit font-medium text-primary transition hover:text-primary/80"
-                      onClick={() => {
-                        setActionError(null);
-                        setSearchQuery("");
-                      }}
-                    >
-                      Clear search
-                    </button>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Tip: search broad first, then use the guided selectors below.
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              {quickSuggestionGroups.length ? (
-                <section className="space-y-4">
-                  <div className="space-y-1">
-                    <h2 className="text-base font-semibold text-foreground">Quick picks</h2>
+                    className={`cursor-pointer rounded-xl border p-4 transition hover:border-primary ${
+                      selectedTopic?.id === item.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border/70 bg-muted/20"
+                    }`}
+                  >
+                    <p className="font-medium">{item.topic}</p>
                     <p className="text-sm text-muted-foreground">
-                      Jump into nearby matches with one tap, then lock the exact topic below.
+                      {item.subject} · {item.level}
                     </p>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {quickSuggestionGroups.map((group) => (
-                      <SuggestionGroup
-                        key={group.title}
-                        title={group.title}
-                        icon={group.icon}
-                        items={group.items}
-                        onSelect={(value) => {
-                          setActionError(null);
-                          setSearchQuery(value);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ) : null}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-              <Separator className="opacity-60" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <ModeCard
+            title="Free quiz"
+            description="Open to every student, including free-trial and expired-plan users."
+            remaining={history?.free.remainingToday ?? 0}
+            usedToday={history?.free.usedToday ?? 0}
+            dailyLimit={history?.free.dailyLimit ?? 0}
+            passPercent={history?.free.passPercent ?? 0}
+            pointReward={history?.free.pointReward ?? 0}
+            isEligible={history?.free.isEligible ?? true}
+            isStarting={startingMode === "FREE"}
+            onStart={() => handleStart("FREE")}
+            disabled={!selectedTopic || topics.length === 0}
+            icon={<SparklesIcon className="size-5 text-emerald-600 dark:text-emerald-300" />}
+          />
 
-              {topics.length === 0 ? (
-                <EmptyState
-                  message={
-                    hasSearchQuery
-                      ? "No close topic matches found for that search. Try a broader field, subject, or level."
-                      : "No quiz topics are active yet. Add some from Admin → Quiz Management first."
-                  }
-                />
-              ) : (
-                <section className="space-y-5">
-                  <div className="space-y-1">
-                    <h2 className="text-base font-semibold text-foreground">Refine your selection</h2>
-                    <p className="text-sm text-muted-foreground">
-                      These selectors stay connected, so each step narrows the next one automatically.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <SelectField
-                      label="Subject"
-                      value={subject}
-                      onChange={setSubject}
-                      options={subjectOptions}
-                    />
-                    <SelectField
-                      label="Topic"
-                      value={topic}
-                      onChange={setTopic}
-                      options={topicOptions}
-                    />
-                    <SelectField
-                      label="Level"
-                      value={level}
-                      onChange={setLevel}
-                      options={levelOptions}
-                    />
-                  </div>
-                </section>
-              )}
-
-              {selectedTopic ? (
-                <section className="rounded-3xl border border-primary/15 bg-[linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.06),rgba(255,255,255,0.92))] p-5 shadow-sm dark:bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(59,130,246,0.12),rgba(17,24,39,0.95))]">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <SparklesIcon className="size-4 text-primary" />
-                        Selected topic
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-foreground">{selectedTopic.topic}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedTopic.subject} · {selectedTopic.level}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="h-7 w-fit rounded-full px-3 text-xs">
-                      {selectedTopic.field ?? "General field"}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <HistoryMetric label="Subject" value={selectedTopic.subject} />
-                    <HistoryMetric label="Level" value={selectedTopic.level} />
-                    <HistoryMetric
-                      label="Question bank"
-                      value={`${selectedTopic.questionCount ?? 0}`}
-                    />
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Badge variant="outline" className="h-7 rounded-full px-3 text-xs">
-                      Topic: {selectedTopic.topic}
-                    </Badge>
-                    {selectedTopic.field ? (
-                      <Badge variant="outline" className="h-7 rounded-full px-3 text-xs">
-                        Field: {selectedTopic.field}
-                      </Badge>
-                    ) : null}
-                  </div>
-
-                  {selectedTopic.matchReason ? (
-                    <div className="mt-4 rounded-2xl border border-border/70 bg-background/80 px-4 py-3 text-xs text-muted-foreground">
-                      {selectedTopic.matchReason}
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <ModeCard
-              title="Free quiz"
-              description="Open to every student, including free-trial and expired-plan users."
-              remaining={history?.free.remainingToday ?? 0}
-              usedToday={history?.free.usedToday ?? 0}
-              dailyLimit={history?.free.dailyLimit ?? 0}
-              passPercent={history?.free.passPercent ?? 0}
-              pointReward={history?.free.pointReward ?? 0}
-              isEligible={history?.free.isEligible ?? true}
-              isStarting={startingMode === "FREE"}
-              onStart={() => handleStart("FREE")}
-              disabled={!selectedTopic || topics.length === 0}
-              icon={<SparklesIcon className="size-5 text-emerald-600 dark:text-emerald-300" />}
-            />
-
-            <ModeCard
-              title="Premium quiz"
-              description="Reserved for students on an active paid plan."
-              remaining={history?.premium.remainingToday ?? 0}
-              usedToday={history?.premium.usedToday ?? 0}
-              dailyLimit={history?.premium.dailyLimit ?? 0}
-              passPercent={history?.premium.passPercent ?? 0}
-              pointReward={history?.premium.pointReward ?? 0}
-              isEligible={history?.premium.isEligible ?? false}
-              reason={history?.premium.reason ?? null}
-              isStarting={startingMode === "PREMIUM"}
-              onStart={() => handleStart("PREMIUM")}
-              disabled={!selectedTopic || topics.length === 0}
-              icon={<LockIcon className="size-5 text-violet-600 dark:text-violet-300" />}
-              footer={
-                !(history?.premium.isEligible ?? false) ? (
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href="/subscription">View paid plans</Link>
-                  </Button>
-                ) : null
-              }
-            />
-          </div>
+          <ModeCard
+            title="Premium quiz"
+            description="Reserved for students on an active paid plan."
+            remaining={history?.premium.remainingToday ?? 0}
+            usedToday={history?.premium.usedToday ?? 0}
+            dailyLimit={history?.premium.dailyLimit ?? 0}
+            passPercent={history?.premium.passPercent ?? 0}
+            pointReward={history?.premium.pointReward ?? 0}
+            isEligible={history?.premium.isEligible ?? false}
+            reason={history?.premium.reason ?? null}
+            isStarting={startingMode === "PREMIUM"}
+            onStart={() => handleStart("PREMIUM")}
+            disabled={!selectedTopic || topics.length === 0}
+            icon={<LockIcon className="size-5 text-violet-600 dark:text-violet-300" />}
+            footer={
+              !(history?.premium.isEligible ?? false) ? (
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/subscription">View paid plans</Link>
+                </Button>
+              ) : null
+            }
+          />
         </div>
 
         <Card className="border-border/70">
@@ -686,39 +533,6 @@ function SelectField({
         )}
       </select>
     </label>
-  );
-}
-
-function SuggestionGroup({
-  title,
-  icon,
-  items,
-  onSelect,
-}: {
-  title: string;
-  icon: ReactNode;
-  items: string[];
-  onSelect: (value: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-        {icon}
-        {title}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {items.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className="rounded-full border border-border/70 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-foreground"
-            onClick={() => onSelect(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 

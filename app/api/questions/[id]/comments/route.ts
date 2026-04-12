@@ -102,12 +102,15 @@ function serializeComment(comment: RawCommentLike): SerializedComment {
   const student = comment?.studentId;
   const questionId = comment?.questionId;
 
+  const createdAtVal = comment?.createdAt;
+  const updatedAtVal = comment?.updatedAt;
+
   return {
     _id: comment?._id?.toString?.() ?? String(comment?._id ?? ""),
     content: String(comment?.content ?? ""),
-    createdAt: new Date(comment?.createdAt ?? Date.now()).toISOString(),
-    updatedAt: comment?.updatedAt
-      ? new Date(comment.updatedAt).toISOString()
+    createdAt: createdAtVal ? new Date(createdAtVal as string | number | Date).toISOString() : new Date().toISOString(),
+    updatedAt: updatedAtVal
+      ? new Date(updatedAtVal as string | number | Date).toISOString()
       : undefined,
     milestoneGroup: comment?.milestoneGroup ?? null,
     questionId:

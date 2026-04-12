@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { channelId } = await req.json();
+    const { channelId, markedMessageIds } = await req.json();
 
     if (!channelId) {
       return NextResponse.json({ error: "Missing channelId" }, { status: 400 });
@@ -51,19 +52,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Answer already submitted" }, { status: 400 });
     }
 
-    // Collect ONLY marked messages to form the Answer content
-    const messages = await Message.find({ 
-      channelId, 
-      senderId: session.user.id,
-      isMarkedAsAnswer: true
-    }).sort({ sentAt: 1 });
+    const selectedMessageIds = Array.isArray(markedMessageIds)
+      ? [...new Set(markedMessageIds.filter((id): id is string => typeof id === "string"))]
+      : [];
+
+    if (selectedMessageIds.some((id) => !Types.ObjectId.isValid(id))) {
+      return NextResponse.json({ error: "One or more selected messages are invalid." }, { status: 400 });
+    }
+
+    let messages;
+
+    if (selectedMessageIds.length > 0) {
+      messages = await Message.find({
+        _id: { $in: selectedMessageIds },
+        channelId,
+        senderId: session.user.id,
+      }).sort({ sentAt: 1 });
+
+      if (messages.length !== selectedMessageIds.length) {
+        return NextResponse.json(
+          { error: "Some selected messages could not be matched to this channel." },
+          { status: 400 }
+        );
+      }
+
+      // Keep the DB in sync with the messages the teacher actually selected in the UI.
+      await Message.updateMany(
+        { channelId, senderId: session.user.id },
+        { $set: { isMarkedAsAnswer: false } }
+      );
+      await Message.updateMany(
+        { _id: { $in: selectedMessageIds }, channelId, senderId: session.user.id },
+        { $set: { isMarkedAsAnswer: true } }
+      );
+    } else {
+      messages = await Message.find({
+        channelId,
+        senderId: session.user.id,
+        isMarkedAsAnswer: true,
+      }).sort({ sentAt: 1 });
+    }
     
     if (messages.length === 0) {
       return NextResponse.json({ error: "Please mark at least one message as the answer before submitting." }, { status: 400 });
     }
 
-    const question = channel.questionId as any;
-    const requiredFormat = question.answerFormat; // TEXT | PHOTO | VIDEO | ANY
+    const question = channel.questionId as {
+      _id: Types.ObjectId;
+      answerFormat?: "TEXT" | "PHOTO" | "VIDEO" | "ANY";
+      answerVisibility?: "PUBLIC" | "PRIVATE";
+    };
+    const requiredFormat = question.answerFormat ?? "ANY";
 
     // Analyze what the teacher actually marked
     const hasText = messages.some((m) => m.content && m.content.trim().length > 0);
@@ -107,11 +146,11 @@ export async function POST(req: Request) {
     const mediaUrls = messages.map((m) => m.mediaUrl).filter(Boolean);
 
     // Based on the question, map the visibility
-    const isPublic = channel.questionId.answerVisibility === "PUBLIC";
+    const isPublic = question.answerVisibility === "PUBLIC";
 
     // Create the Answer
     const answer = await Answer.create({
-      questionId: channel.questionId._id,
+      questionId: question._id,
       channelId,
       acceptorId: session.user.id,
       answerFormat: resolvedFormat,
