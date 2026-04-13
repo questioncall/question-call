@@ -2,7 +2,13 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ITransaction extends Document {
   userId: mongoose.Types.ObjectId;
-  type: "CREDIT" | "DEBIT" | "WITHDRAWAL" | "SUBSCRIPTION_MANUAL";
+  type:
+    | "CREDIT"
+    | "DEBIT"
+    | "WITHDRAWAL"
+    | "SUBSCRIPTION_MANUAL"
+    | "COURSE_PURCHASE"
+    | "COURSE_SALE_CREDIT";
   amount: number;
   status: "PENDING" | "COMPLETED" | "FAILED";
   
@@ -15,6 +21,7 @@ export interface ITransaction extends Document {
   reference?: string;
   gateway?: "ESEWA" | "INTERNAL" | "MANUAL" | "KHALTI";
   meta?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 
   createdAt: Date;
   updatedAt: Date;
@@ -25,7 +32,14 @@ const TransactionSchema = new Schema<ITransaction>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: { 
       type: String, 
-      enum: ["CREDIT", "DEBIT", "WITHDRAWAL", "SUBSCRIPTION_MANUAL"], 
+      enum: [
+        "CREDIT",
+        "DEBIT",
+        "WITHDRAWAL",
+        "SUBSCRIPTION_MANUAL",
+        "COURSE_PURCHASE",
+        "COURSE_SALE_CREDIT",
+      ], 
       required: true 
     },
     amount: { type: Number, required: true },
@@ -37,9 +51,10 @@ const TransactionSchema = new Schema<ITransaction>(
     reference: { type: String, index: true },
     gateway: { 
       type: String, 
-      enum: ["ESEWA", "INTERNAL", "MANUAL"]
+      enum: ["ESEWA", "INTERNAL", "MANUAL", "KHALTI"]
     },
     meta: { type: Schema.Types.Mixed, default: {} },
+    metadata: { type: Schema.Types.Mixed, default: undefined },
     transactionId: { type: String },
     transactorName: { type: String },
     planSlug: { type: String },

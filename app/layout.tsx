@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 
 import { StoreProvider } from "@/components/providers/store-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,6 +42,10 @@ export default function RootLayout({
             </TooltipProvider>
           </StoreProvider>
         </ThemeProvider>
+        <Script
+          src="https://widget.cloudinary.com/v2.0/global/all.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

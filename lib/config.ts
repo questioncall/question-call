@@ -202,7 +202,24 @@ export const PLATFORM = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 7. PEER COMMENTS & MILESTONE POINTS (Phase 8)
+// 7. COURSE PLATFORM DEFAULTS (Phase 15 seed values only)
+// ─────────────────────────────────────────────────────────────────────
+
+export const COURSE = {
+  /** Max allowed duration for uploaded course videos */
+  MAX_VIDEO_DURATION_MINUTES: 60,
+  /** Max upload size accepted by the current Cloudinary course-video pipeline */
+  MAX_CLOUDINARY_VIDEO_UPLOAD_BYTES: 100 * 1024 * 1024,
+  /** % watched before a course video is treated as completed */
+  PROGRESS_COMPLETION_THRESHOLD: 90,
+  /** Minutes before a live session when reminder sends are scheduled */
+  LIVE_SESSION_NOTIFICATION_LEAD_MINUTES: 30,
+  /** Platform commission deducted from paid course sales */
+  PURCHASE_COMMISSION_PERCENT: 20,
+} as const;
+
+// ─────────────────────────────────────────────────────────────────────
+// 8. PEER COMMENTS & MILESTONE POINTS (Phase 8)
 // ─────────────────────────────────────────────────────────────────────
 
 export const PEER_COMMENTS = {
@@ -215,7 +232,7 @@ export const PEER_COMMENTS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 8. QUIZ SERVICE (Phase 12)
+// 9. QUIZ SERVICE (Phase 12)
 // ─────────────────────────────────────────────────────────────────────
 
 export const QUIZ = {
@@ -242,7 +259,7 @@ export const QUIZ = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 9. LEGAL CONTENT
+// 10. LEGAL CONTENT
 //    Seeded into PlatformConfig and editable later from the admin panel.
 // ─────────────────────────────────────────────────────────────────────
 

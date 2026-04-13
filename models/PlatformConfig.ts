@@ -22,6 +22,7 @@ import {
   LEGAL,
   QUIZ,
   PLATFORM,
+  COURSE,
 } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
@@ -47,6 +48,35 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: PLATFORM.MAX_VIDEO_DURATION_MINUTES,
       min: 1,
+    },
+
+    // Course platform settings (Phase 15)
+    courpZEAWYtiB6bJ16NuLbGCc6CZ6jJdKfb63: {
+      type: Number,
+      default: COURSE.MAX_VIDEO_DURATION_MINUTES,
+      min: 1,
+    },
+    courseVideoUploadMaxBytes: {
+      type: Number,
+      default: COURSE.MAX_CLOUDINARY_VIDEO_UPLOAD_BYTES,
+      min: 1,
+    },
+    courseProgressCompletionThreshold: {
+      type: Number,
+      default: COURSE.PROGRESS_COMPLETION_THRESHOLD,
+      min: 0,
+      max: 100,
+    },
+    liveSessionNotificationLeadMinutes: {
+      type: Number,
+      default: COURSE.LIVE_SESSION_NOTIFICATION_LEAD_MINUTES,
+      min: 0,
+    },
+    coursePurchaseCommissionPercent: {
+      type: Number,
+      default: COURSE.PURCHASE_COMMISSION_PERCENT,
+      min: 0,
+      max: 100,
     },
 
     // Platform settings
@@ -267,6 +297,20 @@ export async function getPlatformConfig(): Promise<PlatformConfigDocument> {
 
   if (!config) {
     config = await PlatformConfig.create({});
+  } else {
+    let shouldSave = false;
+
+    if (
+      typeof config.courseVideoUploadMaxBytes !== "number" ||
+      config.courseVideoUploadMaxBytes <= 0
+    ) {
+      config.courseVideoUploadMaxBytes = COURSE.MAX_CLOUDINARY_VIDEO_UPLOAD_BYTES;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
+      await config.save();
+    }
   }
 
   cachedConfig = config as PlatformConfigDocument;

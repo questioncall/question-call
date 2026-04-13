@@ -10,12 +10,21 @@ import {
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
   NEW_CHANNEL_EVENT,
+  COURSE_UPDATED_EVENT,
+  COURSE_UPDATES_CHANNEL,
   getChannelPusherName,
   getUserPusherName,
   NOTIFICATION_EVENT,
 } from "@/lib/pusher/events";
 
 type PusherPayload = Record<string, unknown>;
+type RealtimeNotification = {
+  _id: { toString(): string };
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date | string;
+};
 
 export const pusherServer = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
@@ -75,7 +84,10 @@ export async function emitChannelStatusUpdate(
 }
 
 /** Broadcast a notification to a specific user */
-export async function emitNotification(userId: string, notification: any) {
+export async function emitNotification(
+  userId: string,
+  notification: RealtimeNotification,
+) {
   const pusherChannel = getUserPusherName(userId);
   await pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
     notification: {
@@ -89,9 +101,16 @@ export async function emitNotification(userId: string, notification: any) {
 }
 
 /** Broadcast a new channel to a specific user */
-export async function emitNewChannel(userId: string, channelListItem: any) {
+export async function emitNewChannel(userId: string, channelListItem: PusherPayload) {
   const pusherChannel = getUserPusherName(userId);
   await pusherServer.trigger(pusherChannel, NEW_CHANNEL_EVENT, {
     channel: channelListItem,
+  });
+}
+
+export async function emitCourseUpdated(data: PusherPayload = {}) {
+  await pusherServer.trigger(COURSE_UPDATES_CHANNEL, COURSE_UPDATED_EVENT, {
+    updatedAt: new Date().toISOString(),
+    ...data,
   });
 }

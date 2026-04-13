@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { completeCoursePurchase } from "@/lib/course-purchases";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
@@ -32,13 +33,6 @@ export async function POST(
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    if (transaction.type !== "SUBSCRIPTION_MANUAL") {
-      return NextResponse.json(
-        { error: "Only manual subscription transactions can be approved" },
-        { status: 400 },
-      );
-    }
-
     if (transaction.status !== "PENDING") {
       return NextResponse.json(
         { error: "Only pending transactions can be approved" },
@@ -46,56 +40,100 @@ export async function POST(
       );
     }
 
-    const user = await User.findById(transaction.userId).select(
-      "name subscriptionStatus subscriptionEnd trialUsed",
-    );
+    let successPayload: Record<string, unknown> = { success: true };
+    let notificationMessage = "Your payment was approved.";
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (transaction.type === "SUBSCRIPTION_MANUAL") {
+      const user = await User.findById(transaction.userId).select(
+        "name subscriptionStatus subscriptionEnd trialUsed",
+      );
 
-    const config = await getPlatformConfig();
-    const plans = getHydratedPlans(config);
-    const plan = plans.find((entry) => entry.slug === transaction.planSlug);
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
 
-    if (!plan) {
+      const config = await getPlatformConfig();
+      const plans = getHydratedPlans(config);
+      const plan = plans.find((entry) => entry.slug === transaction.planSlug);
+
+      if (!plan) {
+        return NextResponse.json(
+          { error: "Transaction plan is missing or invalid" },
+          { status: 400 },
+        );
+      }
+
+      const now = new Date();
+      const currentSubscriptionEnd =
+        user.subscriptionEnd && new Date(user.subscriptionEnd) > now
+          ? new Date(user.subscriptionEnd)
+          : now;
+      const nextSubscriptionEnd = new Date(
+        currentSubscriptionEnd.getTime() +
+          plan.durationDays * 24 * 60 * 60 * 1000,
+      );
+
+      user.subscriptionStatus = "ACTIVE";
+      user.subscriptionEnd = nextSubscriptionEnd;
+      user.trialUsed = true;
+      await user.save();
+
+      transaction.status = "COMPLETED";
+      transaction.gateway = "MANUAL";
+      transaction.meta = {
+        ...(transaction.meta || {}),
+        adminAction: "APPROVED",
+        adminApprovedAt: now.toISOString(),
+        adminApprovedBy: session.user.id,
+        adminNote: adminNote?.trim() || null,
+        subscriptionEndsAt: nextSubscriptionEnd.toISOString(),
+      };
+      await transaction.save();
+
+      notificationMessage = `Your manual payment for ${plan.name} was approved. Access is active until ${nextSubscriptionEnd.toLocaleDateString()}.`;
+      successPayload = {
+        success: true,
+        subscriptionEnd: nextSubscriptionEnd.toISOString(),
+      };
+    } else if (transaction.type === "COURSE_PURCHASE") {
+      const coursePurchase = await completeCoursePurchase({
+        transactionDocumentId: transaction._id.toString(),
+        gateway: "MANUAL",
+        metaPatch: {
+          adminAction: "APPROVED",
+          adminApprovedAt: new Date().toISOString(),
+          adminApprovedBy: session.user.id,
+          adminNote: adminNote?.trim() || null,
+          paymentChannel:
+            transaction.meta &&
+            typeof transaction.meta === "object" &&
+            "paymentChannel" in transaction.meta
+              ? transaction.meta.paymentChannel
+              : "ESEWA_MANUAL",
+        },
+      });
+
+      notificationMessage = `Your manual payment for ${coursePurchase.courseName} was approved. Course access is now unlocked.`;
+      successPayload = {
+        success: true,
+        courseId: coursePurchase.courseId,
+        enrollmentId: coursePurchase.enrollmentId,
+        teacherEarnings: coursePurchase.teacherEarnings,
+      };
+    } else {
       return NextResponse.json(
-        { error: "Transaction plan is missing or invalid" },
+        {
+          error:
+            "Only manual subscription and manual course purchase transactions can be approved",
+        },
         { status: 400 },
       );
     }
 
-    const now = new Date();
-    const currentSubscriptionEnd =
-      user.subscriptionEnd && new Date(user.subscriptionEnd) > now
-        ? new Date(user.subscriptionEnd)
-        : now;
-    const nextSubscriptionEnd = new Date(
-      currentSubscriptionEnd.getTime() +
-        plan.durationDays * 24 * 60 * 60 * 1000,
-    );
-
-    user.subscriptionStatus = "ACTIVE";
-    user.subscriptionEnd = nextSubscriptionEnd;
-    user.trialUsed = true;
-    await user.save();
-
-    transaction.status = "COMPLETED";
-    transaction.gateway = "MANUAL";
-    transaction.meta = {
-      ...(transaction.meta || {}),
-      adminAction: "APPROVED",
-      adminApprovedAt: now.toISOString(),
-      adminApprovedBy: session.user.id,
-      adminNote: adminNote?.trim() || null,
-      subscriptionEndsAt: nextSubscriptionEnd.toISOString(),
-    };
-    await transaction.save();
-
     const notification = await Notification.create({
       userId: transaction.userId,
       type: "PAYMENT",
-      message: `Your manual payment for ${plan.name} was approved. Access is active until ${nextSubscriptionEnd.toLocaleDateString()}.`,
+      message: notificationMessage,
       isRead: false,
     }).catch(() => null);
 
@@ -103,10 +141,7 @@ export async function POST(
       await emitNotification(transaction.userId.toString(), notification).catch(() => {});
     }
 
-    return NextResponse.json({
-      success: true,
-      subscriptionEnd: nextSubscriptionEnd.toISOString(),
-    });
+    return NextResponse.json(successPayload);
   } catch (error) {
     console.error("[POST /api/admin/transactions/[id]/approve]", error);
     return NextResponse.json(

@@ -6,6 +6,23 @@ export type UploadProgressSnapshot = {
   percent: number;
 };
 
+export type CloudinaryDirectUploadSignature = {
+  apiKey: string;
+  chunkSize: number;
+  cloudName: string;
+  folder: string;
+  signature: string;
+  timestamp: number;
+  uploadUrl: string;
+};
+
+export type CloudinaryUploadedVideo = {
+  bytes?: number;
+  duration: number;
+  public_id: string;
+  secure_url: string;
+};
+
 type UploadProgressHandler = (progress: UploadProgressSnapshot) => void;
 
 type MultipartRequestOptions = {
@@ -24,6 +41,22 @@ type ApiErrorShape = {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getCloudinaryErrorMessage(payload: unknown) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload &&
+    payload.error &&
+    typeof payload.error === "object" &&
+    "message" in payload.error &&
+    typeof payload.error.message === "string"
+  ) {
+    return payload.error.message;
+  }
+
+  return null;
 }
 
 function getRequestErrorMessage(error: unknown) {
@@ -85,6 +118,135 @@ export async function uploadFileViaServer<T extends { secure_url: string }>(
   return postMultipartWithProgress<T>(options.url || "/api/upload", formData, {
     onProgress: options.onProgress,
   });
+}
+
+function uploadCloudinaryChunk(
+  url: string,
+  formData: FormData,
+  headers: Record<string, string>,
+  onProgress?: UploadProgressHandler,
+  signal?: AbortSignal,
+) {
+  return new Promise<CloudinaryUploadedVideo>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+
+    request.open("POST", url);
+
+    for (const [key, value] of Object.entries(headers)) {
+      request.setRequestHeader(key, value);
+    }
+
+    if (signal) {
+      const abortUpload = () => request.abort();
+      signal.addEventListener("abort", abortUpload, { once: true });
+      request.addEventListener(
+        "loadend",
+        () => signal.removeEventListener("abort", abortUpload),
+        { once: true },
+      );
+    }
+
+    request.upload.onprogress = (event) => {
+      const total =
+        typeof event.total === "number" && event.total > 0 ? event.total : null;
+      const percent = total ? clampPercent((event.loaded / total) * 100) : 0;
+
+      onProgress?.({
+        loaded: event.loaded,
+        total,
+        percent,
+      });
+    };
+
+    request.onerror = () => {
+      reject(new Error("Cloudinary upload failed."));
+    };
+
+    request.onabort = () => {
+      reject(new Error("Upload cancelled."));
+    };
+
+    request.onload = () => {
+      let payload: unknown = null;
+
+      try {
+        payload = request.responseText ? JSON.parse(request.responseText) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (request.status >= 200 && request.status < 300 && payload) {
+        resolve(payload as CloudinaryUploadedVideo);
+        return;
+      }
+
+      reject(
+        new Error(
+          getCloudinaryErrorMessage(payload) ||
+            `Cloudinary upload failed with status ${request.status}.`,
+        ),
+      );
+    };
+
+    request.send(formData);
+  });
+}
+
+export async function uploadVideoToCloudinaryDirect(
+  file: File,
+  signatureData: CloudinaryDirectUploadSignature,
+  options: MultipartRequestOptions = {},
+) {
+  const totalBytes = file.size;
+  const chunkSize = Math.max(5 * 1024 * 1024, signatureData.chunkSize || totalBytes);
+  const uploadId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  let lastResponse: CloudinaryUploadedVideo | null = null;
+
+  for (let start = 0; start < totalBytes; start += chunkSize) {
+    const end = Math.min(start + chunkSize, totalBytes);
+    const chunk = file.slice(start, end);
+    const formData = new FormData();
+
+    formData.append("file", chunk, file.name);
+    formData.append("api_key", signatureData.apiKey);
+    formData.append("timestamp", String(signatureData.timestamp));
+    formData.append("signature", signatureData.signature);
+    formData.append("folder", signatureData.folder);
+
+    const response = await uploadCloudinaryChunk(
+      signatureData.uploadUrl,
+      formData,
+      {
+        "Content-Range": `bytes ${start}-${end - 1}/${totalBytes}`,
+        "X-Unique-Upload-Id": uploadId,
+      },
+      (progress) => {
+        options.onProgress?.({
+          loaded: start + progress.loaded,
+          total: totalBytes,
+          percent: clampPercent(((start + progress.loaded) / totalBytes) * 100),
+        });
+      },
+    );
+
+    lastResponse = response;
+  }
+
+  if (!lastResponse?.secure_url || !lastResponse.public_id) {
+    throw new Error("Cloudinary upload did not return the uploaded video details.");
+  }
+
+  options.onProgress?.({
+    loaded: totalBytes,
+    total: totalBytes,
+    percent: 100,
+  });
+
+  return lastResponse;
 }
 
 export async function getVideoDurationSeconds(file: File) {

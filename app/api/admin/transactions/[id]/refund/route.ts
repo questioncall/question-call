@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { getCoursePurchaseMetadata } from "@/lib/course-purchases";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
@@ -31,13 +32,6 @@ export async function POST(
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    if (transaction.type !== "SUBSCRIPTION_MANUAL") {
-      return NextResponse.json(
-        { error: "Only manual subscription transactions can be refunded" },
-        { status: 400 },
-      );
-    }
-
     if (transaction.status !== "PENDING") {
       return NextResponse.json(
         { error: "Only pending transactions can be refunded" },
@@ -45,10 +39,18 @@ export async function POST(
       );
     }
 
-    const config = await getPlatformConfig();
-    const plans = getHydratedPlans(config);
-    const plan = plans.find((entry) => entry.slug === transaction.planSlug);
-    const planName = plan?.name || "your subscription";
+    if (
+      transaction.type !== "SUBSCRIPTION_MANUAL" &&
+      transaction.type !== "COURSE_PURCHASE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Only manual subscription and manual course purchase transactions can be refunded",
+        },
+        { status: 400 },
+      );
+    }
 
     transaction.status = "FAILED";
     transaction.gateway = "MANUAL";
@@ -61,10 +63,26 @@ export async function POST(
     };
     await transaction.save();
 
+    let notificationMessage = "Your payment was not approved.";
+
+    if (transaction.type === "SUBSCRIPTION_MANUAL") {
+      const config = await getPlatformConfig();
+      const plans = getHydratedPlans(config);
+      const plan = plans.find((entry) => entry.slug === transaction.planSlug);
+      const planName = plan?.name || "your subscription";
+      notificationMessage = `Your manual payment for ${planName} was not approved${adminNote?.trim() ? `: ${adminNote.trim()}` : "."}`;
+    } else if (transaction.type === "COURSE_PURCHASE") {
+      const metadata = getCoursePurchaseMetadata(
+        (transaction.metadata ?? {}) as Record<string, unknown>,
+      );
+      const courseName = metadata.courseName || "your course purchase";
+      notificationMessage = `Your manual payment for ${courseName} was not approved${adminNote?.trim() ? `: ${adminNote.trim()}` : "."}`;
+    }
+
     const notification = await Notification.create({
       userId: transaction.userId,
       type: "PAYMENT",
-      message: `Your manual payment for ${planName} was not approved${adminNote?.trim() ? `: ${adminNote.trim()}` : "."}`,
+      message: notificationMessage,
       isRead: false,
     }).catch(() => null);
 

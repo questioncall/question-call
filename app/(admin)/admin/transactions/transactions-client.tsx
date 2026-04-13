@@ -49,11 +49,44 @@ type TransactionRecord = {
   meta?: {
     adminAction?: string;
     adminNote?: string | null;
+    paymentChannel?: string;
+  };
+  metadata?: {
+    courseName?: string;
+    pricingModel?: string;
+    grossAmount?: number;
+    commissionPercent?: number;
+    netAmount?: number;
   };
 };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function isManualReviewTransaction(transaction: TransactionRecord | null) {
+  return (
+    transaction?.type === "SUBSCRIPTION_MANUAL" ||
+    transaction?.type === "COURSE_PURCHASE"
+  );
+}
+
+function getApproveDialogTitle(transaction: TransactionRecord | null) {
+  return transaction?.type === "COURSE_PURCHASE"
+    ? "Approve Course Purchase"
+    : "Approve Manual Subscription";
+}
+
+function getApproveDialogDescription(transaction: TransactionRecord | null) {
+  return transaction?.type === "COURSE_PURCHASE"
+    ? `This will unlock ${transaction?.metadata?.courseName || "the course"} for ${transaction?.userId?.name}.`
+    : `This will activate ${transaction?.userId?.name}'s subscription immediately.`;
+}
+
+function getRefundDialogDescription(transaction: TransactionRecord | null) {
+  return transaction?.type === "COURSE_PURCHASE"
+    ? "This keeps the course payment in history but does not unlock the course."
+    : "This keeps the transaction in the history but does not activate the student's plan.";
 }
 
 export function TransactionsClient() {
@@ -118,7 +151,11 @@ export function TransactionsClient() {
         throw new Error(data.error || "Failed to approve transaction");
       }
 
-      toast.success("Transaction approved and subscription activated.");
+      toast.success(
+        approveTarget.type === "COURSE_PURCHASE"
+          ? "Course purchase approved and access unlocked."
+          : "Transaction approved and subscription activated.",
+      );
       setApproveTarget(null);
       setAdminNote("");
       await fetchTransactions();
@@ -147,7 +184,11 @@ export function TransactionsClient() {
         throw new Error(data.error || "Failed to refund transaction");
       }
 
-      toast.success("Transaction marked as refunded.");
+      toast.success(
+        refundTarget.type === "COURSE_PURCHASE"
+          ? "Course purchase marked as rejected."
+          : "Transaction marked as refunded.",
+      );
       setRefundTarget(null);
       setAdminNote("");
       await fetchTransactions();
@@ -180,7 +221,15 @@ export function TransactionsClient() {
 
       <div className="flex flex-wrap items-center gap-2">
         <FilterIcon className="size-4 text-muted-foreground" />
-        {(["ALL", "SUBSCRIPTION_MANUAL", "CREDIT", "DEBIT", "WITHDRAWAL"]).map(
+        {([
+          "ALL",
+          "SUBSCRIPTION_MANUAL",
+          "COURSE_PURCHASE",
+          "COURSE_SALE_CREDIT",
+          "CREDIT",
+          "DEBIT",
+          "WITHDRAWAL",
+        ]).map(
           (item) => (
             <Button
               key={item}
@@ -233,10 +282,20 @@ export function TransactionsClient() {
                           <ArrowUpRightIcon className="mr-1 size-4" />
                           Credit
                         </span>
+                      ) : transaction.type === "COURSE_SALE_CREDIT" ? (
+                        <span className="flex items-center text-emerald-600 dark:text-emerald-400">
+                          <ArrowUpRightIcon className="mr-1 size-4" />
+                          Course Sale Credit
+                        </span>
                       ) : transaction.type === "SUBSCRIPTION_MANUAL" ? (
                         <span className="flex items-center text-blue-600 dark:text-blue-400">
                           <CreditCardIcon className="mr-1 size-4" />
                           Manual Subscription
+                        </span>
+                      ) : transaction.type === "COURSE_PURCHASE" ? (
+                        <span className="flex items-center text-blue-600 dark:text-blue-400">
+                          <CreditCardIcon className="mr-1 size-4" />
+                          Course Purchase
                         </span>
                       ) : (
                         <span className="flex items-center text-red-600 dark:text-red-400">
@@ -273,6 +332,41 @@ export function TransactionsClient() {
                             <div>Note: {transaction.meta.adminNote}</div>
                           ) : null}
                         </div>
+                      ) : transaction.type === "COURSE_PURCHASE" ? (
+                        <div className="space-y-1">
+                          <div>
+                            Course: {transaction.metadata?.courseName || "Unknown course"}
+                          </div>
+                          {transaction.transactorName ? (
+                            <div>By: {transaction.transactorName}</div>
+                          ) : null}
+                          {transaction.transactionId ? (
+                            <div className="font-mono">Txn: {transaction.transactionId}</div>
+                          ) : null}
+                          {transaction.meta?.paymentChannel ? (
+                            <div>Channel: {transaction.meta.paymentChannel}</div>
+                          ) : null}
+                          {typeof transaction.metadata?.commissionPercent === "number" ? (
+                            <div>
+                              Commission: {transaction.metadata.commissionPercent}% | Net: NPR{" "}
+                              {(transaction.metadata.netAmount || 0).toFixed(2)}
+                            </div>
+                          ) : null}
+                          {transaction.screenshotUrl ? (
+                            <a
+                              href={transaction.screenshotUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:underline"
+                            >
+                              <ReceiptTextIcon className="size-3.5" />
+                              View screenshot
+                            </a>
+                          ) : null}
+                          {transaction.meta?.adminNote ? (
+                            <div>Note: {transaction.meta.adminNote}</div>
+                          ) : null}
+                        </div>
                       ) : (
                         <>
                           {transaction.gateway && <div>{transaction.gateway}</div>}
@@ -290,7 +384,7 @@ export function TransactionsClient() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      {transaction.type === "SUBSCRIPTION_MANUAL" &&
+                      {isManualReviewTransaction(transaction) &&
                       transaction.status === "PENDING" ? (
                         <div className="flex flex-wrap gap-2">
                           <Button
@@ -341,14 +435,18 @@ export function TransactionsClient() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Manual Subscription</DialogTitle>
+            <DialogTitle>{getApproveDialogTitle(approveTarget)}</DialogTitle>
             <DialogDescription>
-              This will activate {approveTarget?.userId?.name}&apos;s subscription immediately.
+              {getApproveDialogDescription(approveTarget)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
-              <p>Plan: {formatPlanLabel(approveTarget?.planSlug)}</p>
+              {approveTarget?.type === "COURSE_PURCHASE" ? (
+                <p>Course: {approveTarget?.metadata?.courseName || "Unknown course"}</p>
+              ) : (
+                <p>Plan: {formatPlanLabel(approveTarget?.planSlug)}</p>
+              )}
               <p>Amount: NPR {approveTarget?.amount.toFixed(2) || "0.00"}</p>
               <p>Txn ID: {approveTarget?.transactionId || "Not provided"}</p>
             </div>
@@ -393,13 +491,17 @@ export function TransactionsClient() {
           <DialogHeader>
             <DialogTitle>Refund / Reject Manual Payment</DialogTitle>
             <DialogDescription>
-              This keeps the transaction in the history but does not activate the student&apos;s plan.
+              {getRefundDialogDescription(refundTarget)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
               <p>User: {refundTarget?.userId?.name || "Unknown"}</p>
-              <p>Plan: {formatPlanLabel(refundTarget?.planSlug)}</p>
+              {refundTarget?.type === "COURSE_PURCHASE" ? (
+                <p>Course: {refundTarget?.metadata?.courseName || "Unknown course"}</p>
+              ) : (
+                <p>Plan: {formatPlanLabel(refundTarget?.planSlug)}</p>
+              )}
               <p>Txn ID: {refundTarget?.transactionId || "Not provided"}</p>
             </div>
             <div className="space-y-2">

@@ -15,10 +15,8 @@ export function AdminNav({ items }: { items: NavItem[] }) {
   return (
     <nav className="mt-4 flex flex-wrap gap-2">
       {items.map((item) => {
-        // We consider an item active if the path matches exactly,
-        // or starts with the path plus a slash (for subpages).
-        const isActive =
-          pathname === item.href || pathname.startsWith(`${item.href}/`);
+        // Exact match only - don't highlight parent when on child route
+        const isActive = pathname === item.href;
 
         return (
           <Link

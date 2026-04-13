@@ -41,3 +41,9 @@ export function getUserPusherName(userId: string) {
 export const ADMIN_UPDATES_CHANNEL = "admin-updates";
 export const ADMIN_WITHDRAWAL_EVENT = "admin:withdrawal-requested";
 export const CONFIG_UPDATED_EVENT = "admin:config-updated";
+
+// ──────────────────────────────────────────────────────────
+// Course events
+// ──────────────────────────────────────────────────────────
+export const COURSE_UPDATES_CHANNEL = "courses-updates";
+export const COURSE_UPDATED_EVENT = "course:updated";

@@ -40,6 +40,9 @@ const adminNavItems = [
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/quiz-management", label: "Quiz management" },
   { href: "/admin/ai-keys", label: "AI Keys" },
+  { href: "/admin/courses", label: "Courses" },
+  { href: "/admin/courses/coupons", label: "Coupons" },
+  { href: "/admin/live-sessions", label: "Live sessions" },
   { href: "/admin/legal", label: "Legal" },
   { href: "/admin/settings", label: "Settings" },
 ] as const;

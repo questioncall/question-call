@@ -5,13 +5,16 @@ import { useEffect, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
+  BookOpenIcon,
   CircleHelpIcon,
   CreditCardIcon,
+  GraduationCapIcon,
   HomeIcon,
   MessageSquareIcon,
   Settings2Icon,
   SparklesIcon,
   TrophyIcon,
+  UploadIcon,
   UserCircle2Icon,
   WalletIcon,
 } from "lucide-react";
@@ -289,7 +292,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           collapseSidebarOnClick: true,
         }]
       : []),
-    {
+{
       href: walletHref,
       icon: WalletIcon,
       label: "Wallet",
@@ -298,6 +301,55 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       isActive: pathname.startsWith("/wallet"),
       collapseSidebarOnClick: true,
     },
+    ...(resolvedUser.role === "STUDENT"
+      ? [{
+          href: "/courses",
+          icon: BookOpenIcon,
+          label: "Courses",
+          badge: null,
+          badgeClassName: undefined,
+          isActive: pathname.startsWith("/courses"),
+          collapseSidebarOnClick: true,
+        },
+        {
+          href: "/courses/my",
+          icon: GraduationCapIcon,
+          label: "My Courses",
+          badge: null,
+          badgeClassName: undefined,
+          isActive: pathname.startsWith("/courses/my"),
+          collapseSidebarOnClick: true,
+        }]
+      : []),
+    ...(resolvedUser.role === "TEACHER" || resolvedUser.role === "ADMIN"
+      ? [{
+          href: "/courses",
+          icon: BookOpenIcon,
+          label: "Courses",
+          badge: null,
+          badgeClassName: undefined,
+          isActive: pathname.startsWith("/courses"),
+          collapseSidebarOnClick: true,
+        },
+        {
+          href: "/courses/my",
+          icon: GraduationCapIcon,
+          label: "My Courses",
+          badge: null,
+          badgeClassName: undefined,
+          isActive: pathname.startsWith("/courses/my"),
+          collapseSidebarOnClick: true,
+        },
+        {
+          href: "/upload-course",
+          icon: UploadIcon,
+          label: "Upload Course",
+          badge: null,
+          badgeClassName: undefined,
+          isActive: pathname.startsWith("/upload-course"),
+          collapseSidebarOnClick: true,
+        }]
+      : []),
   ] as const;
 
   const roleLabel = resolvedUser.role === "STUDENT" ? "Student" : "Teacher";

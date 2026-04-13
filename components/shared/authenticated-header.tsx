@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { SearchIcon, SlidersHorizontalIcon, PlusIcon } from "lucide-react";
+import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon } from "lucide-react";
 
 import { PostQuestionModal } from "@/components/shared/post-question-modal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -187,7 +187,7 @@ export function AuthenticatedHeader({
                 <Link href={primaryHref}>{primaryLabel}</Link>
               </Button>
             )}
-            {showQuestionFilter ? (
+{showQuestionFilter ? (
               <Button
                 className="hidden sm:inline-flex"
                 onClick={() => { setDraftFilters(currentFilters); setIsFilterOpen(true); }}
@@ -198,6 +198,12 @@ export function AuthenticatedHeader({
                 {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </Button>
             ) : null}
+            <Button asChild variant="outline" className="hidden sm:inline-flex">
+              <Link href="/courses">
+                <BookOpenIcon className="mr-1 size-4" />
+                Courses
+              </Link>
+            </Button>
             <ThemeToggle />
             {userId && <NotificationBell userId={userId} />}
           </div>

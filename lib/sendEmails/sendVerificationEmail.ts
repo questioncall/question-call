@@ -1,12 +1,11 @@
 import resend from "@/lib/resend/resend";
-import { VerificationEmail } from "@/../emails/VerificationEmail";
-import { ApiResponse } from "@/types/ApiResponse";
+import { VerificationEmail } from "@/emails/VerificationEmail";
 
 export async function sendVerificationEmail(
   email: string,
   verificationCode: string,
   fullName: string
-): Promise<ApiResponse> {
+){
   try {
     const { data, error } = await resend.emails.send({
       from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,

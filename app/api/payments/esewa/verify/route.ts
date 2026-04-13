@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     reference: decoded.transaction_uuid,
     userId: session.user.id,
     status: "PENDING",
+    type: "DEBIT",
   });
 
   if (!transaction) {

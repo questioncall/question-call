@@ -1,0 +1,96 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { BookOpenIcon, GraduationCapIcon, UserCircle2Icon } from "lucide-react";
+
+import { LogoMark } from "@/components/shared/logo";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type CourseHeaderProps = {
+  user?: {
+    name?: string | null;
+    role?: string;
+  } | null;
+};
+
+export function CourseHeader({ user }: CourseHeaderProps) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-50 transition-all duration-300",
+        scrolled
+          ? "border-b border-emerald-600/20 bg-background/85 shadow-sm backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent",
+      )}
+    >
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Left — Logo */}
+        <Link href="/" className="flex items-center gap-3">
+          <LogoMark size={34} className="rounded-xl" />
+          <span className="text-[17px] font-bold tracking-tight text-foreground">
+            Question Hub
+          </span>
+        </Link>
+
+        {/* Center — Nav links (hidden on mobile) */}
+        <nav className="hidden items-center gap-1 md:flex">
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Link href="/">Home</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="text-emerald-600 dark:text-emerald-400 font-semibold">
+            <Link href="/courses">
+              <BookOpenIcon className="mr-1 size-4" />
+              Courses
+            </Link>
+          </Button>
+          {user && (
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Link href="/courses/my">
+                <GraduationCapIcon className="mr-1 size-4" />
+                My Courses
+              </Link>
+            </Button>
+          )}
+        </nav>
+
+        {/* Right — Actions */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+
+          {user ? (
+            <Button asChild variant="outline" size="sm" className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400">
+              <Link href="/">
+                <UserCircle2Icon className="mr-1 size-4" />
+                {user.name || "Dashboard"}
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                <Link href="/auth/signin">Sign in</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/25"
+              >
+                <Link href="/auth/register/STUDENT">Get started</Link>
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

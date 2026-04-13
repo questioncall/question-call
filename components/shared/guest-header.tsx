@@ -21,7 +21,10 @@ export function GuestHeader({ portalLabel = "Students • Teachers • Public" }
           </span>
         </Link>
 
-        <div className="ml-auto flex items-center gap-2">
+<div className="ml-auto flex items-center gap-2">
+          <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
+            <Link href="/courses">Courses</Link>
+          </Button>
           <ThemeToggle />
           <Button asChild className="hidden sm:inline-flex" size="sm" variant="ghost">
             <Link href={getSignInPath()}>Sign in</Link>

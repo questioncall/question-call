@@ -17,6 +17,11 @@ function EsewaSuccessContent() {
 
   useEffect(() => {
     const encodedData = searchParams.get("data");
+    const flow = searchParams.get("flow");
+    const preferredVerifyUrls =
+      flow === "course"
+        ? ["/api/payments/esewa/course-verify"]
+        : ["/api/payments/esewa/verify", "/api/payments/esewa/course-verify"];
 
     if (!encodedData) {
       setStatus("failed");
@@ -24,36 +29,47 @@ function EsewaSuccessContent() {
       return;
     }
 
-    // Send encoded data to your verify route
-    fetch("/api/payments/esewa/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ encodedData }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    async function verifyPayment() {
+      let lastError = "Verification failed. Please contact support.";
+
+      for (const verifyUrl of preferredVerifyUrls) {
+        const res = await fetch(verifyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ encodedData }),
+        });
+
+        const data = await res.json();
         if (data.success) {
           setStatus("success");
-          setMessage("Your subscription has been activated securely via eSewa.");
-          
-          // Force UI to update immediately
-          dispatch(updateProfile({ 
-            subscriptionStatus: "ACTIVE",
-            planSlug: data.planSlug || "1month",
-            pendingManualPayment: false
-          }));
+          if (verifyUrl.includes("course-verify")) {
+            setMessage("Your course purchase has been verified securely via eSewa.");
+            setTimeout(() => router.push(data.redirectTo || "/courses/my"), 3000);
+          } else {
+            setMessage("Your subscription has been activated securely via eSewa.");
 
-          // Redirect to subscription dashboard after 3 seconds
-          setTimeout(() => router.push("/subscription"), 3000);
-        } else {
-          setStatus("failed");
-          setMessage(data.error || "Verification failed. Please contact support.");
+            dispatch(updateProfile({ 
+              subscriptionStatus: "ACTIVE",
+              planSlug: data.planSlug || "1month",
+              pendingManualPayment: false
+            }));
+
+            setTimeout(() => router.push("/subscription"), 3000);
+          }
+          return;
         }
-      })
-      .catch(() => {
-        setStatus("failed");
-        setMessage("Network error during verification.");
-      });
+
+        lastError = data.error || lastError;
+      }
+
+      setStatus("failed");
+      setMessage(lastError);
+    }
+
+    verifyPayment().catch(() => {
+      setStatus("failed");
+      setMessage("Network error during verification.");
+    });
   }, [searchParams, router, dispatch]);
 
   return (

@@ -1,6 +1,5 @@
 import resend from "@/lib/resend/resend";
-import { GreetingEmail } from "@/../emails/GreetingEmail";
-import { ApiResponse } from "@/types/ApiResponse";
+import { GreetingEmail } from "@/emails/GreetingEmail";
 
 export async function sendGreetingEmail(
   email: string,
@@ -8,7 +7,7 @@ export async function sendGreetingEmail(
   message: string,
   link?: string,
   content?: string
-): Promise<ApiResponse> {
+){
   try {
     const { data, error } = await resend.emails.send({
       from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,

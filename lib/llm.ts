@@ -530,22 +530,23 @@ function normalizeGeneratedQuizQuestions(raw: string): GeneratedQuizQuestion[] {
   }
 
   return payload.flatMap((item): GeneratedQuizQuestion[] => {
+      const itemObj = item as Record<string, unknown>;
       const questionText =
-        typeof item?.questionText === "string" ? item.questionText.trim() : "";
-      const options = Array.isArray(item?.options)
-        ? item.options
+        typeof itemObj?.questionText === "string" ? String(itemObj.questionText).trim() : "";
+      const options = Array.isArray(itemObj?.options)
+        ? itemObj.options
             .map((option: unknown) =>
-              typeof option === "string" ? option.trim() : "",
+              typeof option === "string" ? String(option).trim() : "",
             )
             .filter(Boolean)
         : [];
       const correctOptionIndex =
-        typeof item?.correctOptionIndex === "number"
-          ? item.correctOptionIndex
+        typeof itemObj?.correctOptionIndex === "number"
+          ? Number(itemObj.correctOptionIndex)
           : -1;
       const explanation =
-        typeof item?.explanation === "string"
-          ? item.explanation.trim()
+        typeof itemObj?.explanation === "string"
+          ? String(itemObj.explanation).trim()
           : null;
 
       if (!questionText || options.length !== 4 || correctOptionIndex < 0 || correctOptionIndex > 3) {
@@ -572,20 +573,21 @@ function normalizeSuggestedQuizTopicPlans(
   }
 
   const plans = payload.flatMap((item): SuggestedQuizTopicPlan[] => {
+    const itemObj = item as Record<string, unknown>;
     const subject =
-      typeof item?.subject === "string" ? normalizeQuizText(item.subject) : "";
+      typeof itemObj?.subject === "string" ? normalizeQuizText(String(itemObj.subject)) : "";
     const topic =
-      typeof item?.topic === "string" ? normalizeQuizText(item.topic) : "";
+      typeof itemObj?.topic === "string" ? normalizeQuizText(String(itemObj.topic)) : "";
     const field =
-      typeof item?.field === "string" ? normalizeQuizField(item.field) : null;
+      typeof itemObj?.field === "string" ? normalizeQuizField(String(itemObj.field)) : null;
     const rawLevel =
-      typeof item?.level === "string" ? item.level : "";
+      typeof itemObj?.level === "string" ? String(itemObj.level) : "";
     const level = rawLevel ? normalizeQuizLevel(rawLevel, field) : "";
     const questionCount =
-      typeof item?.questionCount === "number"
-        ? Math.max(1, Math.floor(item.questionCount))
+      typeof itemObj?.questionCount === "number"
+        ? Math.max(1, Math.floor(Number(itemObj.questionCount)))
         : 1;
-    const searchAliases = normalizeQuizAliases(item?.searchAliases);
+    const searchAliases = normalizeQuizAliases(itemObj?.searchAliases as string[] | undefined);
 
     if (!subject || !topic || !level) {
       return [];

@@ -199,8 +199,11 @@ function useScrollReveal(threshold = 0.15) {
 /* ─────────────────────── NAV ─────────────────────── */
 function Nav() {
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -319,7 +322,7 @@ function Nav() {
               color: isDark ? "#9dc8c3" : "#2a6b64",
             }}
           >
-            {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+            {mounted && (isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />)}
           </button>
 
           <Link
