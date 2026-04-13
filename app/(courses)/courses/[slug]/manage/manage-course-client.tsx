@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useSelector } from "react-redux";
 import {
   ArrowLeftIcon,
   BarChart3Icon,
@@ -19,7 +20,6 @@ import {
   PlusIcon,
   SettingsIcon,
   Trash2Icon,
-  UploadCloudIcon,
   Users2Icon,
   VideoIcon,
 } from "lucide-react";
@@ -30,8 +30,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LiveSessionManager } from "@/components/course/LiveSessionManager";
+import { AddContentModal } from "@/components/course/AddContentModal";
 import type { ManageCourseData } from "@/lib/course-page-data";
-import { startGlobalUpload } from "@/lib/upload-manager";
+import type { RootState } from "@/store/store";
 
 
 type Tab = "content" | "details" | "live" | "analytics";
@@ -75,10 +76,12 @@ export function ManageCourseClient({
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isAddingSection, setIsAddingSection] = useState(false);
 
-  // ── Upload state (only UI for triggering — actual upload is global) ──
-  const [uploadSectionId, setUploadSectionId] = useState<string | null>(null);
-  const [uploadTitle, setUploadTitle] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── Add content modal ──
+  const [showAddContent, setShowAddContent] = useState(false);
+  const [addContentSectionId, setAddContentSectionId] = useState<string | null>(null);
+
+  // ── Redux upload jobs (for inline progress indicators) ──
+  const uploadJobs = useSelector((state: RootState) => state.upload.jobs);
 
   // ── Editing section ──
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -180,30 +183,12 @@ export function ManageCourseClient({
     }
   };
 
-  // ── Handle file selection → delegates to global upload manager ──
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !uploadSectionId) return;
-
-    const title = uploadTitle.trim() || file.name.replace(/\.[^.]+$/, "");
-
-    startGlobalUpload({
-      file,
-      courseId: course._id,
-      sectionId: uploadSectionId,
-      title,
-      onReady: () => {
-        // Refresh sections when video finishes processing
-        router.refresh();
-        fetch(`/api/courses/${course._id}/sections`)
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => { if (data) setSections(data); });
-      },
-    });
-
-    setUploadSectionId(null);
-    setUploadTitle("");
+  // ── Refresh sections when upload completes ──
+  const handleUploadSuccess = () => {
+    router.refresh();
+    fetch(`/api/courses/${course._id}/sections`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data) setSections(data); });
   };
 
   // ── Delete video ──
@@ -515,80 +500,71 @@ export function ManageCourseClient({
                                 </div>
                               ) : (
                                 <div className="divide-y divide-border">
-                                  {section.videos.map((video, vIdx) => (
-                                    <div
-                                      key={video._id}
-                                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
-                                    >
-                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground">
-                                        {vIdx + 1}
-                                      </div>
-                                      <VideoIcon className="size-4 text-emerald-500 shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-medium truncate">
-                                          {video.title}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {formatDuration(video.durationMinutes)} · {video.viewCount} view{video.viewCount !== 1 && "s"}
-                                        </div>
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600"
-                                        onClick={() => handleDeleteVideo(video._id)}
+                                  {section.videos.map((video, vIdx) => {
+                                    const isProcessing = video.status === "PROCESSING";
+                                    return (
+                                      <div
+                                        key={video._id}
+                                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
                                       >
-                                        <Trash2Icon className="size-3.5" />
-                                      </Button>
-                                    </div>
-                                  ))}
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground">
+                                          {vIdx + 1}
+                                        </div>
+                                        <VideoIcon className={`size-4 shrink-0 ${isProcessing ? "text-amber-500" : "text-emerald-500"}`} />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium truncate">
+                                              {video.title}
+                                            </span>
+                                            {isProcessing && (
+                                              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 text-[10px] px-1.5 py-0 h-5 border-transparent shrink-0">
+                                                <Loader2Icon className="size-3 mr-1 animate-spin" />
+                                                Processing
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {isProcessing
+                                              ? "Video is being processed by Mux…"
+                                              : `${formatDuration(video.durationMinutes)} · ${video.viewCount} view${video.viewCount !== 1 ? "s" : ""}`
+                                            }
+                                          </div>
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600"
+                                          onClick={() => handleDeleteVideo(video._id)}
+                                        >
+                                          <Trash2Icon className="size-3.5" />
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
 
+                              {/* Active upload indicators for this section */}
+                              {Object.values(uploadJobs).filter(
+                                (j) =>
+                                  (j.status === "UPLOADING" || j.status === "PROCESSING") &&
+                                  j.title,
+                              ).length > 0 && null /* upload progress shown in global bottom-right widget */}
+
                               {/* Add video button inside each section */}
                               <div className="px-4 py-3 border-t border-border bg-muted/10">
-                                {uploadSectionId === section._id ? (
-                                  <div className="flex items-end gap-3">
-                                    <div className="flex-1 space-y-1.5">
-                                      <Label className="text-xs">Video Title</Label>
-                                      <Input
-                                        value={uploadTitle}
-                                        onChange={(e) => setUploadTitle(e.target.value)}
-                                        placeholder="e.g. Introduction"
-                                        className="h-8 text-sm"
-                                        autoFocus
-                                      />
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => fileInputRef.current?.click()}
-                                    >
-                                      <UploadCloudIcon className="size-4 mr-1.5" />
-                                      Choose File
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setUploadSectionId(null);
-                                        setUploadTitle("");
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                                    onClick={() => setUploadSectionId(section._id)}
-                                  >
-                                    <PlusIcon className="size-4 mr-1.5" />
-                                    Add Video
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                                  onClick={() => {
+                                    setAddContentSectionId(section._id);
+                                    setShowAddContent(true);
+                                  }}
+                                >
+                                  <PlusIcon className="size-4 mr-1.5" />
+                                  Add Video
+                                </Button>
                               </div>
                             </div>
                           )}
@@ -819,13 +795,14 @@ export function ManageCourseClient({
         </div>
       </div>
 
-      {/* Hidden file input for video uploads */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="video/*"
-        onChange={handleFileSelect}
+      {/* Add Content Modal (3 methods: Upload, Zoom Link, Zoom Auto) */}
+      <AddContentModal
+        open={showAddContent}
+        onOpenChange={setShowAddContent}
+        courseId={course._id}
+        sections={sections.map((s) => ({ _id: s._id, title: s.title }))}
+        defaultSectionId={addContentSectionId}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );

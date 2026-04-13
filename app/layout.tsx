@@ -4,6 +4,7 @@ import Script from "next/script";
 import { StoreProvider } from "@/components/providers/store-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
@@ -42,6 +43,7 @@ export default function RootLayout({
             </TooltipProvider>
           </StoreProvider>
         </ThemeProvider>
+        <Toaster position="top-right" richColors closeButton />
         <Script
           src="https://widget.cloudinary.com/v2.0/global/all.js"
           strategy="afterInteractive"

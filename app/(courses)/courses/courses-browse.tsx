@@ -173,16 +173,16 @@ export function CoursesBrowseClient({
                   href={`/courses/${course.slug}`}
                   className="group flex w-[320px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-md"
                 >
-                  <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-slate-800 to-emerald-900">
+                  <div className="relative aspect-[16/9] w-full overflow-hidden">
                     {course.thumbnailUrl ? (
                       <img
                         src={course.thumbnailUrl}
                         alt={course.title}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <BookOpenIcon className="size-12 text-emerald-500/40" />
+                      <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
+                        <BookOpenIcon className="size-12 transition-transform duration-300 group-hover:scale-110" />
                       </div>
                     )}
                   </div>
@@ -254,16 +254,16 @@ export function CoursesBrowseClient({
                   href={`/courses/${course.slug}/manage`}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-background transition-all hover:border-blue-500/40 hover:shadow-lg"
                 >
-                  <div className="relative aspect-[16/10] bg-gradient-to-br from-slate-800 to-blue-900">
+                  <div className="relative aspect-[16/10] overflow-hidden">
                     {course.thumbnailUrl ? (
                       <img
                         src={course.thumbnailUrl}
                         alt={course.title}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <BookOpenIcon className="size-10 text-blue-500/50" />
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
+                        <BookOpenIcon className="size-10 transition-transform duration-300 group-hover:scale-110" />
                       </div>
                     )}
                     <div className="absolute right-3 top-3">
@@ -386,16 +386,16 @@ export function CoursesBrowseClient({
                 href={`/courses/${course.slug}`}
                 className="group overflow-hidden rounded-3xl border border-border bg-background shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-lg"
               >
-                <div className="aspect-[16/9] bg-gradient-to-br from-slate-800 to-emerald-900">
+                <div className="aspect-[16/9] overflow-hidden">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <BookOpenIcon className="size-12 text-emerald-500/40" />
+                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
+                      <BookOpenIcon className="size-12 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                   )}
                 </div>
@@ -492,16 +492,16 @@ export function CoursesBrowseClient({
                 href={`/courses/${course.slug}`}
                 className="group flex flex-col gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-md sm:flex-row sm:items-center sm:p-5"
               >
-                <div className="aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-emerald-900 sm:h-28 sm:w-48">
+                <div className="aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-48">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <BookOpenIcon className="size-10 text-emerald-500/50" />
+                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
+                      <BookOpenIcon className="size-10 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                   )}
                 </div>

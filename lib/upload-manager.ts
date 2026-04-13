@@ -92,44 +92,50 @@ export async function startGlobalUpload({
 
     activeUploads.set(clientId, { courseId, videoId });
 
-    // 3. UpChunk — chunked upload to Mux
-    const upload = UpChunk.createUpload({
-      endpoint: uploadUrl,
-      file,
-      chunkSize: 5120, // 5 MB
-    });
+    // 3. Direct XMLHttpRequest upload to Mux for flawless finalization
+    const xhr = new XMLHttpRequest();
 
     activeUploads.set(clientId, {
       courseId,
       videoId,
-      abort: () => upload.abort(),
+      abort: () => xhr.abort(),
     });
 
-    upload.on("progress", (evt: { detail: number }) => {
-      store.dispatch(
-        updateUploadProgress({
-          id: clientId,
-          progress: Math.round(evt.detail),
-        }),
-      );
+    xhr.upload.addEventListener("progress", (evt) => {
+      if (evt.lengthComputable) {
+        const progress = Math.round((evt.loaded * 100) / evt.total);
+        store.dispatch(updateUploadProgress({ id: clientId, progress }));
+      }
     });
 
-    upload.on("success", () => {
-      store.dispatch(setUploadProcessing(clientId));
-      toast.success(`"${title}" uploaded — processing…`);
-      pollVideoStatus({ clientId, courseId, videoId, onReady });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        store.dispatch(setUploadProcessing(clientId));
+        toast.success(`"${title}" uploaded — processing…`);
+        pollVideoStatus({ clientId, courseId, videoId, onReady });
+      } else {
+        const errMsg = `Upload failed with status ${xhr.status}`;
+        store.dispatch(failUpload({ id: clientId, error: errMsg }));
+        toast.error(errMsg);
+        activeUploads.delete(clientId);
+      }
     });
 
-    upload.on("error", (evt: { detail: { message: string } }) => {
-      store.dispatch(
-        failUpload({
-          id: clientId,
-          error: evt.detail?.message || "Upload failed",
-        }),
-      );
-      toast.error(`Upload failed: ${evt.detail?.message || "Unknown error"}`);
+    xhr.addEventListener("error", () => {
+      store.dispatch(failUpload({ id: clientId, error: "Network error during upload" }));
+      toast.error("Upload failed due to a network error.");
       activeUploads.delete(clientId);
     });
+
+    xhr.addEventListener("abort", () => {
+      store.dispatch(failUpload({ id: clientId, error: "Upload cancelled" }));
+      toast.info(`Upload of "${title}" was cancelled.`);
+      activeUploads.delete(clientId);
+    });
+
+    // Send the PUT request
+    xhr.open("PUT", uploadUrl, true);
+    xhr.send(file);
   } catch (err) {
     store.dispatch(
       failUpload({
