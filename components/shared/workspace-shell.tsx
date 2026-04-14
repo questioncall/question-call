@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 import { AuthenticatedHeader } from "@/components/shared/authenticated-header";
-import { Logo } from "@/components/shared/logo";
+import { Logo, LogoMark } from "@/components/shared/logo";
 import { NavUser } from "@/components/shared/nav-user";
 import {
   Sidebar,
@@ -40,7 +40,6 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import {
-  getAskQuestionPath,
   getLeaderboardPath,
   getMessagesPath,
   getProfilePath,
@@ -211,18 +210,17 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     userImage: profile.userImage || user.userImage || "",
   };
 
-  const handle = getUserHandle(resolvedUser);
-  const askQuestionHref = getAskQuestionPath(resolvedUser);
+const handle = getUserHandle(resolvedUser);
   const leaderboardHref = getLeaderboardPath(resolvedUser);
   const messageHref = getMessagesPath(resolvedUser);
   const profileHref = getProfilePath(resolvedUser);
   const settingsHref = getSettingsPath(resolvedUser);
   const subscriptionHref = getSubscriptionPath(resolvedUser);
   const walletHref = getWalletPath(resolvedUser);
-  const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
-  const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
-  const useModalForPrimary = resolvedUser.role === "STUDENT";
-  const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
+  const primaryHref = messageHref;
+  const primaryLabel = "Open messages";
+  const useModalForPrimary = false;
+  const showQuestionFilter = pathname === "/" || pathname.startsWith("/search");
   const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel");
 
   const mainItems = [
@@ -235,22 +233,13 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       isActive: pathname === "/",
       collapseSidebarOnClick: true,
     },
-    {
+{
       href: messageHref,
       icon: MessageSquareIcon,
       label: "Messages",
       badge: totalUnreadChannels > 0 ? totalUnreadChannels.toString() : null,
       badgeClassName: "text-white bg-red-500 rounded-full h-4 min-w-[16px] text-[10px] px-1 flex items-center justify-center peer-hover/menu-button:text-white peer-data-active/menu-button:text-white group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1 group-data-[collapsible=icon]:!translate-y-0",
       isActive: pathname.startsWith("/message") || pathname.startsWith("/channel/"),
-      collapseSidebarOnClick: true,
-    },
-    {
-      href: askQuestionHref,
-      icon: CircleHelpIcon,
-      label: "Ask",
-      badge: resolvedUser.role === "STUDENT" ? "new" : null,
-      badgeClassName: "text-primary bg-primary/10",
-      isActive: pathname.startsWith("/ask"),
       collapseSidebarOnClick: true,
     },
     {
@@ -351,11 +340,13 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="gap-3 px-3 py-3">
-          <div className="flex items-center gap-3 rounded-lg border border-sidebar-border/70 bg-background px-3 py-3">
-            <Logo compact />
-            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <h1 className="truncate text-sm font-bold text-sidebar-foreground hidden md:block">Question Hub</h1>
+<SidebarHeader className="p-2">
+          <div className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-background p-2">
+            <div className="shrink-0">
+              <LogoMark size={32} className="rounded-lg" />
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+              <h1 className="truncate text-sm font-bold text-sidebar-foreground">Question Hub</h1>
               <p className="truncate text-xs text-sidebar-foreground/70">@{handle}</p>
             </div>
           </div>

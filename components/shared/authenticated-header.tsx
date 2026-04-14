@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon } from "lucide-react";
+import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon, Loader2Icon, MessageCircleIcon, BookIcon, UserIcon } from "lucide-react";
 
 import { PostQuestionModal } from "@/components/shared/post-question-modal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -20,6 +20,12 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+
+type SearchResult = {
+  questions: { id: string; title: string; body: string; subject?: string; level?: string }[];
+  courses: { id: string; title: string; slug: string; subject?: string; thumbnailUrl?: string; pricingModel: string }[];
+  users: { id: string; name: string; username: string; userImage?: string; role: string }[];
+};
 
 const subjectOptions = [
   "IT",
@@ -66,6 +72,61 @@ export function AuthenticatedHeader({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (value.trim().length < 2) {
+      setSearchResults(null);
+      setShowDropdown(false);
+      return;
+    }
+
+    setShowDropdown(true);
+    setIsSearching(true);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(value.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchValue.trim()) {
+      setShowDropdown(false);
+      router.push(`/search/results?q=${encodeURIComponent(searchValue.trim())}`);
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+    }
+  };
 
   const currentFilters = useMemo<FilterState>(() => {
     const readValues = (key: string) =>
@@ -138,13 +199,7 @@ export function AuthenticatedHeader({
       levels: [],
     });
     setIsFilterOpen(false);
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && searchValue.trim()) {
-      router.push(`/ask/question?q=${encodeURIComponent(searchValue.trim())}`);
-    }
-  };
+};
 
   return (
     <>
@@ -158,15 +213,111 @@ export function AuthenticatedHeader({
       >
         <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
           <SidebarTrigger className="shrink-0" />
-          <div className="relative hidden max-w-xl flex-1 md:mx-auto md:block">
+<div className="relative hidden max-w-xl flex-1 md:mx-auto md:block" ref={searchRef}>
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-[18px] -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-10 pl-10 text-base md:text-sm"
-              onChange={(e) => setSearchValue(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Search questions, topics, answers, and teachers"
+              onFocus={() => { if (searchValue.trim().length >= 2) setShowDropdown(true); }}
+              placeholder="Search questions, courses, and users"
               value={searchValue}
             />
+            {isSearching && (
+              <Loader2Icon className="pointer-events-none absolute top-1/2 right-3 size-[18px] -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+            {showDropdown && searchResults && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-md border border-border bg-background shadow-lg">
+                {searchResults.questions.length === 0 && searchResults.courses.length === 0 && searchResults.users.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground">No results found</div>
+                ) : (
+                  <>
+                    {searchResults.questions.length > 0 && (
+                      <div className="border-b border-border">
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground">
+                          <MessageCircleIcon className="size-3" />
+                          Questions
+                        </div>
+                        {searchResults.questions.map((q) => (
+                          <Link
+                            key={q.id}
+                            href={`/question/${q.id}`}
+                            onClick={() => setShowDropdown(false)}
+                            className="flex flex-col gap-0.5 px-3 py-2 hover:bg-muted"
+                          >
+                            <span className="line-clamp-1 text-sm font-medium">{q.title}</span>
+                            <span className="line-clamp-1 text-xs text-muted-foreground">{q.body}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.courses.length > 0 && (
+                      <div className="border-b border-border">
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground">
+                          <BookIcon className="size-3" />
+                          Courses
+                        </div>
+                        {searchResults.courses.map((c) => (
+                          <Link
+                            key={c.id}
+                            href={`/courses/${c.slug}`}
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-muted"
+                          >
+                            {c.thumbnailUrl ? (
+                              <img src={c.thumbnailUrl} alt="" className="size-8 rounded object-cover" />
+                            ) : (
+                              <div className="size-8 rounded bg-muted flex items-center justify-center">
+                                <BookIcon className="size-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-0.5">
+                              <span className="line-clamp-1 text-sm font-medium">{c.title}</span>
+                              <span className="text-xs text-muted-foreground">{c.subject} • {c.pricingModel}</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.users.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground">
+                          <UserIcon className="size-3" />
+                          Users
+                        </div>
+                        {searchResults.users.map((u) => (
+                          <Link
+                            key={u.id}
+                            href={`/${u.username}`}
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-muted"
+                          >
+                            {u.userImage ? (
+                              <img src={u.userImage} alt="" className="size-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="size-8 rounded-full bg-muted flex items-center justify-center">
+                                <UserIcon className="size-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-0.5">
+                              <span className="line-clamp-1 text-sm font-medium">{u.name}</span>
+                              <span className="text-xs text-muted-foreground">@{u.username} • {u.role.toLowerCase()}</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+                <Link
+                  href={`/search/results?q=${encodeURIComponent(searchValue)}`}
+                  onClick={() => setShowDropdown(false)}
+                  className="block border-t border-border px-3 py-2 text-center text-sm font-medium text-primary hover:bg-muted"
+                >
+                  View all results
+                </Link>
+              </div>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-3">
             {showQuizLink ? (

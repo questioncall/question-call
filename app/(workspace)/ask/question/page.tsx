@@ -66,7 +66,6 @@ export default function AskQuestionPage() {
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
 
-  // Pre-fill from search bar query param
   const initialQuery = searchParams.get("q") || "";
 
   const [title, setTitle] = useState(initialQuery);
@@ -80,13 +79,11 @@ export default function AskQuestionPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Sync initial query on mount
   useEffect(() => {
     if (initialQuery && !title) {
       setTitle(initialQuery);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialQuery, title]);
 
   const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
@@ -134,7 +131,6 @@ export default function AskQuestionPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      {/* Main composer */}
       <div className="space-y-6">
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
@@ -147,7 +143,6 @@ export default function AskQuestionPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="q-title">
                 Title
@@ -168,7 +163,6 @@ export default function AskQuestionPage() {
               )}
             </div>
 
-            {/* Body */}
             <div className="space-y-2">
               <Label htmlFor="q-body">
                 Details
@@ -191,7 +185,6 @@ export default function AskQuestionPage() {
 
             <Separator />
 
-            {/* Format picker */}
             <div className="space-y-3">
               <Label>Answer format</Label>
               <div className="grid grid-cols-2 gap-3">
@@ -215,7 +208,6 @@ export default function AskQuestionPage() {
               </div>
             </div>
 
-            {/* Visibility */}
             <div className="space-y-3">
               <Label>Answer visibility</Label>
               <div className="grid grid-cols-2 gap-3">
@@ -241,7 +233,6 @@ export default function AskQuestionPage() {
 
             <Separator />
 
-            {/* Optional metadata */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="q-subject">Subject</Label>
@@ -287,14 +278,12 @@ export default function AskQuestionPage() {
               </div>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex items-center gap-3 pt-2">
               <Button disabled={!canSubmit} onClick={handleSubmit} size="lg">
                 {isSubmitting ? (
@@ -317,9 +306,7 @@ export default function AskQuestionPage() {
         </Card>
       </div>
 
-      {/* Right rail — preview + tips */}
       <div className="space-y-6">
-        {/* Live Preview */}
         {showPreview && (
           <Card className="border border-primary/20 shadow-sm">
             <CardHeader>
@@ -358,7 +345,6 @@ export default function AskQuestionPage() {
           </Card>
         )}
 
-        {/* Tips */}
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardDescription>Tips</CardDescription>
