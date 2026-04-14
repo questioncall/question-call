@@ -2,17 +2,23 @@ import resend from "@/lib/resend/resend";
 import { TransactionAlertEmail } from "@/emails/TransactionAlertEmail";
 
 export async function sendTransactionEmail(
-  email: string,
+  email: string | string[],
   title: string,
   message: string,
   transactionId?: string,
   amount?: string,
   userEmail?: string,
 ) {
+  const recipients = Array.isArray(email) ? email : [email];
+
+  if (recipients.length === 0) {
+    return { success: false, error: "No recipients provided" };
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,
-      to: email,
+      to: recipients,
       subject: title,
       react: TransactionAlertEmail({ title, message, transactionId, amount, userEmail }),
     });

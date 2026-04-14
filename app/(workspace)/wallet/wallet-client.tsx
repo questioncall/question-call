@@ -45,7 +45,7 @@ type WithdrawalHistoryItem = {
 };
 
 type WalletData = {
-  role: "STUDENT" | "TEACHER";
+  role: string;
   pointBalance: number;
   nprEquivalent: number;
   totalAnswered: number;
@@ -54,10 +54,11 @@ type WalletData = {
   pointToNprRate: number;
   minWithdrawalPoints: number;
   qualificationThreshold: number;
-  subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | "NONE" | null;
+  subscriptionStatus: string | null;
   subscriptionEnd: string | null;
   questionsAsked: number;
   withdrawalHistory: WithdrawalHistoryItem[];
+  savedEsewaNumber: string | null;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -77,6 +78,7 @@ export function WalletClient() {
   const [submitting, setSubmitting] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+  const [saveEsewaNumber, setSaveEsewaNumber] = useState(true);
 
   const fetchWallet = useCallback(async () => {
     try {
@@ -99,7 +101,10 @@ export function WalletClient() {
 
   useEffect(() => {
     fetchWallet();
-  }, [fetchWallet]);
+    if (wallet?.savedEsewaNumber) {
+      setEsewaNumber(wallet.savedEsewaNumber);
+    }
+  }, [fetchWallet, wallet?.savedEsewaNumber]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +132,7 @@ export function WalletClient() {
         body: JSON.stringify({
           pointsRequested: points,
           esewaNumber: esewaNumber.trim(),
+          saveEsewaNumber: saveEsewaNumber,
         }),
       });
 
@@ -173,10 +179,8 @@ export function WalletClient() {
   const hasPendingRequest = wallet.withdrawalHistory.some(
     (request) => request.status === "PENDING",
   );
-  const withdrawalUnlocked = isTeacher ? wallet.isMonetized : true;
-  const qualificationProgress = wallet.qualificationThreshold
-    ? Math.min(100, (wallet.totalAnswered / wallet.qualificationThreshold) * 100)
-    : 0;
+  const withdrawalUnlocked = true;
+  
   const nprPreview =
     Number.parseFloat(pointsToWithdraw) * wallet.pointToNprRate || 0;
   const subscriptionStatusLabel =
@@ -267,40 +271,17 @@ export function WalletClient() {
       {isTeacher ? (
         <Card className="border-border/70 shadow-sm">
           <CardContent className="pt-5">
-            {wallet.isMonetized ? (
-              <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-                <ShieldCheckIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                    Monetization Active
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Your answer points are ready to cash out through the shared wallet flow.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="size-4 text-amber-500" />
-                    <span className="text-sm font-medium text-foreground">
-                      Qualification Progress
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-primary">
-                    {wallet.totalAnswered} / {wallet.qualificationThreshold} answers
-                  </span>
-                </div>
-                <Progress value={qualificationProgress} />
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <WalletIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  Wallet Active
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Complete {wallet.qualificationThreshold} answers to unlock withdrawals.
-                  {wallet.qualificationThreshold - wallet.totalAnswered > 0
-                    ? ` ${wallet.qualificationThreshold - wallet.totalAnswered} more to go.`
-                    : ""}
+                  Your course earnings and answer points are ready to withdraw.
                 </p>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -342,7 +323,7 @@ export function WalletClient() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
               <AlertCircleIcon className="size-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Teacher withdrawals unlock after you complete {wallet.qualificationThreshold} answers.
+                You can withdraw once you have at least {wallet.minWithdrawalPoints} points.
               </p>
             </div>
           ) : hasPendingRequest ? (
@@ -398,6 +379,16 @@ export function WalletClient() {
                     onChange={(e) => setEsewaNumber(e.target.value)}
                     required
                   />
+                  {wallet?.role === "TEACHER" && (
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        defaultChecked={!!wallet?.savedEsewaNumber}
+                        className="rounded border-input"
+                      />
+                      Save my eSewa number for future withdrawals
+                    </label>
+                  )}
                 </div>
               </div>
 

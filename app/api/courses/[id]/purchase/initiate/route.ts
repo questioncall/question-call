@@ -8,7 +8,9 @@ import { getPlatformConfig } from "@/models/PlatformConfig";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import Transaction from "@/models/Transaction";
+import User from "@/models/User";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { getMasterAdminEmails } from "@/lib/user-directory";
 
 cloudinary.config({
   secure: true,
@@ -92,9 +94,17 @@ export async function POST(
 
     await connectToDatabase();
 
-    const course = await Course.findById(id).select(
-      "_id title instructorId pricingModel price status",
-    );
+    const course = await Course.findById(id)
+      .select("_id title instructorId pricingModel price status")
+      .lean();
+
+    const originalInstructorId = (course as unknown as { instructorId: { _id?: unknown } | unknown }).instructorId;
+    const instructorIdString = typeof originalInstructorId === 'object' && originalInstructorId !== null
+      ? String((originalInstructorId as { _id?: unknown })._id || originalInstructorId)
+      : String(originalInstructorId);
+
+    const instructor = await User.findById(instructorIdString).select("role").lean();
+    const isAdminCourse = instructor?.role === "ADMIN";
 
     if (!course || course.status !== "ACTIVE") {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
@@ -147,9 +157,10 @@ export async function POST(
 
     const config = await getPlatformConfig();
     const grossAmount = roundCurrency(Number(course.price ?? 0));
-    const commissionPercent = roundCurrency(
-      config.coursePurchaseCommissionPercent ?? 0,
-    );
+    
+    const commissionPercent = isAdminCourse 
+      ? 0 
+      : roundCurrency(config.coursePurchaseCommissionPercent ?? 0);
     const netAmount = roundCurrency(
       grossAmount * (1 - commissionPercent / 100),
     );
@@ -203,9 +214,10 @@ export async function POST(
 
       await existingPending.save();
 
-      if (process.env.ADMIN_EMAIL) {
+      const masterAdminEmails = await getMasterAdminEmails();
+      if (masterAdminEmails.length > 0) {
         void sendTransactionEmail(
-          process.env.ADMIN_EMAIL,
+          masterAdminEmails,
           "Manual Course Purchase Updated",
           `A student has submitted an update (new screenshot/reference) for an existing pending manual payment for the course "${course.title}".`,
           existingPending._id.toString(),
@@ -240,7 +252,7 @@ export async function POST(
       metadata: {
         courseId: course._id.toString(),
         courseName: course.title,
-        instructorId: course.instructorId.toString(),
+        instructorId: instructorIdString,
         pricingModel: course.pricingModel,
         grossAmount,
         commissionPercent,
@@ -248,9 +260,10 @@ export async function POST(
       },
     });
 
-    if (process.env.ADMIN_EMAIL) {
+    const masterAdminEmailsNew = await getMasterAdminEmails();
+    if (masterAdminEmailsNew.length > 0) {
       void sendTransactionEmail(
-        process.env.ADMIN_EMAIL,
+        masterAdminEmailsNew,
         "New Manual Course Purchase Initiated",
         `A student has initiated a manual payment for the course "${course.title}".`,
         createdTransaction._id.toString(),
@@ -265,7 +278,7 @@ export async function POST(
           "Course payment submitted successfully. We will verify it shortly.",
         transactionId: createdTransaction._id.toString(),
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("[POST /api/courses/:id/purchase/initiate]", error);

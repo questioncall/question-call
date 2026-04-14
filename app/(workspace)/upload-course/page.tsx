@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { getSafeServerSession } from "@/lib/auth";
-import { UploadCourseClient } from "./upload-course-client";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import Course from "@/models/Course";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -26,11 +25,9 @@ export default async function UploadCoursePage() {
   ]);
 
   return (
-    <UploadCourseClient
-      existingSubjects={existingSubjects.filter((s): s is string => typeof s === "string")}
-      existingLevels={existingLevels.filter((l): l is string => typeof l === "string")}
-      commissionPercent={config.coursePurchaseCommissionPercent}
-      userRole={session.user.role}
-    />
+    <div className="p-8">
+      <h1 className="text-2xl font-bold">Course Upload</h1>
+      <p className="text-neutral-500 mt-2">This feature is under development.</p>
+    </div>
   );
 }

@@ -77,6 +77,12 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    /** eSewa number for withdrawals - saved for teacher convenience */
+    esewaNumber: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     /** Sum of all ratings received — used to compute average on the fly */
     overallRatingSum: {
       type: Number,

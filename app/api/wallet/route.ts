@@ -35,6 +35,7 @@ export async function GET() {
         "overallScore",
         "subscriptionStatus",
         "subscriptionEnd",
+        "esewaNumber",
       ].join(" ")
     );
 
@@ -87,6 +88,7 @@ export async function GET() {
           : user.subscriptionEnd ?? null,
       questionsAsked,
       withdrawalHistory,
+      savedEsewaNumber: user.esewaNumber || null,
     });
   } catch (error) {
     console.error("[GET /api/wallet]", error);

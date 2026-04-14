@@ -9,27 +9,48 @@ import { PlanDef } from "@/lib/plans";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
 
-export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans?: PlanDef[]; trialDays?: number }) {
+export function SubscriptionClient({
+  hydratedPlans,
+  trialDays,
+  initialSubscriptionData,
+}: {
+  hydratedPlans?: PlanDef[];
+  trialDays?: number;
+  initialSubscriptionData?: {
+    subscriptionStatus: string | null;
+    subscriptionEnd: string | null;
+    pendingManualPayment: boolean;
+    questionsAsked: number;
+    planSlug: string | null;
+  };
+}) {
   const dispatch = useAppDispatch();
-  const { 
-    subscriptionStatus, 
-    subscriptionEnd, 
-    pendingManualPayment, 
+  const {
+    subscriptionStatus,
+    subscriptionEnd,
+    pendingManualPayment,
     questionsAsked,
     planSlug,
   } = useAppSelector((state) => state.user);
 
-  const [loading, setLoading] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(!!initialSubscriptionData);
 
   useEffect(() => {
-    if (subscriptionStatus !== null) {
+    if (initialSubscriptionData) {
+      dispatch(updateProfile({
+        subscriptionStatus: initialSubscriptionData.subscriptionStatus as "ACTIVE" | "EXPIRED" | "TRIAL" | "NONE" | null,
+        subscriptionEnd: initialSubscriptionData.subscriptionEnd,
+        pendingManualPayment: initialSubscriptionData.pendingManualPayment,
+        questionsAsked: initialSubscriptionData.questionsAsked,
+        planSlug: initialSubscriptionData.planSlug,
+      }));
+      setIsHydrated(true);
       return;
     }
 
     let active = true;
 
     const fetchSub = async () => {
-      setLoading(true);
       try {
         const res = await fetch("/api/user/subscription");
         if (res.ok) {
@@ -46,7 +67,7 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
         console.error(e);
       } finally {
         if (active) {
-          setLoading(false);
+          setIsHydrated(true);
         }
       }
     };
@@ -56,9 +77,9 @@ export function SubscriptionClient({ hydratedPlans, trialDays }: { hydratedPlans
     return () => {
       active = false;
     };
-  }, [subscriptionStatus, dispatch]);
+  }, [initialSubscriptionData, dispatch]);
 
-  if (loading || subscriptionStatus === null) {
+  if (!isHydrated) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-pulse flex flex-col items-center gap-4">

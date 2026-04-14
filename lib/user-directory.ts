@@ -133,3 +133,28 @@ export const getLeaderboardProfiles = cache(async () => {
     .map(mapDirectoryUser)
     .sort((left, right) => getLeaderboardScore(right) - getLeaderboardScore(left));
 });
+
+export async function getMasterAdminEmails(): Promise<string[]> {
+  await connectToDatabase();
+
+  const masterAdmins = await User.find({
+    role: "ADMIN",
+    isMasterAdmin: true,
+  }).select("email").lean();
+
+  return masterAdmins
+    .map((admin) => admin.email)
+    .filter((email): email is string => !!email);
+}
+
+export async function getAllAdminEmails(): Promise<string[]> {
+  await connectToDatabase();
+
+  const admins = await User.find({
+    role: "ADMIN",
+  }).select("email").lean();
+
+  return admins
+    .map((admin) => admin.email)
+    .filter((email): email is string => !!email);
+}

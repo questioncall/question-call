@@ -10,6 +10,8 @@ import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
+import { getMasterAdminEmails } from "@/lib/user-directory";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 
 export async function POST(req: Request) {
   try {
@@ -22,8 +24,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { pointsRequested, esewaNumber } = await req.json();
+    const { pointsRequested, esewaNumber: providedEsewaNumber, saveEsewaNumber } = await req.json();
     const requestedPoints = Number(pointsRequested);
+
+    await connectToDatabase();
+
+    const user = await User.findById(session.user.id).select(
+      "name email role points pointBalance isMonetized esewaNumber",
+    );
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const existingEsewaNumber = user.esewaNumber;
+    const esewaNumber = providedEsewaNumber || existingEsewaNumber;
+
+    if (saveEsewaNumber === true && esewaNumber) {
+      user.esewaNumber = esewaNumber;
+      await user.save();
+    }
 
     if (!requestedPoints || requestedPoints <= 0 || !esewaNumber) {
       return NextResponse.json(
@@ -41,21 +61,6 @@ export async function POST(req: Request) {
     if (requestedPoints < minPoints) {
       return NextResponse.json(
         { error: `Minimum withdrawal is ${minPoints} points` },
-        { status: 400 },
-      );
-    }
-
-    const user = await User.findById(session.user.id).select(
-      "name email role points pointBalance isMonetized",
-    );
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (session.user.role === "TEACHER" && !user.isMonetized) {
-      return NextResponse.json(
-        { error: "Complete your qualification milestone before withdrawing." },
         { status: 400 },
       );
     }
@@ -139,6 +144,19 @@ export async function POST(req: Request) {
           },
         })
         .catch(console.error);
+    }
+
+    const masterAdminEmails = await getMasterAdminEmails();
+    if (masterAdminEmails.length > 0) {
+      const withdrawalMessage = `${requesterLabel} ${user.name} (${user.email}) requested a withdrawal of ${roundPoints(requestedPoints)} pts (NPR ${nprEquivalent}). eSewa: ${esewaNumber}`;
+      void sendTransactionEmail(
+        masterAdminEmails,
+        "New Withdrawal Request",
+        withdrawalMessage,
+        request._id.toString(),
+        `NPR ${nprEquivalent}`,
+        user.email
+      ).catch(console.error);
     }
 
     return NextResponse.json({ success: true, requestId: request._id });

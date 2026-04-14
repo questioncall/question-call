@@ -1,1 +1,1 @@
-All tasks from Phase 1 and Phase 2 completed successfully.
+1. in the home workspace header there is search bar, it is now jst for the ui but now lets make that next level smart level  , it can search the posted questions always search simimialry based not eaxcth based. search courses (clicking on the course we navgaet the student to that course page) , search questions (clicking on the question we navigate to that question page) , search users (clicking on the user we navigate to that user profile page).

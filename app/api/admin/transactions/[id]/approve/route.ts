@@ -10,6 +10,7 @@ import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { getMasterAdminEmails } from "@/lib/user-directory";
 
 export async function POST(
   req: Request,
@@ -153,11 +154,13 @@ export async function POST(
         recipientUser.email
       ).catch(console.error);
     }
-    if (process.env.ADMIN_EMAIL) {
+
+    const masterAdminEmails = await getMasterAdminEmails();
+    if (masterAdminEmails.length > 0) {
       void sendTransactionEmail(
-        process.env.ADMIN_EMAIL,
+        masterAdminEmails,
         "Manual Transaction Approved",
-        `Admin has approved a manual transaction.`,
+        `Admin has approved a manual transaction for ${recipientUser?.email ?? "Unknown"}.`,
         transaction.transactionId,
         `Amount: ${transaction.amount}`,
         recipientUser?.email ?? "Unknown"
