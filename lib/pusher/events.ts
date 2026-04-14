@@ -48,3 +48,11 @@ export const CONFIG_UPDATED_EVENT = "admin:config-updated";
 // ──────────────────────────────────────────────────────────
 export const COURSE_UPDATES_CHANNEL = "courses-updates";
 export const COURSE_UPDATED_EVENT = "course:updated";
+
+// ──────────────────────────────────────────────────────────
+// Call events (LiveKit signaling via Pusher)
+// ──────────────────────────────────────────────────────────
+export const CALL_INCOMING_EVENT = "call:incoming";
+export const CALL_ACCEPTED_EVENT = "call:accepted";
+export const CALL_REJECTED_EVENT = "call:rejected";
+export const CALL_ENDED_EVENT = "call:ended";

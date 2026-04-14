@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
 import {
   PaperclipIcon,
@@ -17,13 +18,10 @@ import {
   StarIcon,
   PhoneIcon,
   VideoIcon,
+  PhoneIncomingIcon,
+  PhoneOutgoingIcon,
+  PhoneMissedIcon,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +35,7 @@ import {
   MESSAGE_MARKED_EVENT,
   ANSWER_SUBMITTED_EVENT,
   CHANNEL_CLOSED_EVENT,
+  CALL_INCOMING_EVENT,
   getChannelPusherName,
 } from "@/lib/pusher/events";
 import {
@@ -134,13 +133,25 @@ function formatMessageTime(dateString: string) {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+function formatCallDurationUI(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  const h = Math.floor(m / 60);
+  const remainM = m % 60;
+  return remainM > 0 ? `${h}h ${remainM}m` : `${h}h`;
+}
+
 export function ChannelChat({ channelId }: ChannelChatProps) {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { channel, messages, isLoaded, isLoading, error, isAnswerSubmitted } = useAppSelector(
     (state) => state.channel,
   );
   const userId = useAppSelector((state) => state.user.id);
 
+  const [startingCallType, setStartingCallType] = useState<"AUDIO" | "VIDEO" | null>(null);
   const [text, setText] = useState("");
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -149,8 +160,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
-  const [callType, setCallType] = useState<"audio" | "video" | null>(null);
+
   const [ratingValue, setRatingValue] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<{
     label: string;
@@ -164,6 +174,27 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ─── Call Logic ──────────────────────────────────────
+  const handleStartCall = async (mode: "AUDIO" | "VIDEO") => {
+    if (!channelId || startingCallType !== null) return;
+    setStartingCallType(mode);
+    try {
+      const res = await fetch("/api/calls/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start call");
+      }
+      router.push(`/calls/${data.callSessionId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error starting call");
+      setStartingCallType(null);
+    }
+  };
 
   // ─── Fetch channel data from API ───────────────────────
   const fetchChannelData = useCallback(async () => {
@@ -253,12 +284,34 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       dispatch(toggleMessageMarked(payload));
     };
 
+    const handleIncomingCall = (payload: {
+      callSessionId: string;
+      channelId: string;
+      callerName: string;
+      mode: "AUDIO" | "VIDEO";
+      targetUserId: string;
+    }) => {
+      if (payload.targetUserId === userId) {
+        toast.info(
+          `${payload.callerName} started an ${payload.mode.toLowerCase()} call`,
+          {
+            duration: 10000,
+            action: {
+              label: "Join Call",
+              onClick: () => router.push(`/calls/${payload.callSessionId}`),
+            },
+          }
+        );
+      }
+    };
+
     pusherChannel.bind(CHANNEL_MESSAGE_EVENT, handleMessage);
     pusherChannel.bind(CHANNEL_STATUS_EVENT, handleStatus);
     pusherChannel.bind(CHANNEL_MESSAGES_SEEN_EVENT, handleMessagesSeen);
     pusherChannel.bind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
     pusherChannel.bind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
     pusherChannel.bind(MESSAGE_MARKED_EVENT, handleMessageMarked);
+    pusherChannel.bind(CALL_INCOMING_EVENT, handleIncomingCall);
 
     return () => {
       pusherChannel.unbind(CHANNEL_MESSAGE_EVENT, handleMessage);
@@ -267,6 +320,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       pusherChannel.unbind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
       pusherChannel.unbind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
       pusherChannel.unbind(MESSAGE_MARKED_EVENT, handleMessageMarked);
+      pusherChannel.unbind(CALL_INCOMING_EVENT, handleIncomingCall);
       client.unsubscribe(pusherChannelName);
     };
   }, [channelId, userId, dispatch]);
@@ -790,30 +844,28 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
         {/* Actions based on role and answer status */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 shrink-0 bg-muted/30 rounded-full p-1 border">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-8 hover:bg-muted text-muted-foreground"
-              onClick={() => {
-                setCallType("audio");
-                setIsCallModalOpen(true);
-              }}
-            >
-              <PhoneIcon className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-8 hover:bg-muted text-muted-foreground"
-              onClick={() => {
-                setCallType("video");
-                setIsCallModalOpen(true);
-              }}
-            >
-              <VideoIcon className="size-4" />
-            </Button>
-          </div>
+          {isActive && countdown > 0 && (
+            <div className="flex items-center gap-1 shrink-0 bg-muted/30 rounded-full p-1 border">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={startingCallType !== null}
+                className="rounded-full size-8 hover:bg-muted text-muted-foreground"
+                onClick={() => handleStartCall("AUDIO")}
+              >
+                {startingCallType === "AUDIO" ? <Loader2Icon className="size-4 animate-spin" /> : <PhoneIcon className="size-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={startingCallType !== null}
+                className="rounded-full size-8 hover:bg-muted text-muted-foreground"
+                onClick={() => handleStartCall("VIDEO")}
+              >
+                {startingCallType === "VIDEO" ? <Loader2Icon className="size-4 animate-spin" /> : <VideoIcon className="size-4" />}
+              </Button>
+            </div>
+          )}
           {/* Timer */}
           {isActive && (
             <div
@@ -945,6 +997,57 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
               // System messages get a special style
               if (msg.isSystemMessage) {
+                // ── Call event bubble (WhatsApp-style) ──
+                if (msg.callInfo) {
+                  const ci = msg.callInfo;
+                  const isOutgoing = ci.callerId === userId;
+                  const isMissed = ci.status === "MISSED";
+                  const isRejected = ci.status === "REJECTED";
+                  const isVideo = ci.mode === "VIDEO";
+
+                  const CallDirectionIcon = isMissed ? PhoneMissedIcon : isOutgoing ? PhoneOutgoingIcon : PhoneIncomingIcon;
+                  const iconColor = isMissed || isRejected
+                    ? "text-red-500"
+                    : "text-emerald-500";
+                  const label = isMissed
+                    ? "Missed call"
+                    : isRejected
+                      ? "Declined call"
+                      : isOutgoing
+                        ? "Outgoing call"
+                        : "Incoming call";
+
+                  const durationLabel = ci.durationSeconds && ci.durationSeconds > 0
+                    ? formatCallDurationUI(ci.durationSeconds)
+                    : null;
+
+                  return (
+                    <div key={msg.id} className="flex w-full justify-center my-1">
+                      <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/30 px-5 py-3 shadow-sm max-w-xs">
+                        <div className={`flex items-center justify-center size-9 rounded-full ${isMissed || isRejected ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+                          {isVideo
+                            ? <VideoIcon className={`size-4 ${iconColor}`} />
+                            : <CallDirectionIcon className={`size-4 ${iconColor}`} />
+                          }
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-foreground leading-tight">
+                            {label}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                            {isVideo && <span>Video</span>}
+                            {isVideo && durationLabel && <span>·</span>}
+                            {durationLabel && <span>{durationLabel}</span>}
+                            {(isVideo || durationLabel) && <span>·</span>}
+                            <span>{msg.sentAt ? formatMessageTime(msg.sentAt) : ""}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // ── Generic system message ──
                 return (
                   <div key={msg.id} className="flex w-full justify-center">
                     <div className="max-w-md rounded-xl bg-primary/5 border border-primary/20 px-4 py-2.5 text-sm text-primary text-center">
@@ -1288,28 +1391,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         </div>
       )}
 
-      {/* ─── Call Coming Soon Modal ────────────────────── */}
-      <Dialog open={isCallModalOpen} onOpenChange={setIsCallModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Start {callType === "audio" ? "Audio" : "Video"} Call</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
-            <div className="rounded-full bg-muted p-4">
-               {callType === "audio" ? <PhoneIcon className="size-8 text-muted-foreground" /> : <VideoIcon className="size-8 text-muted-foreground" />}
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Feature Coming Soon</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                We're currently working on bringing {callType} calls to the platform. This feature will be available in a future update!
-              </p>
-            </div>
-            <Button variant="outline" className="mt-4 w-full rounded-full" onClick={() => setIsCallModalOpen(false)}>
-              Got it
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

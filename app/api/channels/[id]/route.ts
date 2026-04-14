@@ -136,6 +136,15 @@ export async function GET(_request: Request, context: RouteParams) {
         name?: string;
       };
 
+      const callMeta = msg.callMetadata as {
+        callSessionId?: string;
+        mode?: "AUDIO" | "VIDEO";
+        status?: "ENDED" | "REJECTED" | "MISSED";
+        durationSeconds?: number | null;
+        callerName?: string;
+        callerId?: string;
+      } | null;
+
       return {
         id: msg._id.toString(),
         channelId: msg.channelId.toString(),
@@ -150,6 +159,14 @@ export async function GET(_request: Request, context: RouteParams) {
         isDelivered: msg.isDelivered || false,
         isMarkedAsAnswer: msg.isMarkedAsAnswer || false,
         sentAt: new Date(msg.sentAt).toISOString(),
+        callInfo: callMeta ? {
+          callSessionId: callMeta.callSessionId || "",
+          mode: callMeta.mode || "AUDIO",
+          status: callMeta.status || "ENDED",
+          durationSeconds: callMeta.durationSeconds ?? null,
+          callerName: callMeta.callerName || "Unknown",
+          callerId: callMeta.callerId || "",
+        } : null,
       };
     });
 

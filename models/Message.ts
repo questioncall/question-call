@@ -45,6 +45,17 @@ const messageSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  callMetadata: {
+    type: {
+      callSessionId: { type: String, required: true },
+      mode: { type: String, enum: ["AUDIO", "VIDEO"], required: true },
+      status: { type: String, enum: ["ENDED", "REJECTED", "MISSED"], required: true },
+      durationSeconds: { type: Number, default: null },
+      callerName: { type: String, default: "Unknown" },
+      callerId: { type: String, required: true },
+    },
+    default: null,
+  },
   sentAt: {
     type: Date,
     required: true,

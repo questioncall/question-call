@@ -129,3 +129,31 @@ export async function emitSubscriptionUpdated(
   const pusherChannel = getUserPusherName(userId);
   await pusherServer.trigger(pusherChannel, SUBSCRIPTION_UPDATED_EVENT, data);
 }
+
+/** Broadcast an incoming call to a specific user */
+export async function emitIncomingCall(
+  targetUserId: string,
+  payload: {
+    callSessionId: string;
+    channelId: string;
+    callerName: string;
+    mode: "AUDIO" | "VIDEO";
+  },
+) {
+  const pusherChannel = getChannelPusherName(payload.channelId);
+  const { CALL_INCOMING_EVENT } = await import("@/lib/pusher/events");
+  await pusherServer.trigger(pusherChannel, CALL_INCOMING_EVENT, {
+    ...payload,
+    targetUserId,
+  });
+}
+
+/** Broadcast a call status event (accepted/rejected/ended) on the channel */
+export async function emitCallEvent(
+  channelId: string,
+  event: string,
+  payload: Record<string, unknown>,
+) {
+  const pusherChannel = getChannelPusherName(channelId);
+  await pusherServer.trigger(pusherChannel, event, payload);
+}

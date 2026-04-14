@@ -1,0 +1,72 @@
+import { getServerSession } from "next-auth";
+import { NextResponse } from "next/server";
+import { AccessToken } from "livekit-server-sdk";
+
+import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
+import CallSession from "@/models/CallSession";
+
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function GET(request: Request, context: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const { id } = await context.params;
+
+    await connectToDatabase();
+
+    const callSession = await CallSession.findById(id).lean();
+    if (!callSession) {
+      return NextResponse.json({ error: "Call session not found" }, { status: 404 });
+    }
+
+    if (callSession.status === "ENDED" || callSession.status === "REJECTED" || callSession.status === "MISSED") {
+      return NextResponse.json({ error: "Call has already ended." }, { status: 403 });
+    }
+
+    const teacherId = callSession.teacherId.toString();
+    const studentId = callSession.studentId.toString();
+
+    if (userId !== teacherId && userId !== studentId) {
+      return NextResponse.json({ error: "You are not a participant in this call." }, { status: 403 });
+    }
+
+    const participantName = userId === teacherId ? "Teacher" : "Student";
+
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const wsUrl = process.env.LIVEKIT_URL;
+
+    if (!apiKey || !apiSecret || !wsUrl) {
+      throw new Error("LiveKit credentials not configured. Please check your environment variables.");
+    }
+
+    const at = new AccessToken(apiKey, apiSecret, {
+      identity: userId,
+      name: session.user.name || participantName,
+      ttl: 7200, // 2 hours in seconds
+    });
+    
+    // In our v1 we just allow audio/video, and the client UI determines camera initial state.
+    at.addGrant({ roomJoin: true, room: callSession.roomName });
+
+    const token = await at.toJwt();
+
+    // Mark as ACTIVE if it was just CREATED
+    if (callSession.status === "CREATED") {
+       await CallSession.updateOne({ _id: id }, { status: "ACTIVE" });
+    }
+
+    return NextResponse.json({ token, serverUrl: wsUrl });
+  } catch (error) {
+    console.error("[GET /api/calls/[id]/token]", error);
+    return NextResponse.json(
+      { error: "Failed to generate access token" },
+      { status: 500 }
+    );
+  }
+}

@@ -76,6 +76,14 @@ export type ChatMessage = {
   isDelivered?: boolean;
   isMarkedAsAnswer?: boolean;
   sentAt: string;
+  callInfo?: {
+    callSessionId: string;
+    mode: "AUDIO" | "VIDEO";
+    status: "ENDED" | "REJECTED" | "MISSED";
+    durationSeconds: number | null;
+    callerName: string;
+    callerId: string;
+  } | null;
 };
 
 // ──────────────────────────────────────────────────────────

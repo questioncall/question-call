@@ -53,10 +53,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 type WorkspaceRole = "STUDENT" | "TEACHER";
 type FeedView = "all" | "waiting" | "solved" | "media" | "discussion";
 type FeedSort = "hot" | "new" | "discussed";
+type CoursePricingModel = "FREE" | "SUBSCRIPTION_INCLUDED" | "PAID";
 
 type WorkspaceHomeProps = {
   role: WorkspaceRole;
   userId?: string;
+  courseHighlights: WorkspaceCourseHighlight[];
 };
 
 type FeedEventPayload = {
@@ -76,13 +78,19 @@ type PeerCommentItem = {
   } | null;
 };
 
-type FeaturedCourse = {
+type WorkspaceCourseHighlight = {
   id: string;
+  slug: string;
   title: string;
   subject: string;
   level: string;
   description: string;
-  thumbnailClassName: string;
+  thumbnailUrl: string | null;
+  pricingModel: CoursePricingModel;
+  price: number | null;
+  instructorName: string;
+  lessonsCount: number;
+  enrollmentCount: number;
 };
 
 type TopTeacherItem = {
@@ -157,40 +165,12 @@ const FEED_SORT_OPTIONS: {
   { value: "discussed", label: "Discussed", icon: MessageSquareIcon },
 ];
 
-const FEATURED_COURSES: FeaturedCourse[] = [
-  {
-    id: "algebra-foundations",
-    title: "Algebra Foundations",
-    subject: "Mathematics",
-    level: "Grade 10",
-    description: "Worked examples, chapter notes, and quick practice sets for daily revision.",
-    thumbnailClassName: "from-sky-500 via-indigo-500 to-violet-500",
-  },
-  {
-    id: "organic-chemistry-starter",
-    title: "Organic Chemistry Starter",
-    subject: "Chemistry",
-    level: "Plus 2",
-    description: "Reaction maps, summary sheets, and structure walkthroughs for core concepts.",
-    thumbnailClassName: "from-emerald-500 via-teal-500 to-cyan-500",
-  },
-  {
-    id: "physics-motion-lab",
-    title: "Physics Motion Lab",
-    subject: "Physics",
-    level: "School level",
-    description: "Clean diagrams and practical question sets around force, motion, and energy.",
-    thumbnailClassName: "from-amber-500 via-orange-500 to-rose-500",
-  },
-  {
-    id: "english-writing-essentials",
-    title: "English Writing Essentials",
-    subject: "English",
-    level: "Bachelor",
-    description: "Essay structure, grammar refreshers, and model responses for stronger writing.",
-    thumbnailClassName: "from-slate-500 via-slate-700 to-slate-900",
-  },
-];
+const COURSE_FALLBACK_GRADIENTS = [
+  "from-sky-500 via-indigo-500 to-violet-500",
+  "from-emerald-500 via-teal-500 to-cyan-500",
+  "from-amber-500 via-orange-500 to-rose-500",
+  "from-slate-500 via-slate-700 to-slate-900",
+] as const;
 
 function formatTimeAgo(value: string) {
   const timestamp = new Date(value).getTime();
@@ -215,6 +195,22 @@ function formatTimeAgo(value: string) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+function formatCoursePrice(course: WorkspaceCourseHighlight) {
+  if (course.pricingModel === "FREE") {
+    return "Free";
+  }
+
+  if (course.pricingModel === "SUBSCRIPTION_INCLUDED") {
+    return "Subscription";
+  }
+
+  if (typeof course.price === "number" && Number.isFinite(course.price)) {
+    return `NPR ${course.price.toLocaleString()}`;
+  }
+
+  return "Paid";
+}
+
 function getQuestionChips(question: FeedQuestion) {
   return [question.level, question.stream, question.subject].filter(Boolean) as string[];
 }
@@ -234,7 +230,11 @@ function dedupeComments(comments: PeerCommentItem[]) {
   );
 }
 
-export function WorkspaceHome({ role, userId }: WorkspaceHomeProps) {
+export function WorkspaceHome({
+  role,
+  userId,
+  courseHighlights,
+}: WorkspaceHomeProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -357,12 +357,25 @@ export function WorkspaceHome({ role, userId }: WorkspaceHomeProps) {
   }, [fetchFeed, isHydrated]);
 
   useEffect(() => {
+    if (courseHighlights.length <= 1) {
+      return;
+    }
+
     const timer = window.setInterval(() => {
-      setActiveCourseIndex((current) => (current + 1) % FEATURED_COURSES.length);
+      setActiveCourseIndex((current) => (current + 1) % courseHighlights.length);
     }, 4500);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [courseHighlights.length]);
+
+  useEffect(() => {
+    if (courseHighlights.length === 0) {
+      setActiveCourseIndex(0);
+      return;
+    }
+
+    setActiveCourseIndex((current) => current % courseHighlights.length);
+  }, [courseHighlights.length]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1140,80 +1153,127 @@ export function WorkspaceHome({ role, userId }: WorkspaceHomeProps) {
             <CardTitle className="text-base">Course highlights</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            <div className="overflow-hidden rounded-2xl">
-              <div
-                className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
-              >
-                {FEATURED_COURSES.map((course) => (
-                  <div key={course.id} className="min-w-full">
-                    <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
-                      <div className={cn("relative h-40 bg-gradient-to-br", course.thumbnailClassName)}>
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)]" />
-                        <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-                          <BookOpenIcon className="size-3" />
-                          {course.subject}
-                        </div>
-                        <div className="absolute inset-x-4 bottom-4">
-                          <p className="text-lg font-semibold text-white">{course.title}</p>
-                          <p className="mt-1 text-sm text-white/85">{course.level}</p>
-                        </div>
-                      </div>
+            {courseHighlights.length > 0 ? (
+              <>
+                <div className="overflow-hidden rounded-2xl">
+                  <div
+                    className="flex transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
+                  >
+                    {courseHighlights.map((course, index) => (
+                      <div key={course.id} className="min-w-full">
+                        <Link
+                          href={`/courses/${course.slug}`}
+                          className="block overflow-hidden rounded-2xl border border-border/70 bg-background transition-colors hover:border-primary/30"
+                        >
+                          <div
+                            className={cn(
+                              "relative h-40 bg-gradient-to-br",
+                              COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                            )}
+                          >
+                            {course.thumbnailUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={course.thumbnailUrl}
+                                  alt={course.title}
+                                  className="absolute inset-0 h-full w-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-slate-950/45" />
+                              </>
+                            ) : null}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)]" />
+                            <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                              <BookOpenIcon className="size-3" />
+                              {course.subject}
+                            </div>
+                            <div className="absolute right-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                              {formatCoursePrice(course)}
+                            </div>
+                            <div className="absolute inset-x-4 bottom-4">
+                              <p className="text-lg font-semibold text-white">{course.title}</p>
+                              <p className="mt-1 text-sm text-white/85">{course.level}</p>
+                            </div>
+                          </div>
 
-                      <div className="space-y-3 p-4">
-                        <p className="text-sm leading-6 text-muted-foreground">{course.description}</p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Thumbnail preview</span>
-                          <span>Course ready</span>
-                        </div>
+                          <div className="space-y-3 p-4">
+                            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+                              {course.description || "Structured lessons and guided practice from the course library."}
+                            </p>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{course.lessonsCount} lessons</span>
+                              <span>{course.enrollmentCount} learners</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>By {course.instructorName}</span>
+                              <span className="inline-flex items-center gap-1 font-medium text-primary">
+                                Open course
+                                <ArrowUpRightIcon className="size-3.5" />
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                {FEATURED_COURSES.map((course, index) => (
-                  <button
-                    key={course.id}
-                    type="button"
-                    onClick={() => setActiveCourseIndex(index)}
-                    className={cn(
-                      "size-2.5 rounded-full transition-colors",
-                      index === activeCourseIndex ? "bg-primary" : "bg-border",
-                    )}
-                    aria-label={`Show course ${index + 1}`}
-                  />
-                ))}
-              </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    {courseHighlights.map((course, index) => (
+                      <button
+                        key={course.id}
+                        type="button"
+                        onClick={() => setActiveCourseIndex(index)}
+                        className={cn(
+                          "size-2.5 rounded-full transition-colors",
+                          index === activeCourseIndex ? "bg-primary" : "bg-border",
+                        )}
+                        aria-label={`Show course ${index + 1}`}
+                      />
+                    ))}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveCourseIndex((current) =>
-                      current === 0 ? FEATURED_COURSES.length - 1 : current - 1,
-                    )
-                  }
-                  className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Previous course"
-                >
-                  <ChevronLeftIcon className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveCourseIndex((current) => (current + 1) % FEATURED_COURSES.length)
-                  }
-                  className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Next course"
-                >
-                  <ChevronRightIcon className="size-4" />
-                </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveCourseIndex((current) =>
+                          current === 0 ? courseHighlights.length - 1 : current - 1,
+                        )
+                      }
+                      className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Previous course"
+                      disabled={courseHighlights.length <= 1}
+                    >
+                      <ChevronLeftIcon className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
+                      }
+                      className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Next course"
+                      disabled={courseHighlights.length <= 1}
+                    >
+                      <ChevronRightIcon className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
+                <p className="text-sm font-medium text-foreground">No active courses yet</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  As soon as courses are published, they will appear here automatically.
+                </p>
+                <Button asChild size="sm" className="mt-4">
+                  <Link href="/courses">Browse courses</Link>
+                </Button>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
