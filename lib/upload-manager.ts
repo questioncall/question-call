@@ -1,15 +1,11 @@
 /**
  * Global Upload Manager
  *
- * Manages Mux/UpChunk video uploads outside of any React component lifecycle.
+ * Manages Mux video uploads outside of any React component lifecycle.
  * Progress and status are dispatched to the Redux store so the
- * GlobalUploadProgress component (or any component) can read them.
- *
- * This means an upload survives page navigation — the teacher can close
- * the manage page, browse around, and the upload keeps going.
+ * AddContentModal (or any component) can read them via useSelector.
  */
 
-import * as UpChunk from "@mux/upchunk";
 import { toast } from "sonner";
 
 import type { AppStore } from "@/store/store";
@@ -44,6 +40,29 @@ const activeUploads = new Map<
   { abort?: () => void; courseId: string; videoId?: string }
 >();
 
+// ── Beforeunload guard ──────────────────────────────────────────────────
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  e.preventDefault();
+  e.returnValue =
+    "A video upload is still in progress. Are you sure you want to leave?";
+  return e.returnValue;
+}
+
+function updateBeforeUnloadGuard() {
+  if (typeof window === "undefined") return;
+  if (activeUploads.size > 0) {
+    window.addEventListener("beforeunload", onBeforeUnload);
+  } else {
+    window.removeEventListener("beforeunload", onBeforeUnload);
+  }
+}
+
+/** Check whether any uploads are currently in progress. */
+export function hasActiveUploads(): boolean {
+  return activeUploads.size > 0;
+}
+
 // ── Public API ──────────────────────────────────────────────────────────
 
 export type StartUploadParams = {
@@ -51,30 +70,66 @@ export type StartUploadParams = {
   courseId: string;
   sectionId: string;
   title: string;
-  /** Called when the video record is created on the server (before upload) */
   onVideoCreated?: (videoId: string) => void;
-  /** Called when the video finishes processing and is READY */
   onReady?: () => void;
 };
 
-export async function startGlobalUpload({
+/**
+ * Start a video upload. Returns the clientId **synchronously** so the
+ * caller can immediately start tracking the job in the Redux store.
+ * The actual network work happens in the background.
+ */
+export function startGlobalUpload({
   file,
   courseId,
   sectionId,
   title,
   onVideoCreated,
   onReady,
-}: StartUploadParams) {
+}: StartUploadParams): string {
   const store = getStore();
   const clientId = `upl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-  // 1. Register in Redux
+  console.log("[UploadManager] Starting upload:", {
+    clientId,
+    title,
+    fileSize: file.size,
+  });
+
+  // 1. Register in Redux IMMEDIATELY — callers get the id back right away
   store.dispatch(
     addUploadJob({ id: clientId, filename: file.name, title }),
   );
 
+  // 2. Fire-and-forget the actual async work
+  performUpload({
+    clientId,
+    file,
+    courseId,
+    sectionId,
+    title,
+    onVideoCreated,
+    onReady,
+  });
+
+  return clientId;
+}
+
+// ── Internal async upload logic ─────────────────────────────────────────
+
+async function performUpload({
+  clientId,
+  file,
+  courseId,
+  sectionId,
+  title,
+  onVideoCreated,
+  onReady,
+}: StartUploadParams & { clientId: string }) {
+  const store = getStore();
+
   try {
-    // 2. Get Mux direct-upload URL from our API
+    // Get Mux direct-upload URL from our API
     const res = await fetch(`/api/courses/${courseId}/videos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,11 +143,13 @@ export async function startGlobalUpload({
 
     const { uploadUrl, video: serverVideo } = await res.json();
     const videoId: string = serverVideo._id;
+    console.log("[UploadManager] Got upload URL, videoId:", videoId);
     onVideoCreated?.(videoId);
 
     activeUploads.set(clientId, { courseId, videoId });
+    updateBeforeUnloadGuard();
 
-    // 3. Direct XMLHttpRequest upload to Mux for flawless finalization
+    // Direct XMLHttpRequest upload to Mux
     const xhr = new XMLHttpRequest();
 
     activeUploads.set(clientId, {
@@ -104,39 +161,48 @@ export async function startGlobalUpload({
     xhr.upload.addEventListener("progress", (evt) => {
       if (evt.lengthComputable) {
         const progress = Math.round((evt.loaded * 100) / evt.total);
+        console.log("[UploadManager] Progress:", progress + "%");
         store.dispatch(updateUploadProgress({ id: clientId, progress }));
       }
     });
 
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
+        console.log("[UploadManager] Upload to Mux complete, polling status…");
         store.dispatch(setUploadProcessing(clientId));
         toast.success(`"${title}" uploaded — processing…`);
         pollVideoStatus({ clientId, courseId, videoId, onReady });
       } else {
         const errMsg = `Upload failed with status ${xhr.status}`;
+        console.error("[UploadManager]", errMsg);
         store.dispatch(failUpload({ id: clientId, error: errMsg }));
         toast.error(errMsg);
         activeUploads.delete(clientId);
+        updateBeforeUnloadGuard();
       }
     });
 
     xhr.addEventListener("error", () => {
-      store.dispatch(failUpload({ id: clientId, error: "Network error during upload" }));
+      console.error("[UploadManager] Network error during upload");
+      store.dispatch(
+        failUpload({ id: clientId, error: "Network error during upload" }),
+      );
       toast.error("Upload failed due to a network error.");
       activeUploads.delete(clientId);
+      updateBeforeUnloadGuard();
     });
 
     xhr.addEventListener("abort", () => {
       store.dispatch(failUpload({ id: clientId, error: "Upload cancelled" }));
       toast.info(`Upload of "${title}" was cancelled.`);
       activeUploads.delete(clientId);
+      updateBeforeUnloadGuard();
     });
 
-    // Send the PUT request
     xhr.open("PUT", uploadUrl, true);
     xhr.send(file);
   } catch (err) {
+    console.error("[UploadManager] Upload error:", err);
     store.dispatch(
       failUpload({
         id: clientId,
@@ -145,6 +211,7 @@ export async function startGlobalUpload({
     );
     toast.error(err instanceof Error ? err.message : "Upload failed");
     activeUploads.delete(clientId);
+    updateBeforeUnloadGuard();
   }
 }
 
@@ -162,7 +229,7 @@ function pollVideoStatus({
   onReady?: () => void;
 }) {
   const store = getStore();
-  const maxAttempts = 120; // ~10 min at 5s
+  const maxAttempts = 120;
   let attempts = 0;
 
   const check = async () => {
@@ -177,6 +244,7 @@ function pollVideoStatus({
         store.dispatch(completeUpload(clientId));
         toast.success("Video is ready!");
         activeUploads.delete(clientId);
+        updateBeforeUnloadGuard();
         onReady?.();
         return;
       }
@@ -187,6 +255,7 @@ function pollVideoStatus({
         );
         toast.error("Video processing failed.");
         activeUploads.delete(clientId);
+        updateBeforeUnloadGuard();
         return;
       }
 
@@ -200,6 +269,5 @@ function pollVideoStatus({
     }
   };
 
-  // First check after a short delay so Mux has time to create the asset
   setTimeout(check, 3000);
 }

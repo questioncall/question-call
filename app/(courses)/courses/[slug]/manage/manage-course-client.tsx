@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useSelector } from "react-redux";
 import {
   ArrowLeftIcon,
   BarChart3Icon,
   BookOpenIcon,
   CalendarIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   EyeIcon,
   GripVerticalIcon,
   LayoutGridIcon,
@@ -20,8 +21,11 @@ import {
   PlusIcon,
   SettingsIcon,
   Trash2Icon,
+  UploadCloudIcon,
   Users2Icon,
   VideoIcon,
+  XCircleIcon,
+  XIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +33,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { LiveSessionManager } from "@/components/course/LiveSessionManager";
 import { AddContentModal } from "@/components/course/AddContentModal";
 import type { ManageCourseData } from "@/lib/course-page-data";
-import type { RootState } from "@/store/store";
-
 
 type Tab = "content" | "details" | "live" | "analytics";
 
@@ -79,9 +82,6 @@ export function ManageCourseClient({
   // ── Add content modal ──
   const [showAddContent, setShowAddContent] = useState(false);
   const [addContentSectionId, setAddContentSectionId] = useState<string | null>(null);
-
-  // ── Redux upload jobs (for inline progress indicators) ──
-  const uploadJobs = useSelector((state: RootState) => state.upload.jobs);
 
   // ── Editing section ──
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -188,7 +188,7 @@ export function ManageCourseClient({
     router.refresh();
     fetch(`/api/courses/${course._id}/sections`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data) setSections(data); });
+      .then((data) => { if (data?.sections) setSections(data.sections); });
   };
 
   // ── Delete video ──
@@ -238,7 +238,7 @@ export function ManageCourseClient({
     return `NPR ${(course.price ?? 0).toLocaleString()}`;
   }
 
-  const totalVideos = sections.reduce((a, s) => a + s.videos.length, 0);
+  const totalVideos = Array.isArray(sections) ? sections.reduce((a, s) => a + (s.videos?.length || 0), 0) : 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -346,7 +346,7 @@ export function ManageCourseClient({
                   <div>
                     <h2 className="text-xl font-bold text-foreground">Curriculum</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      {sections.length} section{sections.length !== 1 && "s"} · {totalVideos} video{totalVideos !== 1 && "s"}
+                      {sections?.length || 0} section{(sections?.length || 0) !== 1 && "s"} · {totalVideos} video{totalVideos !== 1 && "s"}
                     </p>
                   </div>
                   <Button
@@ -400,7 +400,7 @@ export function ManageCourseClient({
                 )}
 
                 {/* Sections list */}
-                {sections.length === 0 ? (
+                {(sections?.length ?? 0) === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-border bg-background p-12 text-center">
                     <BookOpenIcon className="mx-auto size-10 text-muted-foreground/30 mb-4" />
                     <h3 className="font-semibold text-foreground">No sections yet</h3>
@@ -463,7 +463,7 @@ export function ManageCourseClient({
                                   {section.title}
                                 </span>
                                 <span className="text-xs text-muted-foreground shrink-0">
-                                  {section.videos.length} video{section.videos.length !== 1 && "s"}
+                                  {section.videos?.length || 0} video{(section.videos?.length || 0) !== 1 && "s"}
                                 </span>
                               </div>
                             )}
@@ -494,13 +494,13 @@ export function ManageCourseClient({
                           {/* Section content */}
                           {!isCollapsed && (
                             <div className="border-t border-border">
-                              {section.videos.length === 0 ? (
+                              {!(section.videos?.length) ? (
                                 <div className="p-6 text-center text-sm text-muted-foreground">
                                   No videos in this section yet.
                                 </div>
                               ) : (
                                 <div className="divide-y divide-border">
-                                  {section.videos.map((video, vIdx) => {
+                                  {section.videos?.map((video, vIdx) => {
                                     const isProcessing = video.status === "PROCESSING";
                                     return (
                                       <div
@@ -543,13 +543,6 @@ export function ManageCourseClient({
                                   })}
                                 </div>
                               )}
-
-                              {/* Active upload indicators for this section */}
-                              {Object.values(uploadJobs).filter(
-                                (j) =>
-                                  (j.status === "UPLOADING" || j.status === "PROCESSING") &&
-                                  j.title,
-                              ).length > 0 && null /* upload progress shown in global bottom-right widget */}
 
                               {/* Add video button inside each section */}
                               <div className="px-4 py-3 border-t border-border bg-muted/10">
@@ -800,10 +793,11 @@ export function ManageCourseClient({
         open={showAddContent}
         onOpenChange={setShowAddContent}
         courseId={course._id}
-        sections={sections.map((s) => ({ _id: s._id, title: s.title }))}
+        sections={sections?.map((s) => ({ _id: s._id, title: s.title })) ?? []}
         defaultSectionId={addContentSectionId}
         onUploadSuccess={handleUploadSuccess}
       />
+
     </div>
   );
 }

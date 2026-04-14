@@ -14,7 +14,6 @@ import {
   Settings2Icon,
   SparklesIcon,
   TrophyIcon,
-  UploadIcon,
   UserCircle2Icon,
   WalletIcon,
 } from "lucide-react";
@@ -292,7 +291,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           collapseSidebarOnClick: true,
         }]
       : []),
-{
+    {
       href: walletHref,
       icon: WalletIcon,
       label: "Wallet",
@@ -328,25 +327,16 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
           label: "Courses",
           badge: null,
           badgeClassName: undefined,
-          isActive: pathname.startsWith("/courses"),
+          isActive: pathname.startsWith("/courses") && !pathname.startsWith("/courses/my"),
           collapseSidebarOnClick: true,
         },
         {
-          href: "/courses/my",
+          href: "/studio",
           icon: GraduationCapIcon,
-          label: "My Courses",
+          label: "Course Studio",
           badge: null,
           badgeClassName: undefined,
-          isActive: pathname.startsWith("/courses/my"),
-          collapseSidebarOnClick: true,
-        },
-        {
-          href: "/upload-course",
-          icon: UploadIcon,
-          label: "Upload Course",
-          badge: null,
-          badgeClassName: undefined,
-          isActive: pathname.startsWith("/upload-course"),
+          isActive: pathname.startsWith("/studio"),
           collapseSidebarOnClick: true,
         }]
       : []),

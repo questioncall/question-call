@@ -240,9 +240,9 @@ export function CoursesBrowseClient({
                 </p>
               </div>
               <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/upload-course">
+                <Link href="/studio">
                   <PlusIcon className="mr-1 size-4" />
-                  Create course
+                  Course Studio
                 </Link>
               </Button>
             </div>

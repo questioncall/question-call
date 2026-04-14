@@ -10,7 +10,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { RootState } from "@/store/store";
 import { clearUploadJob, type UploadJob } from "@/store/features/upload/upload-slice";
@@ -23,7 +23,6 @@ export function GlobalUploadProgress() {
   const [collapsed, setCollapsed] = useState(false);
 
   const jobList = Object.values(jobs);
-  if (jobList.length === 0) return null;
 
   const activeCount = jobList.filter(
     (j) => j.status === "UPLOADING" || j.status === "PROCESSING",
@@ -31,8 +30,25 @@ export function GlobalUploadProgress() {
   const doneCount = jobList.filter((j) => j.status === "READY").length;
   const errorCount = jobList.filter((j) => j.status === "ERROR").length;
 
+  // ── Prevent page refresh/close while uploads are active ──
+  useEffect(() => {
+    if (activeCount === 0) return;
+
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue =
+        "A video upload is still in progress. Are you sure you want to leave?";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [activeCount]);
+
+  if (jobList.length === 0) return null;
+
   return (
-    <div className="fixed bottom-4 right-4 z-[100] w-80 rounded-xl border border-border bg-background shadow-2xl overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-[9999] w-80 rounded-xl border border-border bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-2.5 bg-muted/40 cursor-pointer border-b border-border"
@@ -84,11 +100,21 @@ export function GlobalUploadProgress() {
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-medium truncate">{job.title}</div>
                 {job.status === "UPLOADING" && (
-                  <Progress value={job.progressPercent} className="mt-1 h-1" />
+                  <div className="mt-1">
+                    <Progress value={job.progressPercent} className="h-1.5" />
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {job.progressPercent}%
+                    </div>
+                  </div>
                 )}
                 {job.status === "PROCESSING" && (
                   <div className="text-xs text-muted-foreground mt-0.5">
                     Processing...
+                  </div>
+                )}
+                {job.status === "READY" && (
+                  <div className="text-xs text-emerald-600 mt-0.5">
+                    Ready to play
                   </div>
                 )}
                 {job.status === "ERROR" && (
