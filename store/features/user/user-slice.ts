@@ -12,6 +12,8 @@ type UserProfileState = {
   subscriptionEnd: string | null;
   pendingManualPayment: boolean;
   questionsAsked: number;
+  questionsRemaining: number | null;
+  maxQuestions: number;
   planSlug: string | null;
 };
 
@@ -27,6 +29,8 @@ const initialState: UserProfileState = {
   subscriptionEnd: null,
   pendingManualPayment: false,
   questionsAsked: 0,
+  questionsRemaining: null,
+  maxQuestions: 0,
   planSlug: null,
 };
 
@@ -51,6 +55,8 @@ const userSlice = createSlice({
       if (action.payload.subscriptionEnd !== undefined) state.subscriptionEnd = action.payload.subscriptionEnd;
       if (action.payload.pendingManualPayment !== undefined) state.pendingManualPayment = action.payload.pendingManualPayment;
       if (action.payload.questionsAsked !== undefined) state.questionsAsked = action.payload.questionsAsked;
+      if (action.payload.questionsRemaining !== undefined) state.questionsRemaining = action.payload.questionsRemaining;
+      if (action.payload.maxQuestions !== undefined) state.maxQuestions = action.payload.maxQuestions;
       if (action.payload.planSlug !== undefined) state.planSlug = action.payload.planSlug;
     },
     clearProfile(state) {
@@ -65,6 +71,8 @@ const userSlice = createSlice({
       state.subscriptionEnd = null;
       state.pendingManualPayment = false;
       state.questionsAsked = 0;
+      state.questionsRemaining = null;
+      state.maxQuestions = 0;
       state.planSlug = null;
     },
   },

@@ -5,7 +5,7 @@ import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
-import mongoose from "mongoose";
+import User from "@/models/User";
 
 export default async function SubscriptionPage() {
   const session = await getSafeServerSession();
@@ -31,27 +31,28 @@ export default async function SubscriptionPage() {
   }).sort({ createdAt: -1 });
 
   const subscription = await getQuizSubscriptionSnapshot(session.user.id);
-
-  const Question = mongoose.models.Question;
-  let questionsAsked = 0;
-  if (Question) {
-    questionsAsked = await Question.countDocuments({ askerId: session.user.id });
-  }
+  const user = await User.findById(session.user.id).select("planSlug questionsAsked");
+  
+  const config = await getPlatformConfig();
+  const plans = getHydratedPlans(config);
+  const currentPlan = plans.find(p => p.slug === (user?.planSlug || subscription.planSlug || "free")) || plans[0];
+  const maxQuestions = currentPlan?.maxQuestions ?? 0;
+  const questionsAsked = user?.questionsAsked ?? 0;
+  const questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
 
   const initialSubscriptionData = {
     subscriptionStatus: subscription.subscriptionStatus,
     subscriptionEnd: subscription.subscriptionEnd,
     pendingManualPayment: !!pendingTx,
     questionsAsked,
-    planSlug: subscription.planSlug,
+    questionsRemaining,
+    maxQuestions,
+    planSlug: user?.planSlug || subscription.planSlug || "free",
   };
-
-  const config = await getPlatformConfig();
-  const hydratedPlans = getHydratedPlans(config);
 
   return (
     <SubscriptionClient
-      hydratedPlans={JSON.parse(JSON.stringify(hydratedPlans))}
+      hydratedPlans={JSON.parse(JSON.stringify(plans))}
       trialDays={config.trialDays}
       initialSubscriptionData={initialSubscriptionData}
     />

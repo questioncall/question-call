@@ -5,7 +5,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Send, Paperclip, ImageIcon, MoreVertical } from "lucide-react";
+import { Clock, Send, Paperclip, ImageIcon, MoreVertical, Video, Phone } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ChatMessageAreaProps {
   channel: {
@@ -50,6 +56,8 @@ const sampleMessages = [
 export function ChatMessageArea({ channel }: ChatMessageAreaProps) {
   const [messages, setMessages] = useState(sampleMessages);
   const [inputValue, setInputValue] = useState("");
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [callType, setCallType] = useState<"video" | "audio">("video");
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -80,19 +88,37 @@ export function ChatMessageArea({ channel }: ChatMessageAreaProps) {
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-           {/* Timer and requirement badges */}
-           <div className="hidden flex-col items-end sm:flex">
-             <div className="flex items-center gap-1 text-sm font-medium text-foreground">
-               <Clock className="h-4 w-4" /> 18m left
-             </div>
-             <div className="text-xs text-muted-foreground">Required: {channel.requiredAnswer}</div>
-           </div>
-           
-           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-             <MoreVertical className="h-5 w-5" />
-           </Button>
-        </div>
+        <div className="flex items-center gap-2">
+            {/* Timer and requirement badges */}
+            <div className="hidden flex-col items-end sm:flex">
+              <div className="flex items-center gap-1 text-sm font-medium text-foreground">
+                <Clock className="h-4 w-4" /> 18m left
+              </div>
+              <div className="text-xs text-muted-foreground">Required: {channel.requiredAnswer}</div>
+            </div>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => { setCallType("audio"); setShowCallModal(true); }}
+              aria-label="Audio call"
+            >
+              <Phone className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => { setCallType("video"); setShowCallModal(true); }}
+              aria-label="Video call"
+            >
+              <Video className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </div>
       </div>
 
       {/* Messages Area */}
@@ -162,6 +188,28 @@ export function ChatMessageArea({ channel }: ChatMessageAreaProps) {
           </Button>
         </div>
       </div>
+
+      <Dialog open={showCallModal} onOpenChange={setShowCallModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {callType === "video" ? "Video Call" : "Audio Call"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              {callType === "video" ? (
+                <Video className="h-8 w-8 text-muted-foreground" />
+              ) : (
+                <Phone className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <p className="text-muted-foreground">
+              This feature will be implemented soon. Stay tuned for updates!
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

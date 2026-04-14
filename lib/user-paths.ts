@@ -113,7 +113,7 @@ export function getAskQuestionPath(user?: UserPathInput | null) {
     return "/admin/pricing";
   }
 
-  return "/";
+  return "/ask";
 }
 
 export function getLeaderboardPath(user?: UserPathInput | null) {

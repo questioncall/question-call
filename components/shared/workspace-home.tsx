@@ -1133,7 +1133,7 @@ export function WorkspaceHome({ role, userId }: WorkspaceHomeProps) {
         })}
       </div>
 
-      <div className="space-y-6 xl:sticky xl:top-0 xl:self-start">
+      <div className="space-y-6">
         <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
           <CardHeader className="border-b border-border/60 pb-4">
             <CardDescription>Courses</CardDescription>

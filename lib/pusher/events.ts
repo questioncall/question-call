@@ -30,6 +30,7 @@ export const USER_CHANNEL_PREFIX = "user-";
 export const CHANNEL_UPDATED_EVENT = "channel:updated";
 export const NEW_CHANNEL_EVENT = "channel:new";
 export const NOTIFICATION_EVENT = "notification:new";
+export const SUBSCRIPTION_UPDATED_EVENT = "subscription:updated";
 
 export function getUserPusherName(userId: string) {
   return `${USER_CHANNEL_PREFIX}${userId}`;

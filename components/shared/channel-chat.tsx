@@ -15,7 +15,15 @@ import {
   LockIcon,
   InfoIcon,
   StarIcon,
+  PhoneIcon,
+  VideoIcon,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,6 +149,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [callType, setCallType] = useState<"audio" | "video" | null>(null);
   const [ratingValue, setRatingValue] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<{
     label: string;
@@ -780,6 +790,30 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
         {/* Actions based on role and answer status */}
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 shrink-0 bg-muted/30 rounded-full p-1 border">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 hover:bg-muted text-muted-foreground"
+              onClick={() => {
+                setCallType("audio");
+                setIsCallModalOpen(true);
+              }}
+            >
+              <PhoneIcon className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 hover:bg-muted text-muted-foreground"
+              onClick={() => {
+                setCallType("video");
+                setIsCallModalOpen(true);
+              }}
+            >
+              <VideoIcon className="size-4" />
+            </Button>
+          </div>
           {/* Timer */}
           {isActive && (
             <div
@@ -1253,6 +1287,29 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           </div>
         </div>
       )}
+
+      {/* ─── Call Coming Soon Modal ────────────────────── */}
+      <Dialog open={isCallModalOpen} onOpenChange={setIsCallModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Start {callType === "audio" ? "Audio" : "Video"} Call</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="rounded-full bg-muted p-4">
+               {callType === "audio" ? <PhoneIcon className="size-8 text-muted-foreground" /> : <VideoIcon className="size-8 text-muted-foreground" />}
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Feature Coming Soon</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                We're currently working on bringing {callType} calls to the platform. This feature will be available in a future update!
+              </p>
+            </div>
+            <Button variant="outline" className="mt-4 w-full rounded-full" onClick={() => setIsCallModalOpen(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

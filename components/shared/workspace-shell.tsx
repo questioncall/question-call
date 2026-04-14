@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import {
+  getAskQuestionPath,
   getLeaderboardPath,
   getMessagesPath,
   getProfilePath,
@@ -48,10 +49,10 @@ import {
   getWalletPath,
   getUserHandle,
 } from "@/lib/user-paths";
-import { setProfile } from "@/store/features/user/user-slice";
+import { setProfile, updateProfile } from "@/store/features/user/user-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
-import { getUserPusherName, CHANNEL_UPDATED_EVENT, NEW_CHANNEL_EVENT } from "@/lib/pusher/events";
+import { getUserPusherName, CHANNEL_UPDATED_EVENT, NEW_CHANNEL_EVENT, SUBSCRIPTION_UPDATED_EVENT } from "@/lib/pusher/events";
 import {
   setChannelsLoading,
   setChannelsList,
@@ -159,10 +160,24 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       }
     });
 
-    channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
+channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
       if (data.channel) {
         dispatch(upsertChannelItem(data.channel));
       }
+    });
+
+    channel.bind(SUBSCRIPTION_UPDATED_EVENT, (data: {
+      subscriptionStatus: string;
+      subscriptionEnd: string | null;
+      planSlug: string;
+      questionsAsked?: number;
+    }) => {
+      dispatch(updateProfile({
+        subscriptionStatus: data.subscriptionStatus as "ACTIVE" | "EXPIRED" | "TRIAL" | "NONE" | null,
+        subscriptionEnd: data.subscriptionEnd,
+        planSlug: data.planSlug,
+        ...(data.questionsAsked !== undefined && { questionsAsked: data.questionsAsked }),
+      }));
     });
 
     return () => {
@@ -172,7 +187,7 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
     };
   }, [user.id, dispatch]);
 
-  useEffect(() => {
+useEffect(() => {
     dispatch(setProfile({
       id: user.id,
       name: user.name || "",
@@ -185,6 +200,8 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       planSlug: "free",
       pendingManualPayment: false,
       questionsAsked: 0,
+      questionsRemaining: null,
+      maxQuestions: 0,
     }));
   }, [dispatch, user.email, user.id, user.name, user.role, user.userImage, user.username]);
 
@@ -211,17 +228,18 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
   };
 
 const handle = getUserHandle(resolvedUser);
+  const askQuestionHref = getAskQuestionPath(resolvedUser);
   const leaderboardHref = getLeaderboardPath(resolvedUser);
   const messageHref = getMessagesPath(resolvedUser);
   const profileHref = getProfilePath(resolvedUser);
   const settingsHref = getSettingsPath(resolvedUser);
   const subscriptionHref = getSubscriptionPath(resolvedUser);
   const walletHref = getWalletPath(resolvedUser);
-  const primaryHref = messageHref;
-  const primaryLabel = "Open messages";
-  const useModalForPrimary = false;
-  const showQuestionFilter = pathname === "/" || pathname.startsWith("/search");
-  const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel");
+  const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
+  const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
+  const useModalForPrimary = resolvedUser.role === "STUDENT";
+  const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
+  const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel/");
 
   const mainItems = [
     {
@@ -231,9 +249,9 @@ const handle = getUserHandle(resolvedUser);
       badge: null,
       badgeClassName: undefined,
       isActive: pathname === "/",
-      collapseSidebarOnClick: true,
+collapseSidebarOnClick: true,
     },
-{
+    {
       href: messageHref,
       icon: MessageSquareIcon,
       label: "Messages",
@@ -242,6 +260,15 @@ const handle = getUserHandle(resolvedUser);
       isActive: pathname.startsWith("/message") || pathname.startsWith("/channel/"),
       collapseSidebarOnClick: true,
     },
+    ...(resolvedUser.role === "STUDENT" ? [{
+      href: askQuestionHref,
+      icon: CircleHelpIcon,
+      label: "Ask",
+      badge: "new",
+      badgeClassName: "text-primary bg-primary/10",
+      isActive: pathname.startsWith("/ask"),
+      collapseSidebarOnClick: true,
+    }] : []),
     {
       href: leaderboardHref,
       icon: TrophyIcon,
@@ -341,7 +368,7 @@ const handle = getUserHandle(resolvedUser);
     <SidebarProvider defaultOpen={defaultOpen}>
       <Sidebar collapsible="icon">
 <SidebarHeader className="p-2">
-          <div className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-background p-2">
+          <div className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-background p-2 group-data-[collapsible=icon]:justify-center">
             <div className="shrink-0">
               <LogoMark size={32} className="rounded-lg" />
             </div>

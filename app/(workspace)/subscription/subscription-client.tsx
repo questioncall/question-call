@@ -21,6 +21,8 @@ export function SubscriptionClient({
     subscriptionEnd: string | null;
     pendingManualPayment: boolean;
     questionsAsked: number;
+    questionsRemaining: number | null;
+    maxQuestions: number;
     planSlug: string | null;
   };
 }) {
@@ -30,6 +32,8 @@ export function SubscriptionClient({
     subscriptionEnd,
     pendingManualPayment,
     questionsAsked,
+    questionsRemaining,
+    maxQuestions,
     planSlug,
   } = useAppSelector((state) => state.user);
 
@@ -42,6 +46,8 @@ export function SubscriptionClient({
         subscriptionEnd: initialSubscriptionData.subscriptionEnd,
         pendingManualPayment: initialSubscriptionData.pendingManualPayment,
         questionsAsked: initialSubscriptionData.questionsAsked,
+        questionsRemaining: initialSubscriptionData.questionsRemaining,
+        maxQuestions: initialSubscriptionData.maxQuestions,
         planSlug: initialSubscriptionData.planSlug,
       }));
       setIsHydrated(true);
@@ -60,6 +66,8 @@ export function SubscriptionClient({
             subscriptionEnd: data.subscriptionEnd,
             pendingManualPayment: data.pendingManualPayment,
             questionsAsked: data.questionsAsked,
+            questionsRemaining: data.questionsRemaining,
+            maxQuestions: data.maxQuestions,
             planSlug: data.planSlug,
           }));
         }
@@ -181,11 +189,24 @@ export function SubscriptionClient({
                   <HelpCircle className="w-7 h-7" />
                </div>
                <h3 className="text-5xl font-bold text-neutral-900 dark:text-white mb-1">
-                 {questionsAsked} <span className="text-2xl font-medium text-neutral-400">Total</span>
+                  {questionsAsked} <span className="text-2xl font-medium text-neutral-400">Total</span>
                </h3>
                <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mt-2">
-                 Questions Asked 
+                  Questions Asked 
                </p>
+               {questionsRemaining !== null && maxQuestions > 0 && (
+                 <div className="mt-4 flex items-center gap-2">
+                   <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-[#1B7258] dark:bg-[#27A883] rounded-full transition-all"
+                       style={{ width: `${Math.round((questionsAsked / maxQuestions) * 100)}%` }}
+                     />
+                   </div>
+                   <span className="text-sm font-semibold text-[#1B7258] dark:text-[#27A883]">
+                     {questionsRemaining} left
+                   </span>
+                 </div>
+               )}
                <div className="mt-auto pt-8 border-t border-neutral-100 dark:border-neutral-800">
                   <p className="text-sm font-medium text-neutral-500">
                     <span className="text-[#1B7258] dark:text-[#27A883] font-semibold">Tip:</span> Solve peer questions in the feed to earn massive discounts toward your next renewal!

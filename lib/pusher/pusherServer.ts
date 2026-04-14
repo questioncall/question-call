@@ -15,6 +15,7 @@ import {
   getChannelPusherName,
   getUserPusherName,
   NOTIFICATION_EVENT,
+  SUBSCRIPTION_UPDATED_EVENT,
 } from "@/lib/pusher/events";
 
 type PusherPayload = Record<string, unknown>;
@@ -113,4 +114,18 @@ export async function emitCourseUpdated(data: PusherPayload = {}) {
     updatedAt: new Date().toISOString(),
     ...data,
   });
+}
+
+/** Broadcast subscription status update to a specific user */
+export async function emitSubscriptionUpdated(
+  userId: string,
+  data: {
+    subscriptionStatus: string;
+    subscriptionEnd: string | null;
+    planSlug: string;
+    questionsAsked?: number;
+  },
+) {
+  const pusherChannel = getUserPusherName(userId);
+  await pusherServer.trigger(pusherChannel, SUBSCRIPTION_UPDATED_EVENT, data);
 }

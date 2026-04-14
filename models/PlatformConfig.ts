@@ -101,25 +101,52 @@ const platformConfigSchema = new Schema(
       default: TRIAL.DURATION_DAYS,
       min: 1,
     },
+    trialMaxQuestions: {
+      type: Number,
+      default: TRIAL.MAX_QUESTIONS,
+      min: 0,
+    },
 
     // Subscription Plan Pricing
-    plan1MonthPrice: {
+    planGoPrice: {
       type: Number,
-      default: SUBSCRIPTION_PLANS.find(p => p.slug === "1month")?.price || 50,
+      default: 100,
       min: 0,
     },
-    plan1MonthOriginalPrice: {
+    planGoMaxQuestions: {
       type: Number,
-      default: SUBSCRIPTION_PLANS.find(p => p.slug === "1month")?.originalPrice || 100,
-    },
-    plan3MonthPrice: {
-      type: Number,
-      default: SUBSCRIPTION_PLANS.find(p => p.slug === "3month")?.price || 140,
+      default: 20,
       min: 0,
     },
-    plan3MonthOriginalPrice: {
+    planPlusPrice: {
       type: Number,
-      default: SUBSCRIPTION_PLANS.find(p => p.slug === "3month")?.originalPrice || 250,
+      default: 250,
+      min: 0,
+    },
+    planPlusMaxQuestions: {
+      type: Number,
+      default: 50,
+      min: 0,
+    },
+    planProPrice: {
+      type: Number,
+      default: 500,
+      min: 0,
+    },
+    planProMaxQuestions: {
+      type: Number,
+      default: 100,
+      min: 0,
+    },
+    planMaxPrice: {
+      type: Number,
+      default: 1000,
+      min: 0,
+    },
+    planMaxMaxQuestions: {
+      type: Number,
+      default: 200,
+      min: 0,
     },
 
     // ─── Manual Payment Display Config ───────────────────────────
@@ -370,17 +397,30 @@ export function getFormatPoints(
  */
 export function getHydratedPlans(config: PlatformConfigDocument) {
   return SUBSCRIPTION_PLANS.map((plan) => {
-    if (plan.slug === "1month") {
+    if (plan.slug === "free") {
       return {
         ...plan,
-        price: config.plan1MonthPrice ?? plan.price,
-        originalPrice: config.plan1MonthOriginalPrice ?? plan.originalPrice,
+        maxQuestions: config.trialMaxQuestions ?? TRIAL.MAX_QUESTIONS,
       };
-    } else if (plan.slug === "3month") {
+    } else if (plan.slug === "go") {
       return {
         ...plan,
-        price: config.plan3MonthPrice ?? plan.price,
-        originalPrice: config.plan3MonthOriginalPrice ?? plan.originalPrice,
+        price: config.planGoPrice ?? plan.price,
+      };
+    } else if (plan.slug === "plus") {
+      return {
+        ...plan,
+        price: config.planPlusPrice ?? plan.price,
+      };
+    } else if (plan.slug === "pro") {
+      return {
+        ...plan,
+        price: config.planProPrice ?? plan.price,
+      };
+    } else if (plan.slug === "max") {
+      return {
+        ...plan,
+        price: config.planMaxPrice ?? plan.price,
       };
     }
     return plan;

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { completeCoursePurchase } from "@/lib/course-purchases";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitNotification } from "@/lib/pusher/pusherServer";
+import { emitNotification, emitSubscriptionUpdated } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
 import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
@@ -78,7 +78,16 @@ export async function POST(
       user.subscriptionStatus = "ACTIVE";
       user.subscriptionEnd = nextSubscriptionEnd;
       user.trialUsed = true;
+      user.planSlug = transaction.planSlug;
+      user.questionsAsked = 0;
       await user.save();
+
+      await emitSubscriptionUpdated(transaction.userId.toString(), {
+        subscriptionStatus: "ACTIVE",
+        subscriptionEnd: nextSubscriptionEnd.toISOString(),
+        planSlug: transaction.planSlug,
+        questionsAsked: 0,
+      }).catch(console.error);
 
       transaction.status = "COMPLETED";
       transaction.gateway = "MANUAL";

@@ -61,6 +61,19 @@ const userSchema = new Schema(
       default: false,
     },
 
+    // ─── Question Limit Tracking (Phase - Question Packages) ─────────
+    /** Current subscription plan slug */
+    planSlug: {
+      type: String,
+      default: "free",
+    },
+    /** Total questions asked in current subscription period */
+    questionsAsked: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     // ─── Teacher fields (Phase 7: points-based) ─────────────────
     /** Current redeemable point balance (replaces old walletBalance) */
     pointBalance: {

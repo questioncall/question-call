@@ -7,7 +7,7 @@ import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { CreateQuestionPayload, FeedQuestion } from "@/types/question";
-import { getPlatformConfig } from "@/models/PlatformConfig";
+import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 
 export async function POST(request: Request) {
   try {
@@ -48,14 +48,17 @@ export async function POST(request: Request) {
     }
 
     const config = await getPlatformConfig();
-    const trialDays = config.trialDays;
+    const plans = getHydratedPlans(config);
+    const currentPlan = plans.find(p => p.slug === user.planSlug) || plans[0];
+    const maxQuestions = currentPlan?.maxQuestions ?? 0;
+    const questionsAsked = user.questionsAsked ?? 0;
 
     // Subscription Check Logic
     const now = new Date();
     const subEnd = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+    const isExpired = user.trialUsed && (!subEnd || subEnd < now);
     
-    // If they have used their trial and their subscription end date is missing or passed
-    if (user.trialUsed && (!subEnd || subEnd < now)) {
+    if (isExpired) {
       if (user.subscriptionStatus !== "EXPIRED") {
         await User.findByIdAndUpdate(user._id, { subscriptionStatus: "EXPIRED" });
       }
@@ -65,13 +68,32 @@ export async function POST(request: Request) {
       );
     }
     
+    // Check question limit (not applicable for trial being activated)
+    if (user.trialUsed && maxQuestions !== null && maxQuestions > 0) {
+      if (questionsAsked >= maxQuestions) {
+        const remaining = maxQuestions - questionsAsked;
+        return NextResponse.json(
+          { 
+            error: "Question limit reached for your plan.",
+            questionsRemaining: 0,
+            maxQuestions: maxQuestions,
+            planSlug: user.planSlug,
+          },
+          { status: 403 },
+        );
+      }
+    }
+    
     // Auto-start trial on first question if not used yet and no active sub
     if (!user.trialUsed && user.subscriptionStatus !== "ACTIVE") {
+      const trialDays = config.trialDays;
       const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
       await User.findByIdAndUpdate(user._id, {
         trialUsed: true,
-        subscriptionStatus: "ACTIVE", // Active as it is basically active but trial
+        subscriptionStatus: "ACTIVE",
         subscriptionEnd: trialEnd,
+        planSlug: "free",
+        questionsAsked: 0,
       });
     }
 
@@ -87,8 +109,10 @@ export async function POST(request: Request) {
       level: body.level?.trim() || undefined,
     });
 
-    // Increment the user's totalAsked counter
-    await User.findByIdAndUpdate(session.user.id, { $inc: { totalAsked: 1 } });
+    // Increment the user's totalAsked counter and questionsAsked
+    await User.findByIdAndUpdate(session.user.id, { 
+      $inc: { totalAsked: 1, questionsAsked: 1 } 
+    });
 
     // Build the FeedQuestion shape to broadcast + return
     const feedQuestion: FeedQuestion = {

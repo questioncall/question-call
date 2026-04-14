@@ -18,7 +18,7 @@ import type {
   QuizType,
 } from "@/types/quiz";
 
-const PAID_PLAN_SLUGS = new Set(["1month", "3month"]);
+const PAID_PLAN_SLUGS = new Set(["go", "plus", "pro", "max"]);
 const NEPAL_OFFSET_MINUTES = 5 * 60 + 45;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

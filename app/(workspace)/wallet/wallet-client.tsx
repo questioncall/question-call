@@ -57,6 +57,8 @@ type WalletData = {
   subscriptionStatus: string | null;
   subscriptionEnd: string | null;
   questionsAsked: number;
+  questionsRemaining: number | null;
+  maxQuestions: number;
   withdrawalHistory: WithdrawalHistoryItem[];
   savedEsewaNumber: string | null;
 };
@@ -261,7 +263,8 @@ export function WalletClient() {
               }
               iconClassName="bg-violet-500/10"
               title="Questions Asked"
-              value={`${wallet.questionsAsked}`}
+              value={wallet.maxQuestions > 0 ? `${wallet.questionsRemaining ?? 0} remaining` : "Unlimited"}
+              subtitle={wallet.maxQuestions > 0 ? `of ${wallet.maxQuestions}` : undefined}
               cardClassName="border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-violet-500/10"
             />
           </>
@@ -478,12 +481,14 @@ export function WalletClient() {
 function SummaryCard({
   title,
   value,
+  subtitle,
   icon,
   iconClassName,
   cardClassName,
 }: {
   title: string;
   value: string;
+  subtitle?: string;
   icon: ReactNode;
   iconClassName: string;
   cardClassName: string;
@@ -498,6 +503,9 @@ function SummaryCard({
               {title}
             </p>
             <p className="text-xl font-bold text-foreground">{value}</p>
+            {subtitle && (
+              <p className="text-xs font-medium text-muted-foreground">{subtitle}</p>
+            )}
           </div>
         </div>
       </CardContent>

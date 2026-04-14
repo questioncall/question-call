@@ -190,6 +190,18 @@ export function CreateCourseModal({
       return;
     }
 
+    if (form.pricingModel === "PAID" && (!form.price || form.price <= 0)) {
+      toast.error("Please enter a valid price for the paid course.");
+      setStep(1);
+      return;
+    }
+
+    if (!form.title.trim() || !form.description.trim() || !form.subject.trim() || !form.level.trim()) {
+      toast.error("Please fill in all required course details.");
+      setStep(2);
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const endpoint = mode === "edit" && initialData?._id
@@ -203,7 +215,10 @@ export function CreateCourseModal({
         body: JSON.stringify(form),
       });
 
-      if (!response.ok) throw new Error("Failed to save course");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save course");
+      }
 
       const data = await response.json();
 

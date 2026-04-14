@@ -8,6 +8,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const PLAN_FIELDS: Array<{
+  slug: string;
+  name: string;
+  priceField: string | null;
+  questionsField: string;
+  price: number;
+  questions: number;
+}> = [
+  { slug: "free", name: "Free Trial", priceField: null, questionsField: "trialMaxQuestions", price: 0, questions: 5 },
+  { slug: "go", name: "GO", priceField: "planGoPrice", questionsField: "planGoMaxQuestions", price: 100, questions: 20 },
+  { slug: "plus", name: "Plus", priceField: "planPlusPrice", questionsField: "planPlusMaxQuestions", price: 250, questions: 50 },
+  { slug: "pro", name: "Pro", priceField: "planProPrice", questionsField: "planProMaxQuestions", price: 500, questions: 100 },
+  { slug: "max", name: "Max", priceField: "planMaxPrice", questionsField: "planMaxMaxQuestions", price: 1000, questions: 200 },
+];
+
 export function PricingClient() {
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -72,90 +87,86 @@ export function PricingClient() {
           Subscription Pricing
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage how much students pay for accessing the platform. Changes take effect immediately.
+          Manage student subscription plans with question limits. Changes take effect immediately.
         </p>
       </div>
 
+      {/* Free Trial */}
       <Card>
         <CardHeader>
-          <CardTitle>1-Month Plan</CardTitle>
-          <CardDescription>Pricing for the standard monthly subscription.</CardDescription>
+          <CardTitle>Free Trial</CardTitle>
+          <CardDescription>Automatically granted to new students on signup.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Original Price (NPR)</label>
+            <label className="text-sm font-medium">Duration (Days)</label>
             <Input
               type="number"
-              value={config.plan1MonthOriginalPrice || 0}
-              onChange={(e) => handleChange("plan1MonthOriginalPrice", e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">The slashed-out "fake" higher price</p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Selling Price (NPR)</label>
-            <Input
-              type="number"
-              value={config.plan1MonthPrice || 0}
-              onChange={(e) => handleChange("plan1MonthPrice", e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Actual amount charged</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>3-Month Plan</CardTitle>
-          <CardDescription>Pricing for the quarterly subscription.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Original Price (NPR)</label>
-            <Input
-              type="number"
-              value={config.plan3MonthOriginalPrice || 0}
-              onChange={(e) => handleChange("plan3MonthOriginalPrice", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Selling Price (NPR)</label>
-            <Input
-              type="number"
-              value={config.plan3MonthPrice || 0}
-              onChange={(e) => handleChange("plan3MonthPrice", e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Trial Configuration</CardTitle>
-          <CardDescription>Settings for new student signups.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Free Trial Duration (Days)</label>
-            <Input
-              type="number"
-              min={0}
-              value={config.trialDays || 0}
+              value={config.trialDays || 3}
               onChange={(e) => handleChange("trialDays", e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Number of days before payment is required</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Questions Included</label>
+            <Input
+              type="number"
+              value={config.trialMaxQuestions ?? 5}
+              onChange={(e) => handleChange("trialMaxQuestions", e.target.value)}
+            />
           </div>
         </CardContent>
-        <CardFooter className="bg-muted/30 pt-6">
-          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-            {saving ? (
-              <Loader2Icon className="mr-2 size-4 animate-spin" />
-            ) : (
-              <SaveIcon className="mr-2 size-4" />
-            )}
-            Save All Changes
-          </Button>
-        </CardFooter>
       </Card>
+
+      {/* All Plans */}
+      {PLAN_FIELDS.map((plan) => (
+        <Card key={plan.slug}>
+          <CardHeader>
+            <CardTitle>{plan.name}</CardTitle>
+            <CardDescription>
+              {plan.slug === "free" 
+                ? "Free trial on signup - no payment required"
+                : `Pricing and question limit for the ${plan.name} plan.`
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {plan.priceField ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price (NPR)</label>
+                <Input
+                  type="number"
+                  value={config[plan.priceField] || plan.price}
+                  onChange={(e) => handleChange(plan.priceField as string, e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Price (NPR)</label>
+                <Input type="number" value={0} disabled />
+              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Questions Included</label>
+              <Input
+                type="number"
+                value={config[plan.questionsField] ?? plan.questions}
+                onChange={(e) => handleChange(plan.questionsField, e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      <div className="flex justify-end pt-4">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2Icon className="mr-2 size-4 animate-spin" />
+          ) : (
+            <SaveIcon className="mr-2 size-4" />
+          )}
+          Save All Changes
+        </Button>
+      </div>
     </div>
   );
 }
