@@ -69,12 +69,22 @@ export function CourseHeader({ user }: CourseHeaderProps) {
           <ThemeToggle />
 
           {user ? (
-            <Button asChild variant="outline" size="sm" className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400">
-              <Link href="/">
-                <UserCircle2Icon className="mr-1 size-4" />
-                {user.name || "Dashboard"}
-              </Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="hidden items-center gap-2 sm:flex pr-2 border-r border-border">
+                <UserCircle2Icon className="size-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">{user.name || "User"}</span>
+                {user.role && (
+                  <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-900/40 dark:text-emerald-400">
+                    {user.role}
+                  </span>
+                )}
+              </div>
+              <Button asChild variant="outline" size="sm" className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400">
+                <Link href="/">
+                  Back to Dashboard
+                </Link>
+              </Button>
+            </div>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">

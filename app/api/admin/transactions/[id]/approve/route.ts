@@ -9,6 +9,7 @@ import Notification from "@/models/Notification";
 import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 
 export async function POST(
   req: Request,
@@ -139,6 +140,28 @@ export async function POST(
 
     if (notification) {
       await emitNotification(transaction.userId.toString(), notification).catch(() => {});
+    }
+
+    const recipientUser = await User.findById(transaction.userId).select("email");
+    if (recipientUser?.email) {
+      void sendTransactionEmail(
+        recipientUser.email,
+        "Transaction Approved",
+        notificationMessage,
+        transaction.transactionId,
+        `Amount: ${transaction.amount}`,
+        recipientUser.email
+      ).catch(console.error);
+    }
+    if (process.env.ADMIN_EMAIL) {
+      void sendTransactionEmail(
+        process.env.ADMIN_EMAIL,
+        "Manual Transaction Approved",
+        `Admin has approved a manual transaction.`,
+        transaction.transactionId,
+        `Amount: ${transaction.amount}`,
+        recipientUser?.email ?? "Unknown"
+      ).catch(console.error);
     }
 
     return NextResponse.json(successPayload);

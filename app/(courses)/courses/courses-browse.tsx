@@ -402,9 +402,15 @@ export function CoursesBrowseClient({
 
                 <div className="space-y-3 p-5">
                   <div className="flex flex-wrap gap-2">
-                    <Badge className={getPricingColor(course.pricingModel)}>
-                      {getPricingLabel(course.pricingModel, course.price)}
-                    </Badge>
+                    {typeof course.overallProgressPercent === "number" ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400">
+                        Enrolled
+                      </Badge>
+                    ) : (
+                      <Badge className={getPricingColor(course.pricingModel)}>
+                        {getPricingLabel(course.pricingModel, course.price)}
+                      </Badge>
+                    )}
                     <Badge variant="outline">{course.subject}</Badge>
                   </div>
                   <h3 className="text-lg font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
@@ -539,7 +545,11 @@ export function CoursesBrowseClient({
                 </div>
 
                 <div className="flex shrink-0 flex-col items-end gap-2 sm:min-w-[140px]">
-                  {course.pricingModel === "PAID" && course.price ? (
+                  {typeof course.overallProgressPercent === "number" ? (
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400">
+                      Enrolled
+                    </Badge>
+                  ) : course.pricingModel === "PAID" && course.price ? (
                     <div className="text-right">
                       <div className="text-lg font-bold text-foreground">
                         NPR {course.price.toLocaleString()}

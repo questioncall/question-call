@@ -68,6 +68,7 @@ export default async function CourseStudioPage() {
         videoCount: videoCountByCourse.get(course._id.toString()) ?? 0,
         createdAt: course.createdAt.toISOString(),
       }))}
+      userRole={session.user.role}
     />
   );
 }

@@ -335,18 +335,18 @@ export async function getCourseBrowsePageData(input: {
       enrollments.map((enrollment) => [enrollment.courseId.toString(), enrollment]),
     );
 
-    enrolledCourses = courseCards
-      .filter((course) => enrollmentByCourseId.has(course._id))
-      .map((course) => {
+    for (const course of courseCards) {
+      if (enrollmentByCourseId.has(course._id)) {
         const enrollment = enrollmentByCourseId.get(course._id);
-        return {
-          ...course,
-          overallProgressPercent: enrollment?.overallProgressPercent ?? 0,
-          completedVideoCount: enrollment?.completedVideoCount ?? 0,
-          totalVideoCount: enrollment?.totalVideoCount ?? course.lessonsCount,
-          accessType: enrollment?.accessType ?? null,
-        };
-      })
+        course.overallProgressPercent = enrollment?.overallProgressPercent ?? 0;
+        course.completedVideoCount = enrollment?.completedVideoCount ?? 0;
+        course.totalVideoCount = enrollment?.totalVideoCount ?? course.lessonsCount;
+        course.accessType = enrollment?.accessType ?? null;
+      }
+    }
+
+    enrolledCourses = courseCards
+      .filter((course) => typeof course.overallProgressPercent === "number")
       .slice(0, 6);
   }
 

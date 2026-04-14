@@ -5,6 +5,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { generateUniqueUsername } from "@/lib/user-directory";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
+import VerificationToken from "@/models/VerificationToken";
+import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
 
 export const runtime = "nodejs";
 
@@ -83,6 +85,18 @@ export async function POST(request: Request) {
         transactorName: name,
       });
     }
+
+    // Clean up used OTP
+    await VerificationToken.deleteOne({ email });
+
+    // Fire welcome email asynchronously
+    void sendGreetingEmail(
+      email,
+      name,
+      "Welcome to Question Hub! Your account has been created successfully.",
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      "We're excited to have you on board! Explore courses, ask questions, and start your learning journey today."
+    ).catch(console.error);
 
     return NextResponse.json(
       {

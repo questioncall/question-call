@@ -5,7 +5,7 @@ interface VerificationEmailProps {
   verificationCode: string;
 }
 
-export async function VerificationEmail({
+export function VerificationEmail({
   fullName,
   verificationCode,
 }: VerificationEmailProps) {

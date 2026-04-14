@@ -198,6 +198,9 @@ export async function PATCH(
         firstWatchedAt: now,
         lastWatchedAt: now,
       });
+      
+      video.viewCount = (video.viewCount ?? 0) + 1;
+      await video.save();
     } else {
       progress.watchedPercent = nextWatchedPercent;
       progress.isCompleted = nextCompleted;

@@ -39,9 +39,10 @@ type StudioCourse = {
 
 type Props = {
   courses: StudioCourse[];
+  userRole: string;
 };
 
-export function CourseStudioClient({ courses }: Props) {
+export function CourseStudioClient({ courses, userRole }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -123,13 +124,22 @@ export function CourseStudioClient({ courses }: Props) {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Link href="/courses" className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <Button asChild variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground">
+              <Link href="/courses">
+                <ChevronRightIcon className="size-5 rotate-180" />
+              </Link>
+            </Button>
+            <div className="h-6 w-px bg-border max-sm:hidden" />
+            <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600">
                 <PlayIcon className="size-4 text-white" />
               </div>
               <span className="text-lg font-bold">Course Studio</span>
-            </Link>
+              <span className="ml-2 inline-flex items-center rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-600 ring-1 ring-inset ring-red-600/20 dark:bg-red-900/40 dark:text-red-400">
+                {userRole}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button

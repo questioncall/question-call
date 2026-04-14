@@ -7,7 +7,7 @@ interface GreetingEmailProps {
   link?: string;
 }
 
-export async function GreetingEmail({
+export function GreetingEmail({
   fullName,
   message,
   content,

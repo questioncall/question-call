@@ -16,6 +16,8 @@
     "@mux/mux-node": "^12.8.1",
     "@mux/mux-player-react": "^3.11.7",
     "@mux/upchunk": "^3.5.0",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.6",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",

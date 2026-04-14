@@ -5,7 +5,6 @@ import { getSafeServerSession } from "@/lib/auth";
 import { checkCourseManagementAccess } from "@/lib/course-access";
 import { connectToDatabase } from "@/lib/mongodb";
 import { sendLiveSessionEmail } from "@/lib/notifications/email";
-import { sendLiveSessionWhatsApp } from "@/lib/notifications/whatsapp";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import CourseNotificationLog from "@/models/CourseNotificationLog";
@@ -74,31 +73,23 @@ export async function POST(
           return {
             recipientId: null,
             status: "FAILED" as const,
-            channels: ["EMAIL", "WHATSAPP"] as const,
+            channels: ["EMAIL"] as const,
             failureReason: "RECIPIENT_NOT_FOUND",
           };
         }
 
-        const [emailResult, whatsappResult] = await Promise.all([
-          sendLiveSessionEmail(recipient, liveSession, {
-            title: course.title,
-            instructorName: course.instructorName,
-          }),
-          sendLiveSessionWhatsApp(recipient, liveSession, {
-            title: course.title,
-          }),
-        ]);
+        const emailResult = await sendLiveSessionEmail(recipient, liveSession, {
+          title: course.title,
+          instructorName: course.instructorName,
+        });
 
-        const delivered =
-          Boolean(emailResult.success) || Boolean(whatsappResult.success);
-        const failureReasons = [emailResult.error, whatsappResult.error].filter(
-          Boolean,
-        );
+        const delivered = Boolean(emailResult.success);
+        const failureReasons = [emailResult.error].filter(Boolean);
 
         return {
           recipientId: recipient._id,
           status: delivered ? ("SENT" as const) : ("FAILED" as const),
-          channels: ["EMAIL", "WHATSAPP"] as const,
+          channels: ["EMAIL"] as const,
           failureReason:
             failureReasons.length > 0 ? failureReasons.join(" | ") : null,
         };
@@ -126,7 +117,7 @@ export async function POST(
 
     liveSession.notificationsSent = true;
     liveSession.notificationSentAt = new Date();
-    liveSession.notificationChannels = ["EMAIL", "WHATSAPP"];
+    liveSession.notificationChannels = ["EMAIL"];
     await liveSession.save();
 
     const sent = results.filter((result) => result.status === "SENT").length;

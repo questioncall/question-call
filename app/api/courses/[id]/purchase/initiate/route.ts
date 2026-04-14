@@ -8,6 +8,7 @@ import { getPlatformConfig } from "@/models/PlatformConfig";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import Transaction from "@/models/Transaction";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 
 cloudinary.config({
   secure: true,
@@ -202,6 +203,17 @@ export async function POST(
 
       await existingPending.save();
 
+      if (process.env.ADMIN_EMAIL) {
+        void sendTransactionEmail(
+          process.env.ADMIN_EMAIL,
+          "Manual Course Purchase Updated",
+          `A student has submitted an update (new screenshot/reference) for an existing pending manual payment for the course "${course.title}".`,
+          existingPending._id.toString(),
+          `NPR ${grossAmount}`,
+          session.user.email ?? "Unknown"
+        ).catch(console.error);
+      }
+
       return NextResponse.json(
         {
           message:
@@ -235,6 +247,17 @@ export async function POST(
         netAmount,
       },
     });
+
+    if (process.env.ADMIN_EMAIL) {
+      void sendTransactionEmail(
+        process.env.ADMIN_EMAIL,
+        "New Manual Course Purchase Initiated",
+        `A student has initiated a manual payment for the course "${course.title}".`,
+        createdTransaction._id.toString(),
+        `NPR ${grossAmount}`,
+        session.user.email ?? "Unknown"
+      ).catch(console.error);
+    }
 
     return NextResponse.json(
       {

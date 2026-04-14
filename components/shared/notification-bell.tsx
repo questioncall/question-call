@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BellIcon, CheckCheckIcon, XIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { getUserPusherName, NOTIFICATION_EVENT } from "@/lib/pusher/events";
@@ -80,6 +81,9 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     userChannel.bind(NOTIFICATION_EVENT, (payload: { notification: Notification }) => {
       if (payload.notification) {
         setNotifications((prev) => [payload.notification, ...prev]);
+        toast(payload.notification.message, {
+          icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
+        });
       }
     });
 

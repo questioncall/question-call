@@ -4,6 +4,7 @@ import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 
 cloudinary.config({
   secure: true,
@@ -84,6 +85,17 @@ export async function POST(req: NextRequest) {
       }
       await existingPendingAccount.save();
 
+      if (process.env.ADMIN_EMAIL) {
+        void sendTransactionEmail(
+          process.env.ADMIN_EMAIL,
+          "Manual Subscription Updated",
+          `A user has submitted an update for an existing pending manual subscription for plan "${plan.name}".`,
+          existingPendingAccount._id.toString(),
+          `NPR ${totalAmount}`,
+          session.user.email ?? "Unknown"
+        ).catch(console.error);
+      }
+
       return NextResponse.json(
         { message: "Transaction updated successfully. We will verify it shortly." },
         { status: 200 }
@@ -102,6 +114,17 @@ export async function POST(req: NextRequest) {
       planSlug,
       screenshotUrl,
     });
+
+    if (process.env.ADMIN_EMAIL) {
+      void sendTransactionEmail(
+        process.env.ADMIN_EMAIL,
+        "New Manual Subscription Initiated",
+        `A user has initiated a manual payment for subscription plan "${plan.name}".`,
+        transactionId,
+        `NPR ${totalAmount}`,
+        session.user.email ?? "Unknown"
+      ).catch(console.error);
+    }
 
     return NextResponse.json(
       { message: "Transaction submitted successfully. We will verify it shortly." },

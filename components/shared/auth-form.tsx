@@ -45,6 +45,10 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [verificationStep, setVerificationStep] = useState<"idle" | "requesting" | "pending_otp" | "verifying">("idle");
+
   const isRegister = mode === "register";
   const isSubmitting =
     (isRegister && registerStatus === "pending") || isSigningIn;
@@ -54,6 +58,55 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
     dispatch(clearAuthState());
   }, [dispatch, mode, role]);
 
+  async function handleSendOtp() {
+    if (!email) {
+      setFormError("Please enter your email first.");
+      return;
+    }
+    setFormError(null);
+    setSuccess(null);
+    setVerificationStep("requesting");
+    try {
+      const res = await fetch("/api/auth/verify-email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setVerificationStep("pending_otp");
+      setSuccess("Verification code sent! Please check your inbox.");
+    } catch (e: any) {
+      setFormError(e.message);
+      setVerificationStep("idle");
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otpCode) {
+      setFormError("Please enter the code.");
+      return;
+    }
+    setFormError(null);
+    setSuccess(null);
+    setVerificationStep("verifying");
+    try {
+      const res = await fetch("/api/auth/verify-email/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setVerificationStep("idle");
+      setIsEmailVerified(true);
+      setSuccess("Email verified successfully! You can now complete your registration.");
+    } catch (e: any) {
+      setFormError(e.message);
+      setVerificationStep("pending_otp");
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -62,6 +115,11 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
 
     if (isRegister && !termsAgreed) {
       setFormError("You must agree to the terms and policy to register.");
+      return;
+    }
+
+    if (isRegister && !isEmailVerified) {
+      setFormError("You must verify your email before registering.");
       return;
     }
 
@@ -152,19 +210,67 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
           <Label className="text-sm font-semibold text-foreground" htmlFor="auth-email">
             Email address
           </Label>
-          <Input
-            id="auth-email"
-            required
-            autoComplete="email"
-            className="h-11 rounded-xl bg-background px-3 py-2.5 text-sm shadow-sm md:text-sm"
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Enter your email"
-            type="email"
-            value={email}
-          />
+          <div className="relative flex gap-2">
+            <Input
+              id="auth-email"
+              required
+              disabled={isRegister && (verificationStep !== "idle" || isEmailVerified)}
+              autoComplete="email"
+              className="h-11 w-full rounded-xl bg-background px-3 py-2.5 text-sm shadow-sm md:text-sm"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Enter your email"
+              type="email"
+              value={email}
+            />
+            {isRegister && !isEmailVerified && (
+              <Button 
+                type="button" 
+                variant="outline"
+                className="h-11 shrink-0 px-4"
+                onClick={handleSendOtp}
+                disabled={verificationStep === "requesting" || email.trim().length === 0}
+              >
+                {verificationStep === "requesting" ? "Sending..." : verificationStep === "pending_otp" ? "Resend" : "Verify Email"}
+              </Button>
+            )}
+            {isRegister && isEmailVerified && (
+              <div className="flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-600">
+                Verified
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-1.5">
+        {isRegister && (verificationStep === "pending_otp" || verificationStep === "verifying") && !isEmailVerified && (
+          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+            <Label className="text-sm font-semibold text-foreground" htmlFor="auth-otp">
+              Verification Code
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="auth-otp"
+                className="h-11 rounded-xl bg-background px-3 py-2.5 text-sm font-mono shadow-sm md:text-sm"
+                onChange={(event) => setOtpCode(event.target.value)}
+                placeholder="000000"
+                type="text"
+                maxLength={6}
+                value={otpCode}
+              />
+              <Button 
+                type="button" 
+                className="h-11 shrink-0"
+                onClick={handleVerifyOtp}
+                disabled={verificationStep === "verifying" || otpCode.length < 6}
+              >
+                {verificationStep === "verifying" ? "Verifying..." : "Confirm Code"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {(!isRegister || isEmailVerified) && (
+        <>
+          <div className="space-y-1.5">
           <Label className="text-sm font-semibold text-foreground" htmlFor="auth-password">
             Password
           </Label>
@@ -214,6 +320,8 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
 
         {activeError ? (
