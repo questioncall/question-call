@@ -117,6 +117,41 @@ export function PricingClient() {
         </CardContent>
       </Card>
 
+      {/* Referral System */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Referral System</CardTitle>
+          <CardDescription>Reward users with bonus questions when they invite others.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4 flex flex-col justify-center">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="referralEnabled"
+                checked={config.referralEnabled ?? true}
+                onChange={(e) => setConfig((prev: any) => ({ ...prev, referralEnabled: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="referralEnabled" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Enable Referrals
+              </label>
+            </div>
+            <p className="text-sm text-muted-foreground">Toggle to instantly turn the referral logic on or off.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Bonus Questions</label>
+            <Input
+              type="number"
+              value={config.referralBonusQuestions ?? 10}
+              onChange={(e) => handleChange("referralBonusQuestions", e.target.value)}
+              disabled={!(config.referralEnabled ?? true)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Questions awarded to both the referrer and the new referee.</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* All Plans */}
       {PLAN_FIELDS.map((plan) => (
         <Card key={plan.slug}>

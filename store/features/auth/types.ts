@@ -7,6 +7,7 @@ export type RegisterPayload = {
   email: string;
   password: string;
   role: RegisterableRole;
+  referralCode?: string;
 };
 
 export type RegisteredUser = {

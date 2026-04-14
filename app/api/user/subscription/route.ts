@@ -22,13 +22,15 @@ export async function GET() {
       status: "PENDING",
     }).sort({ createdAt: -1 });
 
-    const user = await User.findById(session.user.id).select("planSlug questionsAsked subscriptionEnd trialUsed");
+    const user = await User.findById(session.user.id).select("planSlug questionsAsked subscriptionEnd trialUsed bonusQuestions");
     const subscription = await getQuizSubscriptionSnapshot(session.user.id);
     const config = await getPlatformConfig();
     const plans = getHydratedPlans(config);
     
     const currentPlan = plans.find(p => p.slug === (user?.planSlug || subscription.planSlug || "free")) || plans[0];
-    const maxQuestions = currentPlan?.maxQuestions ?? 0;
+    const baseMaxQuestions = currentPlan?.maxQuestions ?? 0;
+    const bonusQuestions = user?.bonusQuestions ?? 0;
+    const maxQuestions = baseMaxQuestions > 0 ? baseMaxQuestions + bonusQuestions : baseMaxQuestions;
     const questionsAsked = user?.questionsAsked ?? 0;
     const questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
 
@@ -39,6 +41,8 @@ export async function GET() {
       questionsAsked,
       questionsRemaining,
       maxQuestions,
+      baseMaxQuestions,
+      bonusQuestions,
       planSlug: user?.planSlug || subscription.planSlug || "free",
     }, { status: 200 });
 

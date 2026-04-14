@@ -14,6 +14,9 @@ type UserProfileState = {
   questionsAsked: number;
   questionsRemaining: number | null;
   maxQuestions: number;
+  baseMaxQuestions: number;
+  bonusQuestions: number;
+  referralCode: string | null;
   planSlug: string | null;
 };
 
@@ -31,6 +34,9 @@ const initialState: UserProfileState = {
   questionsAsked: 0,
   questionsRemaining: null,
   maxQuestions: 0,
+  baseMaxQuestions: 0,
+  bonusQuestions: 0,
+  referralCode: null,
   planSlug: null,
 };
 
@@ -57,6 +63,9 @@ const userSlice = createSlice({
       if (action.payload.questionsAsked !== undefined) state.questionsAsked = action.payload.questionsAsked;
       if (action.payload.questionsRemaining !== undefined) state.questionsRemaining = action.payload.questionsRemaining;
       if (action.payload.maxQuestions !== undefined) state.maxQuestions = action.payload.maxQuestions;
+      if (action.payload.baseMaxQuestions !== undefined) state.baseMaxQuestions = action.payload.baseMaxQuestions;
+      if (action.payload.bonusQuestions !== undefined) state.bonusQuestions = action.payload.bonusQuestions;
+      if (action.payload.referralCode !== undefined) state.referralCode = action.payload.referralCode;
       if (action.payload.planSlug !== undefined) state.planSlug = action.payload.planSlug;
     },
     clearProfile(state) {
@@ -73,6 +82,9 @@ const userSlice = createSlice({
       state.questionsAsked = 0;
       state.questionsRemaining = null;
       state.maxQuestions = 0;
+      state.baseMaxQuestions = 0;
+      state.bonusQuestions = 0;
+      state.referralCode = null;
       state.planSlug = null;
     },
   },

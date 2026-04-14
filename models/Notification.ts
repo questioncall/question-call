@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPES = [
   "PAYMENT",
   "ANSWER_SUBMITTED",
   "DEADLINE_WARNING",
+  "SYSTEM",
 ] as const;
 
 const notificationSchema = new Schema(

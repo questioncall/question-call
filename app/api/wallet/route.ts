@@ -37,6 +37,8 @@ export async function GET() {
         "esewaNumber",
         "planSlug",
         "questionsAsked",
+        "bonusQuestions",
+        "referralCode",
       ].join(" ")
     );
 
@@ -67,12 +69,16 @@ export async function GET() {
     let questionsAsked = 0;
     let questionsRemaining: number | null = null;
     let maxQuestions = 0;
+    let baseMaxQuestions = 0;
+    let bonusQuestions = 0;
 
     if (session.user.role === "STUDENT") {
       questionsAsked = user.questionsAsked ?? 0;
+      bonusQuestions = user.bonusQuestions ?? 0;
       const plans = getHydratedPlans(config);
       const currentPlan = plans.find(p => p.slug === user.planSlug) || plans[0];
-      maxQuestions = currentPlan?.maxQuestions ?? 0;
+      baseMaxQuestions = currentPlan?.maxQuestions ?? 0;
+      maxQuestions = baseMaxQuestions > 0 ? baseMaxQuestions + bonusQuestions : baseMaxQuestions;
       questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
     }
 
@@ -97,6 +103,9 @@ export async function GET() {
       questionsAsked,
       questionsRemaining,
       maxQuestions,
+      baseMaxQuestions,
+      bonusQuestions,
+      referralCode: user.referralCode || null,
       withdrawalHistory,
       savedEsewaNumber: user.esewaNumber || null,
     });

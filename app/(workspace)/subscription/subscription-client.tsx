@@ -23,6 +23,9 @@ export function SubscriptionClient({
     questionsAsked: number;
     questionsRemaining: number | null;
     maxQuestions: number;
+    baseMaxQuestions: number;
+    bonusQuestions: number;
+    referralCode: string | null;
     planSlug: string | null;
   };
 }) {
@@ -34,8 +37,13 @@ export function SubscriptionClient({
     questionsAsked,
     questionsRemaining,
     maxQuestions,
+    baseMaxQuestions,
+    bonusQuestions,
+    referralCode,
     planSlug,
   } = useAppSelector((state) => state.user);
+  
+  const [referralStats, setReferralStats] = useState<{ totalReferred: number; totalBonusEarned: number } | null>(null);
 
   const [isHydrated, setIsHydrated] = useState(!!initialSubscriptionData);
   const [showPricing, setShowPricing] = useState(false);
@@ -49,10 +57,12 @@ export function SubscriptionClient({
         questionsAsked: initialSubscriptionData.questionsAsked,
         questionsRemaining: initialSubscriptionData.questionsRemaining,
         maxQuestions: initialSubscriptionData.maxQuestions,
+        baseMaxQuestions: initialSubscriptionData.baseMaxQuestions,
+        bonusQuestions: initialSubscriptionData.bonusQuestions,
+        referralCode: initialSubscriptionData.referralCode,
         planSlug: initialSubscriptionData.planSlug,
       }));
       setIsHydrated(true);
-      return;
     }
 
     let active = true;
@@ -81,7 +91,25 @@ export function SubscriptionClient({
       }
     };
 
-    void fetchSub();
+    const fetchReferralStats = async () => {
+      try {
+        const res = await fetch("/api/user/referral");
+        if (res.ok) {
+          const data = await res.json();
+          setReferralStats({
+            totalReferred: data.totalReferred || 0,
+            totalBonusEarned: data.totalBonusEarned || 0,
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    if (!initialSubscriptionData) {
+      void fetchSub();
+    }
+    void fetchReferralStats();
 
     return () => {
       active = false;
@@ -205,16 +233,23 @@ export function SubscriptionClient({
                   Questions Asked 
                </p>
                {questionsRemaining !== null && maxQuestions > 0 && (
-                 <div className="mt-4 flex items-center gap-2">
-                   <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                 <div className="mt-4 flex flex-col gap-2">
+                   <div className="flex flex-col gap-1 items-end justify-between">
+                     <span className="text-sm font-semibold text-[#1B7258] dark:text-[#27A883]">
+                       {questionsRemaining} left total
+                     </span>
+                     {bonusQuestions > 0 && (
+                       <span className="text-xs font-medium text-[#1B7258]/80 dark:text-[#27A883]/80">
+                         (Includes {bonusQuestions} bonus)
+                       </span>
+                     )}
+                   </div>
+                   <div className="flex-1 h-2 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                      <div 
                        className="h-full bg-[#1B7258] dark:bg-[#27A883] rounded-full transition-all"
                        style={{ width: `${Math.round((questionsAsked / maxQuestions) * 100)}%` }}
                      />
                    </div>
-                   <span className="text-sm font-semibold text-[#1B7258] dark:text-[#27A883]">
-                     {questionsRemaining} left
-                   </span>
                  </div>
                )}
                <div className="mt-auto pt-8 border-t border-neutral-100 dark:border-neutral-800">
@@ -223,6 +258,67 @@ export function SubscriptionClient({
                   </p>
                </div>
             </div>
+          </div>
+
+          {/* Referral Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-8 rounded-3xl border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center gap-6">
+             <div className="flex-1 space-y-4 text-center md:text-left">
+                <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">
+                  Refer & Earn Questions! 🎉
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-lg">
+                  Share your unique link with friends. When they register, <strong>both of you</strong> get +10 bonus questions added permanently to your active limit. 
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-2 justify-center md:justify-start">
+                  <div className="bg-white dark:bg-black/20 border border-blue-200 dark:border-blue-800/50 rounded-xl px-4 py-3 flex items-center gap-3 w-full md:w-auto">
+                    <span className="font-mono text-sm text-neutral-500 truncate max-w-[150px] md:max-w-xs select-all">
+                      {typeof window !== "undefined" ? `${window.location.origin}/auth/signup/student?ref=${referralCode}` : `.../auth/signup/student?ref=${referralCode}`}
+                    </span>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          navigator.clipboard.writeText(`${window.location.origin}/auth/signup/student?ref=${referralCode}`);
+                          alert("Link copied to clipboard!");
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
+                    >
+                      Copy Link
+                    </Button>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-10 border-blue-200 text-blue-700 hover:bg-blue-100 dark:border-blue-800/50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-xl px-4"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        const subject = encodeURIComponent("Join me on Question Hub!");
+                        const body = encodeURIComponent(`Hey! I'm using Question Hub to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask: \n\n${window.location.origin}/auth/signup/student?ref=${referralCode}`);
+                        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+                      }
+                    }}
+                  >
+                    Share via Email
+                  </Button>
+                </div>
+             </div>
+             
+             {referralStats && (
+               <div className="bg-white/80 dark:bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-white/50 dark:border-white/5 min-w-[200px] text-center">
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="flex flex-col items-center">
+                     <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{referralStats.totalReferred}</span>
+                     <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mt-1">Referred</span>
+                   </div>
+                   <div className="flex flex-col items-center">
+                     <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">+{referralStats.totalBonusEarned}</span>
+                     <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mt-1">Bonus Qs</span>
+                   </div>
+                 </div>
+               </div>
+             )}
           </div>
         </div>
       </div>

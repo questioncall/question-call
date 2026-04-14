@@ -23,6 +23,7 @@ import {
   QUIZ,
   PLATFORM,
   COURSE,
+  REFERRAL,
 } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 
@@ -77,6 +78,17 @@ const platformConfigSchema = new Schema(
       default: COURSE.PURCHASE_COMMISSION_PERCENT,
       min: 0,
       max: 100,
+    },
+
+    // Referral System
+    referralBonusQuestions: {
+      type: Number,
+      default: REFERRAL.BONUS_QUESTIONS,
+      min: 0,
+    },
+    referralEnabled: {
+      type: Boolean,
+      default: REFERRAL.ENABLED,
     },
 
     // Platform settings

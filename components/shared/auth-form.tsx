@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, Suspense } from "react";
 
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
@@ -31,7 +31,19 @@ const defaultPathByRole = {
 } as const;
 
 export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
+  return (
+    <Suspense fallback={<div>Loading form...</div>}>
+      <AuthFormInner mode={mode} role={role} callbackUrl={callbackUrl} />
+    </Suspense>
+  );
+}
+
+function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCodeRaw = searchParams.get("ref");
+  const referralCodeFromUrl = refCodeRaw ? refCodeRaw.toUpperCase().trim() : undefined;
+  
   const dispatch = useAppDispatch();
   const { registerError, registerStatus } = useAppSelector(
     (state) => state.auth,
@@ -131,6 +143,7 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
             email,
             password,
             role,
+            referralCode: referralCodeFromUrl,
           }),
         );
 
@@ -203,6 +216,12 @@ export function AuthForm({ mode, role, callbackUrl }: AuthFormProps) {
               type="text"
               value={name}
             />
+          </div>
+        ) : null}
+
+        {isRegister && referralCodeFromUrl ? (
+          <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700">
+            <span>🎉 Referred by a friend</span>
           </div>
         ) : null}
 

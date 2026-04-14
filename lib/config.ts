@@ -304,7 +304,18 @@ export const QUIZ = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
-// 10. LEGAL CONTENT
+// 10. REFERRAL SYSTEM
+// ─────────────────────────────────────────────────────────────────────
+
+export const REFERRAL = {
+  /** Bonus questions awarded to both referrer and referee */
+  BONUS_QUESTIONS: 10,
+  /** Quick toggle to disable referrals without deleting data */
+  ENABLED: true,
+} as const;
+
+// ─────────────────────────────────────────────────────────────────────
+// 11. LEGAL CONTENT
 //    Seeded into PlatformConfig and editable later from the admin panel.
 // ─────────────────────────────────────────────────────────────────────
 

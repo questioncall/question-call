@@ -61,6 +61,26 @@ const userSchema = new Schema(
       default: false,
     },
 
+    // ─── Referral System ──────────────────────────────────────────
+
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      uppercase: true,
+      trim: true,
+    },
+    bonusQuestions: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     // ─── Question Limit Tracking (Phase - Question Packages) ─────────
     /** Current subscription plan slug */
     planSlug: {

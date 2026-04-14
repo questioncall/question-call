@@ -51,6 +51,8 @@ export async function POST(request: Request) {
     const plans = getHydratedPlans(config);
     const currentPlan = plans.find(p => p.slug === user.planSlug) || plans[0];
     const maxQuestions = currentPlan?.maxQuestions ?? 0;
+    const bonusQuestions = user.bonusQuestions ?? 0;
+    const effectiveLimit = maxQuestions > 0 ? maxQuestions + bonusQuestions : maxQuestions;
     const questionsAsked = user.questionsAsked ?? 0;
 
     // Subscription Check Logic
@@ -69,15 +71,16 @@ export async function POST(request: Request) {
     }
     
     // Check question limit (not applicable for trial being activated)
-    if (user.trialUsed && maxQuestions !== null && maxQuestions > 0) {
-      if (questionsAsked >= maxQuestions) {
-        const remaining = maxQuestions - questionsAsked;
+    if (user.trialUsed && effectiveLimit !== null && effectiveLimit > 0) {
+      if (questionsAsked >= effectiveLimit) {
+        const remaining = effectiveLimit - questionsAsked;
         return NextResponse.json(
           { 
             error: "Question limit reached for your plan.",
-            questionsRemaining: 0,
-            maxQuestions: maxQuestions,
+            questionsRemaining: Math.max(0, remaining),
+            maxQuestions: effectiveLimit,
             planSlug: user.planSlug,
+            bonusQuestions: bonusQuestions,
           },
           { status: 403 },
         );
