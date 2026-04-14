@@ -247,7 +247,7 @@ export function WorkspaceHome({
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [isSubmittingComment, setIsSubmittingComment] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<FeedView>("all");
-  const [activeSort, setActiveSort] = useState<FeedSort>("hot");
+  const [activeSort, setActiveSort] = useState<FeedSort>(role === "STUDENT" ? "hot" : "new");
   const [activeCourseIndex, setActiveCourseIndex] = useState(0);
   const [topTeachers, setTopTeachers] = useState<TopTeacherItem[]>([]);
   const [isTopTeachersLoading, setIsTopTeachersLoading] = useState(false);
@@ -529,14 +529,28 @@ export function WorkspaceHome({
     }
   };
 
+  const searchSubjects = searchParams.get("subjects")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
+  const searchStreams = searchParams.get("streams")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
+  const searchLevels = searchParams.get("levels")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
+
   const activeHeaderFilters = [
-    ...(searchParams.get("subjects")?.split(",").map((value) => value.trim()).filter(Boolean) ?? []),
-    ...(searchParams.get("streams")?.split(",").map((value) => value.trim()).filter(Boolean) ?? []),
-    ...(searchParams.get("levels")?.split(",").map((value) => value.trim()).filter(Boolean) ?? []),
+    ...searchSubjects,
+    ...searchStreams,
+    ...searchLevels,
   ];
 
   const visibleFeedItems = [...feedItems]
     .filter((item) => {
+      if (activeHeaderFilters.length > 0) {
+        const matchesSubject = searchSubjects.length === 0 || (item.subject && searchSubjects.includes(item.subject));
+        const matchesStream = searchStreams.length === 0 || (item.stream && searchStreams.includes(item.stream));
+        const matchesLevel = searchLevels.length === 0 || (item.level && searchLevels.includes(item.level));
+        
+        if (!(matchesSubject && matchesStream && matchesLevel)) {
+          return false;
+        }
+      }
+
       switch (activeView) {
         case "waiting":
           return item.status !== "SOLVED";

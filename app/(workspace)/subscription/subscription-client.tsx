@@ -38,6 +38,7 @@ export function SubscriptionClient({
   } = useAppSelector((state) => state.user);
 
   const [isHydrated, setIsHydrated] = useState(!!initialSubscriptionData);
+  const [showPricing, setShowPricing] = useState(false);
 
   useEffect(() => {
     if (initialSubscriptionData) {
@@ -124,7 +125,7 @@ export function SubscriptionClient({
   // ==============================
   // UI 2: Active / Trial Dashboard Usage
   // ==============================
-  if (subscriptionStatus === "ACTIVE") {
+  if (subscriptionStatus === "ACTIVE" && !showPricing) {
     const daysDiff = subscriptionEnd 
       ? Math.ceil((new Date(subscriptionEnd).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
       : 0;
@@ -135,11 +136,20 @@ export function SubscriptionClient({
     return (
       <div className="flex h-full w-full flex-col py-8 px-4 md:px-8 bg-transparent">
         <div className="w-full max-w-4xl mx-auto space-y-10">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-2">
-              Subscription Usage
-            </h1>
-            <p className="text-sm text-neutral-500">Monitor your current limits and renewal deadlines.</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-2">
+                Subscription Usage
+              </h1>
+              <p className="text-sm text-neutral-500">Monitor your current limits and renewal deadlines.</p>
+            </div>
+            <Button
+              onClick={() => setShowPricing(true)}
+              variant="outline"
+              className="border-[#1B7258] text-[#1B7258] hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl"
+            >
+              See Subscription Packages
+            </Button>
           </div>
           
           <div className="grid md:grid-cols-2 gap-6">
@@ -239,10 +249,20 @@ export function SubscriptionClient({
               Get the right plan for yourself. Plans can be upgraded in the future.
             </p>
           </div>
+          
+          {subscriptionStatus === "ACTIVE" && (
+            <Button
+              onClick={() => setShowPricing(false)}
+              variant="outline"
+              className="border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl"
+            >
+              Back to Dashboard
+            </Button>
+          )}
         </div>
 
         {/* Pricing Section */}
-        <div className="grid lg:grid-cols-3 gap-6 md:gap-8 pt-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pt-4">
           {(hydratedPlans || []).map((plan, index) => (
             <div
               key={index}
