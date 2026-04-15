@@ -21,7 +21,7 @@ export async function GET() {
       .lean();
 
     return NextResponse.json({ admins });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get Admins Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       { message: "Admin created successfully", adminId: newAdmin._id },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create Admin Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -43,7 +43,7 @@ export async function PATCH(request: Request) {
     await adminUser.save();
 
     return NextResponse.json({ message: "Password updated successfully" }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update Admin Password Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

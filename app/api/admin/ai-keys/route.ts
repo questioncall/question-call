@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import AIProviderConfig from "@/models/AIProviderConfig";
+import AIProviderConfig, { type IAIProviderConfig, type AIKeySlot } from "@/models/AIProviderConfig";
+import mongoose from "mongoose";
 
 function maskKey(key: string) {
   if (!key) return "";
@@ -23,7 +24,7 @@ export async function GET() {
     const providers = ["gemini", "groq", "openrouter", "mistral", "cerebras"] as const;
     
     // Create a safe payload without real keys
-    const payload: any = {
+    const payload: { providerOrder: string[]; [key: string]: unknown } = {
       providerOrder: config.providerOrder,
     };
 
@@ -31,11 +32,11 @@ export async function GET() {
 
     for (const provider of providers) {
       const keys = config[provider] || [];
-      payload[provider] = keys.map((k: any) => {
+      payload[provider] = keys.map((k: AIKeySlot & { _id?: mongoose.Types.ObjectId }) => {
         let status = "ACTIVE";
         if (k.isExhausted) {
           if (k.resetAt && now >= new Date(k.resetAt)) {
-            status = "RESETTING"; // Grace period before lazy reset takes over
+            status = "RESETTING";
           } else {
             status = "EXHAUSTED";
           }
@@ -81,8 +82,9 @@ export async function PATCH(request: Request) {
     await config.save();
 
     return NextResponse.json({ success: true, providerOrder: config.providerOrder });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("PATCH AI Keys Order Error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

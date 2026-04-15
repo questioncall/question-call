@@ -52,7 +52,8 @@ export async function GET(request: Request, context: RouteParams) {
     });
     
     // In our v1 we just allow audio/video, and the client UI determines camera initial state.
-    at.addGrant({ roomJoin: true, room: callSession.roomName });
+    // roomRecord: false ensures P2P calls cannot be recorded by participants.
+    at.addGrant({ roomJoin: true, room: callSession.roomName, roomRecord: false });
 
     const token = await at.toJwt();
 

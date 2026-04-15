@@ -80,6 +80,13 @@ const userSchema = new Schema(
       ref: "User",
       default: null,
     },
+    referralHistory: [
+      {
+        referredUserId: { type: Schema.Types.ObjectId, ref: "User" },
+        pointsEarned: { type: Number, default: 0 },
+        date: { type: Date, default: Date.now },
+      },
+    ],
 
     // ─── Question Limit Tracking (Phase - Question Packages) ─────────
     /** Current subscription plan slug */
@@ -101,6 +108,24 @@ const userSchema = new Schema(
       default: 0,
       min: 0,
     },
+    /** Total points earned over time */
+    totalPointsEarned: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /** Total points withdrawn */
+    totalPointsWithdrawn: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /** Total penalty points deducted (rating 1, timeouts, etc.) */
+    totalPenaltyPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     totalAnswered: {
       type: Number,
       default: 0,
@@ -109,6 +134,11 @@ const userSchema = new Schema(
     isMonetized: {
       type: Boolean,
       default: false,
+    },
+    /** Tracks when the teacher last claimed the monthly high-rating bonus */
+    monthlyBonusClaimedAt: {
+      type: Date,
+      default: null,
     },
     /** eSewa number for withdrawals - saved for teacher convenience */
     esewaNumber: {

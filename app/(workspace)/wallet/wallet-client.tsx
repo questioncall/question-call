@@ -11,6 +11,7 @@ import {
   CoinsIcon,
   CreditCardIcon,
   Loader2Icon,
+  MinusCircleIcon,
   SendIcon,
   ShieldCheckIcon,
   StarIcon,
@@ -65,6 +66,11 @@ type WalletData = {
   withdrawalHistory: WithdrawalHistoryItem[];
   savedEsewaNumber: string | null;
   referralCode: string | null;
+  totalPointsEarned: number;
+  totalPointsWithdrawn: number;
+  pendingWithdrawal: number;
+  totalPenaltyPoints: number;
+  creditablePoints: number;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -275,6 +281,80 @@ export function WalletClient() {
           </>
         )}
       </div>
+
+      {isTeacher && (
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CoinsIcon className="size-5 text-primary" />
+              Point Breakdown
+            </CardTitle>
+            <CardDescription>
+              Detailed breakdown of your points earned, withdrawn, penalties, and current balance.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUpIcon className="size-4 text-emerald-600" />
+                  <span className="text-sm font-medium text-emerald-700">Total Earned</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatPoints(wallet.totalPointsEarned)} pts
+                </p>
+                <p className="text-xs text-muted-foreground">All time earnings</p>
+              </div>
+
+              <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <BanknoteIcon className="size-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">Withdrawn</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatPoints(wallet.totalPointsWithdrawn)} pts
+                </p>
+                <p className="text-xs text-muted-foreground">Already withdrawn</p>
+              </div>
+
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MinusCircleIcon className="size-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-700">Penalties</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatPoints(wallet.totalPenaltyPoints)} pts
+                </p>
+                <p className="text-xs text-muted-foreground">Rating 1 & timeouts</p>
+              </div>
+
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <WalletIcon className="size-4 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-700">Current Balance</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatPoints(wallet.creditablePoints)} pts
+                </p>
+                <p className="text-xs text-muted-foreground">Available to withdraw</p>
+              </div>
+            </div>
+
+            {wallet.pendingWithdrawal > 0 && (
+              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-center gap-2">
+                <ClockIcon className="size-4 text-amber-600" />
+                <span className="text-sm text-amber-700">
+                  You have <strong>{formatPoints(wallet.pendingWithdrawal)} pts</strong> pending withdrawal request.
+                </span>
+              </div>
+            )}
+
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p>Calculation: Earned ({formatPoints(wallet.totalPointsEarned)}) - Withdrawn ({formatPoints(wallet.totalPointsWithdrawn)}) - Penalties ({formatPoints(wallet.totalPenaltyPoints)}) = Balance ({formatPoints(wallet.creditablePoints)})</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isTeacher ? (
         <Card className="border-border/70 shadow-sm">

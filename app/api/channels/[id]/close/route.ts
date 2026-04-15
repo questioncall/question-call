@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
+import { pusherServer, emitNotification, emitQuestionUpdated } from "@/lib/pusher/pusherServer";
 import { CHANNEL_CLOSED_EVENT, getChannelPusherName, getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
 import Channel from "@/models/Channel";
 import Question from "@/models/Question";
@@ -12,6 +12,38 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { calcTotalPointsEarned } from "@/lib/points";
+import type { FeedQuestion } from "@/types/question";
+
+type PopulatedQuestion = {
+  _id: { toString(): string };
+  askerId?: { toString(): string } | string | null;
+  title: string;
+  body: string;
+  answerFormat: FeedQuestion["answerFormat"];
+  answerVisibility: FeedQuestion["answerVisibility"];
+  subject?: string;
+  stream?: string;
+  level?: string;
+  resetCount: number;
+  reactions?: Array<{
+    userId?: { toString(): string } | string | null;
+    type: string;
+  }>;
+  acceptedById?: { toString(): string } | string | null;
+  acceptedAt?: Date | null;
+  answerId?: { toString(): string } | string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  status: FeedQuestion["status"];
+  save: () => Promise<unknown>;
+};
+
+type PopulatedAsker = {
+  _id: { toString(): string };
+  name?: string;
+  username?: string;
+  userImage?: string;
+};
 
 export async function POST(
   req: Request,
@@ -32,6 +64,7 @@ export async function POST(
     }
 
     await connectToDatabase();
+    const config = await getPlatformConfig();
 
     const channel = await Channel.findById(id);
     if (!channel) {
@@ -46,20 +79,135 @@ export async function POST(
       return NextResponse.json({ error: "Only the asker can close the channel" }, { status: 403 });
     }
 
-    // Process Closing
+    const teacher = await User.findById(channel.acceptorId);
+    const answer = await Answer.findOne({ channelId: channel._id });
+
+    if (rating === 1 && teacher) {
+      channel.status = "CLOSED";
+      channel.closedAt = new Date();
+      channel.isClosedByAsker = true;
+      channel.ratingGiven = rating;
+      await channel.save();
+
+      if (answer) {
+        answer.rating = rating;
+        await answer.save();
+      }
+
+      const penalty = config.penaltyPointsForLowRating || 1;
+      teacher.pointBalance = Math.max(0, (teacher.pointBalance || 0) - penalty);
+      teacher.totalPenaltyPoints = (teacher.totalPenaltyPoints || 0) + penalty;
+      await teacher.save();
+
+      const penaltyNotif = await Notification.create({
+        userId: teacher._id,
+        type: "RATING_RECEIVED",
+        message: `Student rated 1 star. ${config.penaltyPointsForLowRating} point(s) deducted.`,
+      }).catch(() => null);
+      if (penaltyNotif) await emitNotification(teacher._id.toString(), penaltyNotif);
+
+      const maxResets = config.maxQuestionResetCount || 3;
+      const question = await Question.findById(channel.questionId) as PopulatedQuestion | null;
+
+      if (question) {
+        const currentResetCount = question.resetCount || 0;
+
+        if (currentResetCount < maxResets) {
+          question.status = "RESET";
+          question.acceptedById = null;
+          question.acceptedAt = null;
+          question.resetCount = currentResetCount + 1;
+          await question.save();
+
+          const asker = await User.findById(question.askerId) as PopulatedAsker | null;
+          if (asker) {
+            const reactions = Array.isArray(question.reactions) ? question.reactions : [];
+
+            const feedQuestion: FeedQuestion = {
+              id: question._id.toString(),
+              channelId: channel._id.toString(),
+              askerId: asker._id.toString(),
+              askerName: asker.name || "Anonymous",
+              askerUsername: asker.username || undefined,
+              askerImage: asker.userImage || undefined,
+              title: question.title,
+              body: question.body,
+              answerFormat: question.answerFormat,
+              answerVisibility: question.answerVisibility,
+              status: "RESET",
+              subject: question.subject || undefined,
+              stream: question.stream || undefined,
+              level: question.level || undefined,
+              resetCount: question.resetCount,
+              reactions: reactions.map((r: { userId?: { toString(): string } | string | null; type: string }) => ({
+                userId: r.userId?.toString() || "",
+                type: r.type as "like" | "insightful" | "same_doubt",
+              })),
+              acceptedById: null,
+              acceptedAt: null,
+              acceptedByName: null,
+              answerCount: 0,
+              reactionCount: reactions.length,
+              commentCount: 0,
+              createdAt: new Date(question.createdAt).toISOString(),
+              updatedAt: new Date(question.updatedAt).toISOString(),
+            };
+
+            await emitQuestionUpdated(feedQuestion).catch(() => {});
+          }
+
+          const resetNotif = await Notification.create({
+            userId: channel.askerId,
+            type: "QUESTION_RESET",
+            message: `Your question received a low rating and has been re-opened for other teachers. (${(question.resetCount)}/${maxResets} attempts)`,
+          }).catch(() => null);
+          if (resetNotif) await emitNotification(channel.askerId.toString(), resetNotif);
+        } else {
+          question.status = "SOLVED";
+          if (answer && answer.isPublic) {
+            question.answerId = answer._id;
+          }
+          await question.save();
+
+          const maxReachedNotif = await Notification.create({
+            userId: channel.askerId,
+            type: "CHANNEL_CLOSED",
+            message: `Question auto-marked as solved after ${maxResets} attempts.`,
+          }).catch(() => null);
+          if (maxReachedNotif) await emitNotification(channel.askerId.toString(), maxReachedNotif);
+        }
+      }
+
+      if (pusherServer) {
+        await pusherServer.trigger(
+          getChannelPusherName(channel._id.toString()),
+          CHANNEL_CLOSED_EVENT,
+          { status: "CLOSED", ratingGiven: rating }
+        );
+        await pusherServer.trigger(
+          getUserPusherName(channel.acceptorId.toString()),
+          CHANNEL_UPDATED_EVENT,
+          { channelId: channel._id.toString() }
+        );
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        channel,
+        questionReset: question ? (question.resetCount || 0) < maxResets : false
+      });
+    }
+
     channel.status = "CLOSED";
     channel.closedAt = new Date();
     channel.isClosedByAsker = true;
     channel.ratingGiven = rating;
     await channel.save();
 
-    // 1. Update Question status to SOLVED
     const question = await Question.findById(channel.questionId);
     if (question) {
       question.status = "SOLVED";
-      
-      // If Answer exists, link it to the Question
-      const answer = await Answer.findOne({ channelId: channel._id });
+
       if (answer) {
         answer.rating = rating;
         await answer.save();
@@ -71,17 +219,10 @@ export async function POST(
       await question.save();
     }
 
-    // 2. Get the answer for point calculation
-    const answer = await Answer.findOne({ channelId: channel._id });
-
-    // 3. Update Teacher's stats + credit points
-    const teacher = await User.findById(channel.acceptorId);
     if (teacher) {
-      // Update rating stats (new Phase 7 fields)
       teacher.overallRatingSum = (teacher.overallRatingSum || 0) + rating;
       teacher.overallRatingCount = (teacher.overallRatingCount || 0) + 1;
 
-      // Also update legacy overallScore for backward compatibility
       const totalRatings = teacher.totalAnswered || 0;
       const seedVotes = 5;
       const seedScore = 1.0;
@@ -90,17 +231,13 @@ export async function POST(
       const accumulatedTotalScore = (seedScore * seedVotes) + accumulatedRealScore + rating;
       teacher.overallScore = accumulatedTotalScore / (seedVotes + (totalRatings + 1));
 
-      // Increment total answered (we do it here if not already done in /api/answers)
-      // Note: totalAnswered is counted per channel close, not per answer submission
       teacher.totalAnswered = (teacher.totalAnswered || 0) + 1;
 
       if (teacher.totalAnswered >= 10) {
         teacher.teacherModeVerified = true;
       }
 
-      // Credit points to teacher if monetized and answer exists
       if (teacher.isMonetized && answer) {
-        const config = await getPlatformConfig();
         const pointsEarned = calcTotalPointsEarned(
           answer.answerFormat,
           rating,
@@ -108,11 +245,11 @@ export async function POST(
         );
 
         teacher.pointBalance = (teacher.pointBalance || 0) + pointsEarned;
+        teacher.totalPointsEarned = (teacher.totalPointsEarned || 0) + pointsEarned;
       }
 
       await teacher.save();
 
-      // 4. Create Notification for Teacher
       const notifMessage = teacher.isMonetized && answer
         ? `Student rated your solution ${rating}/5 stars. Points credited!`
         : `Student rated your solution ${rating}/5 stars.`;
@@ -125,9 +262,7 @@ export async function POST(
       if (notif) await emitNotification(teacher._id.toString(), notif);
     }
 
-    // Notify clients instantly
     if (pusherServer) {
-      // Broadcast Channel Status Change
       await pusherServer.trigger(
         getChannelPusherName(channel._id.toString()),
         CHANNEL_CLOSED_EVENT,
@@ -137,7 +272,6 @@ export async function POST(
         }
       );
       
-      // Force refresh on the opponent's sidebar list
       await pusherServer.trigger(
         getUserPusherName(channel.acceptorId.toString()),
         CHANNEL_UPDATED_EVENT,

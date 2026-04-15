@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -16,7 +17,7 @@ import {
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
-import Answer from "@/models/Answer";
+import Answer, { type AnswerRecord } from "@/models/Answer";
 
 import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
@@ -43,11 +44,22 @@ function formatJoinedDate(value?: Date | string) {
     return "Recently joined";
   }
 
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return `Joined ${date.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
+}
+
+interface PopulatedQuestion {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  body: string;
+  status: string;
+  reactions: string[];
+  createdAt: Date;
+  reactionCount?: number;
+  answerId?: {
+    _id: mongoose.Types.ObjectId;
+    content?: string;
+    mediaUrls?: string[];
+  } | null;
 }
 
 function maskEmail(email: string) {
@@ -124,9 +136,9 @@ export default async function PublicProfilePage({
       isPublic: true,
     }).populate("questionId").sort({ createdAt: -1 }).lean();
     
-    totalMediaFiles = mediaAnswers.reduce((acc: number, a: any) => acc + (a.mediaUrls?.length || 0), 0);
+    totalMediaFiles = mediaAnswers.reduce((acc: number, a: AnswerRecord) => acc + (a.mediaUrls?.length || 0), 0);
     
-    mediaAnswers.forEach((ans: any) => {
+    mediaAnswers.forEach((ans: AnswerRecord & { questionId?: { _id: mongoose.Types.ObjectId; title: string; body: string } }) => {
       ans.mediaUrls?.forEach((url: string) => {
          const isVid = url.match(/\.(mp4|webm|ogg)$/i) || url.includes("video/upload");
          const qId = ans.questionId?._id?.toString() || ans.questionId?.toString();
@@ -144,7 +156,7 @@ export default async function PublicProfilePage({
           {/* Avatar */}
           <div className="relative mx-auto aspect-square w-full max-w-[296px] overflow-hidden rounded-full border border-border bg-muted shadow-sm">
             {profile.userImage ? (
-              <img src={profile.userImage} alt={profile.name} className="h-full w-full object-cover" />
+              <Image src={profile.userImage} alt={profile.name || ""} fill className="object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-primary text-6xl font-semibold text-primary-foreground drop-shadow-sm select-none">
                 {(profile.name || profile.username).slice(0, 2).toUpperCase()}
@@ -323,7 +335,7 @@ export default async function PublicProfilePage({
                 <div>
                   <h3 className="mb-4 text-base font-semibold text-foreground">Featured Activity</h3>
                   <div className="flex flex-col gap-4">
-                    {featureQuestions.map((item: any) => (
+                    {featureQuestions.map((item: PopulatedQuestion) => (
                       <details key={item._id.toString()} className="group rounded-lg border border-border bg-card shadow-sm transition hover:border-muted-foreground/50 overflow-hidden">
                         <summary className="flex cursor-pointer items-start justify-between p-5 list-none [&::-webkit-details-marker]:hidden focus:outline-none">
                           <div className="min-w-0 pr-4 flex-1">
@@ -367,7 +379,7 @@ export default async function PublicProfilePage({
                                              {isVideo ? (
                                                <video src={url} controls className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
                                              ) : (
-                                               <img src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                               <Image src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" width={400} height={300} />
                                              )}
                                            </div>
                                          );
@@ -394,7 +406,7 @@ export default async function PublicProfilePage({
           ) : tab === "questions" ? (
              <div className="space-y-4">
                {latestQuestions.length > 0 ? (
-                 latestQuestions.map((q: any) => (
+                 latestQuestions.map((q: PopulatedQuestion) => (
                    <details key={q._id.toString()} className="group rounded-lg border border-border bg-card shadow-sm transition hover:border-muted-foreground/50 overflow-hidden">
                      <summary className="flex cursor-pointer items-start justify-between p-5 list-none [&::-webkit-details-marker]:hidden focus:outline-none">
                        <div className="min-w-0 pr-4 flex-1">
@@ -428,7 +440,7 @@ export default async function PublicProfilePage({
                                           {isVideo ? (
                                             <video src={url} controls className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
                                           ) : (
-                                            <img src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" />
+                                            <Image src={url} alt="Answer Media" className="rounded-md max-w-full h-auto border border-border shadow-sm object-contain max-h-[300px]" width={400} height={300} />
                                           )}
                                         </div>
                                       );
@@ -479,7 +491,7 @@ export default async function PublicProfilePage({
                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                      {photoUrls.map((item, i) => (
                         <Link href={`/question/${item.questionId}`} key={`img-${i}`} className="block group relative aspect-square bg-muted rounded-lg overflow-hidden border border-border shadow-sm">
-                           <img src={item.url} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                           <Image src={item.url} alt="" fill className="object-cover group-hover:scale-105 transition duration-300" />
                         </Link>
                      ))}
                    </div>

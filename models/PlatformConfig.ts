@@ -29,7 +29,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 
 const platformConfigSchema = new Schema(
   {
-    // Format time limits in minutes
+    // Format time limits in minutes (default 15 for all)
     textFormatDuration: {
       type: Number,
       default: FORMAT.TEXT.DURATION_MINUTES,
@@ -80,10 +80,15 @@ const platformConfigSchema = new Schema(
       max: 100,
     },
 
-    // Referral System
+// Referral System
     referralBonusQuestions: {
       type: Number,
-      default: REFERRAL.BONUS_QUESTIONS,
+      default: REFERRAL.REFEREE_BONUS_QUESTIONS,
+      min: 0,
+    },
+    referrerBonusQuestions: {
+      type: Number,
+      default: REFERRAL.REFERER_BONUS_QUESTIONS,
       min: 0,
     },
     referralEnabled: {
@@ -130,6 +135,11 @@ const platformConfigSchema = new Schema(
       default: 20,
       min: 0,
     },
+    planGoDays: {
+      type: Number,
+      default: 30,
+      min: 1,
+    },
     planPlusPrice: {
       type: Number,
       default: 250,
@@ -139,6 +149,11 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: 50,
       min: 0,
+    },
+    planPlusDays: {
+      type: Number,
+      default: 60,
+      min: 1,
     },
     planProPrice: {
       type: Number,
@@ -150,6 +165,11 @@ const platformConfigSchema = new Schema(
       default: 100,
       min: 0,
     },
+    planProDays: {
+      type: Number,
+      default: 90,
+      min: 1,
+    },
     planMaxPrice: {
       type: Number,
       default: 1000,
@@ -159,6 +179,11 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: 200,
       min: 0,
+    },
+    planMaxDays: {
+      type: Number,
+      default: 120,
+      min: 1,
     },
 
     // ─── Manual Payment Display Config ───────────────────────────
@@ -207,6 +232,26 @@ const platformConfigSchema = new Schema(
     penaltyPointsForLowRating: {
       type: Number,
       default: TEACHER.PENALTY_POINTS_LOW_RATING,
+      min: 0,
+    },
+    bonusPointsFor3Star: {
+      type: Number,
+      default: TEACHER.BONUS_POINTS_3_STAR,
+      min: 0,
+    },
+    bonusPointsFor2Star: {
+      type: Number,
+      default: TEACHER.BONUS_POINTS_2_STAR,
+      min: 0,
+    },
+    maxQuestionResetCount: {
+      type: Number,
+      default: TEACHER.MAX_QUESTION_RESET_COUNT,
+      min: 1,
+    },
+    monthlyHighScoreBonusPoints: {
+      type: Number,
+      default: TEACHER.MONTHLY_HIGH_SCORE_BONUS_POINTS,
       min: 0,
     },
 
@@ -418,21 +463,29 @@ export function getHydratedPlans(config: PlatformConfigDocument) {
       return {
         ...plan,
         price: config.planGoPrice ?? plan.price,
+        maxQuestions: config.planGoMaxQuestions ?? plan.maxQuestions,
+        durationDays: config.planGoDays ?? 30,
       };
     } else if (plan.slug === "plus") {
       return {
         ...plan,
         price: config.planPlusPrice ?? plan.price,
+        maxQuestions: config.planPlusMaxQuestions ?? plan.maxQuestions,
+        durationDays: config.planPlusDays ?? 60,
       };
     } else if (plan.slug === "pro") {
       return {
         ...plan,
         price: config.planProPrice ?? plan.price,
+        maxQuestions: config.planProMaxQuestions ?? plan.maxQuestions,
+        durationDays: config.planProDays ?? 90,
       };
     } else if (plan.slug === "max") {
       return {
         ...plan,
         price: config.planMaxPrice ?? plan.price,
+        maxQuestions: config.planMaxMaxQuestions ?? plan.maxQuestions,
+        durationDays: config.planMaxDays ?? 120,
       };
     }
     return plan;

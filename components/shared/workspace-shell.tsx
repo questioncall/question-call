@@ -228,21 +228,25 @@ useEffect(() => {
     username: profile.username || user.username || "",
     role: profile.isHydrated ? profile.role : user.role,
     userImage: profile.userImage || user.userImage || "",
-  };
+};
 
-const handle = getUserHandle(resolvedUser);
-  const askQuestionHref = getAskQuestionPath(resolvedUser);
+  const handle = getUserHandle(resolvedUser);
   const leaderboardHref = getLeaderboardPath(resolvedUser);
   const messageHref = getMessagesPath(resolvedUser);
   const profileHref = getProfilePath(resolvedUser);
   const settingsHref = getSettingsPath(resolvedUser);
   const subscriptionHref = getSubscriptionPath(resolvedUser);
   const walletHref = getWalletPath(resolvedUser);
-  const primaryHref = resolvedUser.role === "STUDENT" ? askQuestionHref : messageHref;
-  const primaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
-  const useModalForPrimary = resolvedUser.role === "STUDENT";
-  const showQuestionFilter = pathname === "/" || pathname.startsWith("/ask");
+  const primaryHref = messageHref;
+  const primaryLabel = "Open messages";
+  const useModalForPrimary = false;
+  const showQuestionFilter = pathname === "/";
   const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel/");
+
+  // Keep Post Question button in header for students, but open messages for teachers
+  const headerPrimaryHref = resolvedUser.role === "STUDENT" ? "#" : messageHref;
+  const headerPrimaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
+  const headerUseModal = resolvedUser.role === "STUDENT";
 
   const mainItems = [
     {
@@ -263,15 +267,6 @@ collapseSidebarOnClick: true,
       isActive: pathname.startsWith("/message") || pathname.startsWith("/channel/"),
       collapseSidebarOnClick: true,
     },
-    ...(resolvedUser.role === "STUDENT" ? [{
-      href: askQuestionHref,
-      icon: CircleHelpIcon,
-      label: "Ask",
-      badge: "new",
-      badgeClassName: "text-primary bg-primary/10",
-      isActive: pathname.startsWith("/ask"),
-      collapseSidebarOnClick: true,
-    }] : []),
     {
       href: leaderboardHref,
       icon: TrophyIcon,
@@ -441,13 +436,13 @@ collapseSidebarOnClick: true,
       </Sidebar>
 
       <SidebarInset className={cn("bg-[#f6f8fb] dark:bg-background flex flex-col", isChatPage ? "h-svh overflow-hidden" : "min-h-svh")}>
-        <AuthenticatedHeader
+<AuthenticatedHeader
           isScrolled={isScrolled}
-          primaryHref={primaryHref}
-          primaryLabel={primaryLabel}
+          primaryHref={headerPrimaryHref}
+          primaryLabel={headerPrimaryLabel}
           showQuizLink={resolvedUser.role === "STUDENT"}
           showQuestionFilter={showQuestionFilter}
-          useModalForPrimary={useModalForPrimary}
+          useModalForPrimary={headerUseModal}
           userId={resolvedUser.id}
         />
 

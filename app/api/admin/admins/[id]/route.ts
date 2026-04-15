@@ -40,7 +40,7 @@ export async function DELETE(
     await User.findByIdAndDelete(id);
 
     return NextResponse.json({ message: "Admin removed successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Remove Admin Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -90,7 +90,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ message: "Admin updated successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update Admin Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

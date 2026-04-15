@@ -49,6 +49,7 @@ export type PlanDef = {
   maxQuestions: number | null;  // null = unlimited
 };
 
+// Plan slugs: free, go, plus, pro, max (must match getHydratedPlans)
 export const SUBSCRIPTION_PLANS: PlanDef[] = [
   {
     name: "Free Trial",
@@ -60,7 +61,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     color: "#6EE7B7", // Emerald 300
     titleClass: "text-[#065F46] dark:text-neutral-100",
     features: [
-      `${TRIAL.DURATION_DAYS} days free trial limit`,
+      `${TRIAL.DURATION_DAYS} days (${Math.ceil(TRIAL.DURATION_DAYS / 30)} month) valid`,
       `Ask up to ${TRIAL.MAX_QUESTIONS} questions`,
       "Play 1 Free Quiz daily",
       "Attend Free Courses",
@@ -80,6 +81,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     color: "#34D399", // Emerald 400
     titleClass: "text-[#065F46] dark:text-neutral-100",
     features: [
+      "30 days (1 month) valid",
       "Ask up to 20 questions",
       "Get answers from top 10% teachers",
       "Play 2x more Premium Quizzes",
@@ -100,6 +102,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     color: "#10B981", // Emerald 500
     titleClass: "text-[#065F46] dark:text-neutral-100",
     features: [
+      "60 days (2 months) valid",
       "Ask up to 50 questions",
       "Get answers from top 10% teachers",
       "Play 5x more Premium Quizzes",
@@ -107,7 +110,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     ],
     highlight: false,
     tax: 0,
-    durationDays: 30,
+    durationDays: 60,
     maxQuestions: 50,
   },
   {
@@ -120,6 +123,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     color: "#059669", // Emerald 600
     titleClass: "text-[#065F46] dark:text-neutral-100",
     features: [
+      "90 days (3 months) valid",
       "Ask up to 100 questions",
       "Get answers from top 10% teachers",
       "Play 10x more Premium Quizzes",
@@ -128,7 +132,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     ],
     highlight: false,
     tax: 0,
-    durationDays: 30,
+    durationDays: 90,
     maxQuestions: 100,
   },
   {
@@ -141,6 +145,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     color: "#047857", // Emerald 700
     titleClass: "text-[#065F46] dark:text-neutral-100",
     features: [
+      "120 days (4 months) valid",
       "Ask up to 200 questions",
       "Get answers from top 10% teachers",
       "Play 20x more Premium Quizzes",
@@ -149,7 +154,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     ],
     highlight: true,
     tax: 0,
-    durationDays: 30,
+    durationDays: 120,
     maxQuestions: 200,
   },
 ];
@@ -163,21 +168,21 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
 export const FORMAT = {
   TEXT: {
     /** Minutes allowed for a text answer */
-    DURATION_MINUTES: 30,
+    DURATION_MINUTES: 15,
     /** Points the teacher earns for a text answer (base, before rating bonus) */
     POINTS: 5,
   },
   PHOTO: {
-    DURATION_MINUTES: 60,
+    DURATION_MINUTES: 15,
     POINTS: 10,
   },
   VIDEO: {
-    DURATION_MINUTES: 180,
+    DURATION_MINUTES: 15,
     POINTS: 20,
   },
   /** Fallback when student picks "ANY" format */
   ANY: {
-    DURATION_MINUTES: 60,   // defaults to PHOTO duration
+    DURATION_MINUTES: 15,   // defaults to PHOTO duration
     POINTS: 10,             // defaults to PHOTO points
   },
 } as const;
@@ -194,7 +199,7 @@ export const TEACHER = {
   COMMISSION_PERCENT: 15,
 
   /** Score points deducted from teacher when they fail to answer in time */
-  TIMEOUT_SCORE_DEDUCTION: 5,
+  TIMEOUT_SCORE_DEDUCTION: 1,
 
   /**
    * Rating bonus multiplier applied to earnings.
@@ -204,13 +209,25 @@ export const TEACHER = {
   RATING_BONUS_MULTIPLIER: 1.5,
 
   /** Bonus points awarded for a 4-star rating */
-  BONUS_POINTS_4_STAR: 2,
+  BONUS_POINTS_4_STAR: 0.2,
 
   /** Bonus points awarded for a 5-star rating */
-  BONUS_POINTS_5_STAR: 5,
+  BONUS_POINTS_5_STAR: 0.4,
 
-  /** Points deducted for a 1-2 star rating */
-  PENALTY_POINTS_LOW_RATING: 2,
+  /** Bonus points awarded for a 3-star rating */
+  BONUS_POINTS_3_STAR: 0.1,
+
+  /** Bonus points awarded for a 2-star rating */
+  BONUS_POINTS_2_STAR: 0.1,
+
+  /** Points deducted for a 1-star rating */
+  PENALTY_POINTS_LOW_RATING: 1,
+
+  /** Max times a question can be reset (pushed to top) after rating 1 */
+  MAX_QUESTION_RESET_COUNT: 3,
+
+  /** Monthly bonus points for maintaining high score */
+  MONTHLY_HIGH_SCORE_BONUS_POINTS: 1,
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -308,8 +325,10 @@ export const QUIZ = {
 // ─────────────────────────────────────────────────────────────────────
 
 export const REFERRAL = {
-  /** Bonus questions awarded to both referrer and referee */
-  BONUS_QUESTIONS: 10,
+  /** Bonus questions awarded to the referrer when someone signs up with their code */
+  REFERER_BONUS_QUESTIONS: 3,
+  /** Bonus questions awarded to the referee (new user) when they sign up with a referral code */
+  REFEREE_BONUS_QUESTIONS: 1,
   /** Quick toggle to disable referrals without deleting data */
   ENABLED: true,
 } as const;

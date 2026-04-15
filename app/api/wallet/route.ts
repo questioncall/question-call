@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -9,41 +10,43 @@ import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import User from "@/models/User";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-
+    console.log("🎯 Wallet API called, session:", JSON.stringify({ id: session?.user?.id, role: session?.user?.role }));
     if (
       !session?.user?.id ||
       (session.user.role !== "STUDENT" && session.user.role !== "TEACHER")
     ) {
+      console.log("🚫 Wallet: Unauthorized - no valid session or wrong role");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
+    console.log("✅ Wallet: DB connected, looking up user:", session.user.id);
 
     const user = await User.findById(session.user.id).select(
-      [
-        "role",
-        "points",
-        "pointBalance",
-        "totalAnswered",
-        "isMonetized",
-        "overallRatingSum",
-        "overallRatingCount",
-        "overallScore",
-        "subscriptionStatus",
-        "subscriptionEnd",
-        "esewaNumber",
-        "planSlug",
-        "questionsAsked",
-        "bonusQuestions",
-        "referralCode",
-      ].join(" ")
+      "role points pointBalance totalAnswered isMonetized overallRatingSum overallRatingCount overallScore subscriptionStatus subscriptionEnd esewaNumber planSlug questionsAsked bonusQuestions referralCode totalPointsEarned totalPointsWithdrawn totalPenaltyPoints"
     );
+
+    console.log("🔍 Wallet: User lookup result:", user ? "found" : "NOT FOUND");
+    console.log("🔍 Wallet: User data keys:", user ? Object.keys(user.toObject()) : "N/A");
+    console.log("🔍 Wallet: User referralCode value:", user?.referralCode);
+    console.log("🔍 Wallet: User.toObject():", user?.toObject());
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Fallback: if referralCode is missing/null, generate one and save
+    let userReferralCode = user.referralCode;
+    if (!userReferralCode) {
+      userReferralCode = `REF-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      user.referralCode = userReferralCode;
+      await user.save();
+      console.log("🎯 Generated missing referralCode:", userReferralCode);
     }
 
     const config = await getPlatformConfig();
@@ -60,6 +63,14 @@ export async function GET() {
       session.user.role === "TEACHER"
         ? user.pointBalance ?? 0
         : user.points ?? 0;
+
+    const totalPointsWithdrawn = withdrawalHistory
+      .filter(w => w.status === "COMPLETED")
+      .reduce((sum, w) => sum + w.pointsRequested, 0);
+
+    const pendingWithdrawal = withdrawalHistory
+      .filter(w => w.status === "PENDING")
+      .reduce((sum, w) => sum + w.pointsRequested, 0);
 
     const overallScore =
       (user.overallRatingCount ?? 0) > 0
@@ -106,9 +117,14 @@ export async function GET() {
       maxQuestions,
       baseMaxQuestions,
       bonusQuestions,
-      referralCode: user.referralCode || null,
+      referralCode: userReferralCode || null,
       withdrawalHistory,
       savedEsewaNumber: user.esewaNumber || null,
+      totalPointsEarned: Math.max(user.totalPointsEarned ?? 0, roundPoints(pointBalance + totalPointsWithdrawn + (user.totalPenaltyPoints ?? 0))),
+      totalPointsWithdrawn: roundPoints(totalPointsWithdrawn),
+      pendingWithdrawal: roundPoints(pendingWithdrawal),
+      totalPenaltyPoints: user.totalPenaltyPoints ?? 0,
+      creditablePoints: roundPoints(pointBalance),
     });
   } catch (error) {
     console.error("[GET /api/wallet]", error);

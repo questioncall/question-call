@@ -62,10 +62,11 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const username = await generateUniqueUsername({ email, name });
-    const userOwnReferralCode = `REF-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+const userOwnReferralCode = `REF-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
     let referrerUser = null;
-    let bonusToAward = 0;
+    let refereeBonus = 0;
+    let referrerBonus = 0;
     let referralCodeUsed = null;
 
     if (payload.referralCode) {
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
           isSuspended: false
         });
         if (referrerUser && referrerUser.email !== email) {
-          bonusToAward = config.referralBonusQuestions || 10;
+          refereeBonus = config.referralBonusQuestions || 1;
+          referrerBonus = config.referrerBonusQuestions || 3;
           referralCodeUsed = referrerUser.referralCode;
         }
       }
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
       passwordHash,
       role,
       referralCode: userOwnReferralCode,
-      bonusQuestions: bonusToAward,
+      bonusQuestions: refereeBonus,
       referredBy: referrerUser ? referrerUser._id : null,
       points: 0,
       pointBalance: 0,
@@ -100,15 +102,23 @@ export async function POST(request: Request) {
       overallRatingCount: 0,
     });
 
-    if (referrerUser) {
-      referrerUser.bonusQuestions = (referrerUser.bonusQuestions || 0) + bonusToAward;
+    console.log("Created user with referralCode:", user.referralCode);
+
+if (referrerUser) {
+      referrerUser.bonusQuestions = (referrerUser.bonusQuestions || 0) + referrerBonus;
+      if (!referrerUser.referralHistory) referrerUser.referralHistory = [];
+      referrerUser.referralHistory.push({
+        referredUserId: user._id,
+        pointsEarned: referrerBonus,
+        date: new Date()
+      });
       await referrerUser.save();
 
       await Referral.create({
         referrerId: referrerUser._id,
         refereeId: user._id,
         referralCode: referralCodeUsed,
-        bonusAwarded: bonusToAward,
+        bonusAwarded: referrerBonus,
         status: "COMPLETED",
       });
 
@@ -116,7 +126,7 @@ export async function POST(request: Request) {
       const notification = await Notification.create({
         userId: referrerUser._id,
         type: "SYSTEM",
-        message: `🎉 Someone joined using your referral link! You've been awarded ${bonusToAward} bonus questions!`,
+        message: `🎉 Someone joined using your referral link! You've been awarded ${referrerBonus} bonus questions!`,
         isRead: false,
       }).catch(() => null);
 
@@ -129,7 +139,7 @@ export async function POST(request: Request) {
         referrerUser.name,
         "You Earned Bonus Questions! 🎉",
         `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/subscription`,
-        `Someone just joined Question Hub using your referral link. You have been awarded ${bonusToAward} bonus questions permanently to your account!`
+        `Someone just joined Question Hub using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
       ).catch(console.error);
     }
 
@@ -150,11 +160,11 @@ export async function POST(request: Request) {
     await VerificationToken.deleteOne({ email });
 
     // Fire welcome email asynchronously
-    if (referrerUser && bonusToAward > 0) {
+    if (referrerUser && refereeBonus > 0) {
       const refereeNotification = await Notification.create({
         userId: user._id,
         type: "SYSTEM",
-        message: `🎉 Welcome! You received ${bonusToAward} bonus questions for signing up with a referral link!`,
+        message: `🎉 Welcome! You received ${refereeBonus} bonus questions for signing up with a referral link!`,
         isRead: false,
       }).catch(() => null);
 
@@ -167,7 +177,7 @@ export async function POST(request: Request) {
         name,
         "Welcome to Question Hub! (+ Bonus Questions 🎉)",
         process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${bonusToAward} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
+        `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${refereeBonus} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
       ).catch(console.error);
     } else {
       void sendGreetingEmail(

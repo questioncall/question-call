@@ -46,8 +46,10 @@ export function calcRatingAdjustment(
 ): number {
   if (rating === 5) return config.bonusPointsFor5Star;
   if (rating === 4) return config.bonusPointsFor4Star;
-  if (rating <= 2) return -config.penaltyPointsForLowRating;
-  return 0; // rating === 3, no adjustment
+  if (rating === 3) return config.bonusPointsFor3Star || 0;
+  if (rating === 2) return config.bonusPointsFor2Star || 0;
+  if (rating === 1) return -config.penaltyPointsForLowRating;
+  return 0;
 }
 
 /**

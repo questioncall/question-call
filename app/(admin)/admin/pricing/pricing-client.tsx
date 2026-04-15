@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CreditCardIcon, Loader2Icon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -24,7 +24,7 @@ const PLAN_FIELDS: Array<{
 ];
 
 export function PricingClient() {
-  const [config, setConfig] = useState<any>(null);
+  const [config, setConfig] = useState<Record<string, number | boolean> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -35,8 +35,9 @@ export function PricingClient() {
         if (!res.ok) throw new Error("Failed to fetch configuration");
         const data = await res.json();
         setConfig(data);
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to fetch configuration";
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -45,7 +46,7 @@ export function PricingClient() {
   }, []);
 
   const handleChange = (field: string, value: string) => {
-    setConfig((prev: any) => ({ ...prev, [field]: Number(value) }));
+    setConfig((prev) => prev ? { ...prev, [field]: Number(value) } : null);
   };
 
   const handleSave = async () => {
@@ -62,8 +63,9 @@ export function PricingClient() {
 
       toast.success("Pricing configuration updated successfully! This is now live.");
       setConfig(data);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update pricing config";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -102,7 +104,7 @@ export function PricingClient() {
             <label className="text-sm font-medium">Duration (Days)</label>
             <Input
               type="number"
-              value={config.trialDays || 3}
+              value={(config.trialDays as number) || 3}
               onChange={(e) => handleChange("trialDays", e.target.value)}
             />
           </div>
@@ -110,7 +112,7 @@ export function PricingClient() {
             <label className="text-sm font-medium">Questions Included</label>
             <Input
               type="number"
-              value={config.trialMaxQuestions ?? 5}
+              value={(config.trialMaxQuestions as number) ?? 5}
               onChange={(e) => handleChange("trialMaxQuestions", e.target.value)}
             />
           </div>
@@ -129,8 +131,8 @@ export function PricingClient() {
               <input
                 type="checkbox"
                 id="referralEnabled"
-                checked={config.referralEnabled ?? true}
-                onChange={(e) => setConfig((prev: any) => ({ ...prev, referralEnabled: e.target.checked }))}
+                checked={(config.referralEnabled as boolean) ?? true}
+                onChange={(e) => setConfig((prev) => prev ? { ...prev, referralEnabled: e.target.checked } : null)}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <label htmlFor="referralEnabled" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -143,9 +145,9 @@ export function PricingClient() {
             <label className="text-sm font-medium">Bonus Questions</label>
             <Input
               type="number"
-              value={config.referralBonusQuestions ?? 10}
+              value={(config.referralBonusQuestions as number) ?? 10}
               onChange={(e) => handleChange("referralBonusQuestions", e.target.value)}
-              disabled={!(config.referralEnabled ?? true)}
+              disabled={!((config.referralEnabled as boolean) ?? true)}
             />
             <p className="text-xs text-muted-foreground mt-1">Questions awarded to both the referrer and the new referee.</p>
           </div>
@@ -170,7 +172,7 @@ export function PricingClient() {
                 <label className="text-sm font-medium">Price (NPR)</label>
                 <Input
                   type="number"
-                  value={config[plan.priceField] || plan.price}
+                  value={((config as Record<string, unknown>)[plan.priceField] as number) || plan.price}
                   onChange={(e) => handleChange(plan.priceField as string, e.target.value)}
                 />
               </div>
@@ -184,7 +186,7 @@ export function PricingClient() {
               <label className="text-sm font-medium">Questions Included</label>
               <Input
                 type="number"
-                value={config[plan.questionsField] ?? plan.questions}
+                value={((config as Record<string, unknown>)[plan.questionsField] as number) ?? plan.questions}
                 onChange={(e) => handleChange(plan.questionsField, e.target.value)}
               />
             </div>

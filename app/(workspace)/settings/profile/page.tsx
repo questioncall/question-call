@@ -12,6 +12,7 @@ import {
 import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User, { UserRecord } from "@/models/User";
+export const dynamic = "force-dynamic";
 
 export default async function SettingsProfilePage() {
   const session = await getSafeServerSession();

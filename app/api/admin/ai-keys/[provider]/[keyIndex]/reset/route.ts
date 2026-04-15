@@ -3,10 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import AIProviderConfig from "@/models/AIProviderConfig";
+import type { AIKeySlot } from "@/models/AIProviderConfig";
 
 const ALLOWED_PROVIDERS = ["gemini", "groq", "openrouter", "mistral", "cerebras"];
 
-export async function PATCH(request: Request, context: any) {
+export async function PATCH(request: Request, context: { params: Promise<{ provider: string; keyIndex: string }> }) {
   const params = await context.params;
   const provider = params.provider;
   const keyIndex = parseInt(params.keyIndex, 10);
@@ -28,17 +29,18 @@ export async function PATCH(request: Request, context: any) {
     await connectToDatabase();
     const config = await AIProviderConfig.getSingleton();
     
-    let providerArray = (config as any)[provider];
+    const providerArray = config[provider as keyof typeof config] as AIKeySlot[] | undefined;
     if (providerArray && providerArray.length > keyIndex) {
-      providerArray[keyIndex].isExhausted = false;
-      providerArray[keyIndex].exhaustedAt = undefined;
-      providerArray[keyIndex].resetAt = undefined;
+      providerArray[keyIndex]!.isExhausted = false;
+      providerArray[keyIndex]!.exhaustedAt = undefined;
+      providerArray[keyIndex]!.resetAt = undefined;
       await config.save();
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`PATCH Reset AI Key (${provider}) Error:`, error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

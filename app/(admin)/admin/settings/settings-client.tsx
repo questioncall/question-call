@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ShieldCheckIcon,
   KeyIcon,
@@ -36,7 +37,17 @@ type Admin = {
   createdAt: string;
 };
 
-export function SettingsClient({ user }: { user: any }) {
+type SettingsUser = {
+  _id: string;
+  name: string | undefined;
+  email: string | null;
+  isMasterAdmin: boolean;
+  userImage: string | null;
+  role: string;
+  createdAt: string;
+};
+
+export function SettingsClient({ user }: { user: SettingsUser }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [updatingPass, setUpdatingPass] = useState(false);
@@ -90,8 +101,9 @@ export function SettingsClient({ user }: { user: any }) {
       toast.success("Password updated successfully.");
       setCurrentPassword("");
       setNewPassword("");
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update password";
+      toast.error(message);
     } finally {
       setUpdatingPass(false);
     }
@@ -122,8 +134,9 @@ export function SettingsClient({ user }: { user: any }) {
       setNewAdminPassword("");
       setMakeMasterAdmin(false);
       fetchAdmins();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to create admin";
+      toast.error(message);
     } finally {
       setCreatingAdmin(false);
     }
@@ -140,8 +153,9 @@ export function SettingsClient({ user }: { user: any }) {
       toast.success("Admin removed successfully.");
       setDeleteTarget(null);
       fetchAdmins();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to remove admin";
+      toast.error(message);
     }
   };
 
@@ -160,8 +174,9 @@ export function SettingsClient({ user }: { user: any }) {
       toast.success("Admin promoted to master admin.");
       setPromoteTarget(null);
       fetchAdmins();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to promote admin";
+      toast.error(message);
     }
   };
 
@@ -333,7 +348,7 @@ export function SettingsClient({ user }: { user: any }) {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <a href="/admin/ai-keys">Manage AI Keys</a>
+            <Link href="/admin/ai-keys">Manage AI Keys</Link>
           </Button>
         </CardContent>
       </Card>

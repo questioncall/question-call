@@ -18,7 +18,7 @@ export default async function AdminCouponsPage() {
 
   const [coupons, redemptions, courses] = await Promise.all([
     CourseCoupon.find().sort({ createdAt: -1 }).lean(),
-    CourseCouponRedemption.find().lean(),
+    CourseCouponRedemption.find().sort({ redeemedAt: -1 }).lean(),
     Course.find().select("_id title slug").lean(),
   ]);
 
@@ -29,6 +29,14 @@ export default async function AdminCouponsPage() {
   });
 
   const courseById = new Map(courses.map((c) => [c._id.toString(), c]));
+
+  const redemptionHistory = redemptions.map((r) => ({
+    _id: r._id.toString(),
+    couponId: r.couponId.toString(),
+    studentId: r.studentId.toString(),
+    courseId: r.courseId?.toString() ?? null,
+    redeemedAt: r.redeemedAt.toString(),
+  }));
 
   return (
     <AdminCouponsClient
@@ -47,6 +55,12 @@ export default async function AdminCouponsPage() {
         isActive: c.isActive,
         createdAt: c.createdAt.toString(),
       }))}
+      courses={courses.map((c) => ({
+        _id: c._id.toString(),
+        title: c.title,
+        slug: c.slug,
+      }))}
+      redemptionHistory={redemptionHistory}
     />
   );
 }

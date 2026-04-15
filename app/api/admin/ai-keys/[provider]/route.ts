@@ -3,10 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import AIProviderConfig from "@/models/AIProviderConfig";
+import type { AIKeySlot } from "@/models/AIProviderConfig";
 
 const ALLOWED_PROVIDERS = ["gemini", "groq", "openrouter", "mistral", "cerebras"];
 
-export async function POST(request: Request, context: any) {
+export async function POST(request: Request, context: { params: Promise<{ provider: string }> }) {
   const params = await context.params;
   const provider = params.provider;
 
@@ -29,7 +30,7 @@ export async function POST(request: Request, context: any) {
     await connectToDatabase();
     const config = await AIProviderConfig.getSingleton();
 
-    const providerArray = (config as any)[provider];
+    const providerArray = config[provider as keyof typeof config] as AIKeySlot[] | undefined;
     if (providerArray) {
       providerArray.push({
         key,
@@ -40,8 +41,9 @@ export async function POST(request: Request, context: any) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`POST Add AI Key (${provider}) Error:`, error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

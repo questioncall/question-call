@@ -6,6 +6,7 @@ import Channel from "@/models/Channel";
 import User from "@/models/User";
 import Answer from "@/models/Answer";
 import Notification from "@/models/Notification";
+import { getPlatformConfig } from "@/models/PlatformConfig";
 import type { FeedQuestion } from "@/types/question";
 
 type PopulatedQuestion = {
@@ -161,75 +162,99 @@ export async function POST(request: Request) {
       channel.ratingGiven = 1;
       await channel.save();
 
-      // Bayesian penalty — 1 is the worst
-      await applyBayesianRating(channel.acceptorId._id.toString(), 1);
+      const config = await getPlatformConfig();
+      const maxResets = config.maxQuestionResetCount || 3;
+
+      const teacher = await User.findById(channel.acceptorId._id);
+      if (teacher) {
+        const penalty = config.scoreDeductionAmount || 1;
+        teacher.pointBalance = Math.max(0, (teacher.pointBalance || 0) - penalty);
+        teacher.totalPenaltyPoints = (teacher.totalPenaltyPoints || 0) + penalty;
+        await teacher.save();
+      }
 
       const penaltyNotif = await Notification.create({
         userId: channel.acceptorId._id,
         type: "QUESTION_RESET",
-        message: `You did not submit an answer in time. Your rating has been penalized (1/5).`,
+        message: `You did not submit an answer in time. ${config.scoreDeductionAmount} point(s) deducted.`,
       }).catch(() => null);
       if (penaltyNotif) await emitNotification(channel.acceptorId._id.toString(), penaltyNotif);
 
       // Reset the question back to OPEN feed
       const question = channel.questionId as PopulatedQuestion | null;
       if (question) {
-        question.status = "RESET";
-        question.acceptedById = null;
-        question.acceptedAt = null;
-        question.resetCount = (question.resetCount || 0) + 1;
-        await question.save();
+        const currentResetCount = question.resetCount || 0;
 
-        const asker = channel.askerId as unknown as {
-          _id: { toString(): string };
-          name?: string;
-          username?: string;
-          userImage?: string;
-        };
+        if (currentResetCount < maxResets) {
+          question.status = "RESET";
+          question.acceptedById = null;
+          question.acceptedAt = null;
+          question.resetCount = currentResetCount + 1;
+          await question.save();
 
-        const reactions = Array.isArray(question.reactions) ? question.reactions : [];
+          const asker = channel.askerId as unknown as {
+            _id: { toString(): string };
+            name?: string;
+            username?: string;
+            userImage?: string;
+          };
 
-        const feedQuestion: FeedQuestion = {
-          id: question._id.toString(),
-          channelId: channel._id.toString(),
-          askerId: asker._id.toString(),
-          askerName: asker.name || "Anonymous",
-          askerUsername: asker.username || undefined,
-          askerImage: asker.userImage || undefined,
-          title: question.title,
-          body: question.body,
-          answerFormat: question.answerFormat,
-          answerVisibility: question.answerVisibility,
-          status: "RESET",
-          subject: question.subject || undefined,
-          stream: question.stream || undefined,
-          level: question.level || undefined,
-          resetCount: question.resetCount,
-          reactions: reactions.map((r: { userId?: { toString(): string } | string | null; type: string }) => ({
-            userId: r.userId?.toString() || "",
-            type: r.type as "like" | "insightful" | "same_doubt",
-          })),
-          acceptedById: null,
-          acceptedAt: null,
-          acceptedByName: null,
-          answerCount: 0,
-          reactionCount: reactions.length,
-          commentCount: 0,
-          createdAt: new Date(question.createdAt).toISOString(),
-          updatedAt: new Date(question.updatedAt).toISOString(),
-        };
+          const reactions = Array.isArray(question.reactions) ? question.reactions : [];
 
-        await emitQuestionUpdated(feedQuestion).catch(() => {});
+          const feedQuestion: FeedQuestion = {
+            id: question._id.toString(),
+            channelId: channel._id.toString(),
+            askerId: asker._id.toString(),
+            askerName: asker.name || "Anonymous",
+            askerUsername: asker.username || undefined,
+            askerImage: asker.userImage || undefined,
+            title: question.title,
+            body: question.body,
+            answerFormat: question.answerFormat,
+            answerVisibility: question.answerVisibility,
+            status: "RESET",
+            subject: question.subject || undefined,
+            stream: question.stream || undefined,
+            level: question.level || undefined,
+            resetCount: question.resetCount,
+            reactions: reactions.map((r: { userId?: { toString(): string } | string | null; type: string }) => ({
+              userId: r.userId?.toString() || "",
+              type: r.type as "like" | "insightful" | "same_doubt",
+            })),
+            acceptedById: null,
+            acceptedAt: null,
+            acceptedByName: null,
+            answerCount: 0,
+            reactionCount: reactions.length,
+            commentCount: 0,
+            createdAt: new Date(question.createdAt).toISOString(),
+            updatedAt: new Date(question.updatedAt).toISOString(),
+          };
+
+          await emitQuestionUpdated(feedQuestion).catch(() => {});
+
+          const reopenNotif = await Notification.create({
+            userId: channel.askerId._id,
+            type: "QUESTION_RESET",
+            message: `Teacher didn't answer in time. Your question has been re-opened. (${question.resetCount}/${maxResets} attempts)`,
+          }).catch(() => null);
+          if (reopenNotif) await emitNotification(channel.askerId._id.toString(), reopenNotif);
+        } else {
+          question.status = "SOLVED";
+          question.acceptedById = null;
+          question.acceptedAt = null;
+          await question.save();
+
+          const maxReachedNotif = await Notification.create({
+            userId: channel.askerId._id,
+            type: "CHANNEL_EXPIRED",
+            message: `Question auto-marked as solved after ${maxResets} attempts.`,
+          }).catch(() => null);
+          if (maxReachedNotif) await emitNotification(channel.askerId._id.toString(), maxReachedNotif);
+        }
       }
 
       await emitChannelStatusUpdate(channel._id.toString(), "EXPIRED").catch(() => {});
-
-      const reopenNotif = await Notification.create({
-        userId: channel.askerId._id,
-        type: "QUESTION_RESET",
-        message: `The teacher didn't answer in time. Your question has been re-opened.`,
-      }).catch(() => null);
-      if (reopenNotif) await emitNotification(channel.askerId._id.toString(), reopenNotif);
 
       expiredCount++;
     }

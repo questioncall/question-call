@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { Plus, Trash2, RotateCcw, AlertCircle, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,8 +38,9 @@ export default function AIKeysAdminPage() {
       if (!res.ok) throw new Error("Failed to fetch data");
       const json = await res.json();
       setData(json);
-    } catch (err: any) {
-      toast.error(err.message || "Error loading keys");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error loading keys";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -70,8 +71,9 @@ export default function AIKeysAdminPage() {
       });
       if (!res.ok) throw new Error("Failed to save order");
       toast.success("Provider priority updated");
-    } catch (err: any) {
-      toast.error(err.message || "Error saving priority");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error saving priority";
+      toast.error(message);
       fetchData(); // Revert on error
     }
   };
@@ -95,8 +97,9 @@ export default function AIKeysAdminPage() {
       setNewKey("");
       setNewLabel("");
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || "Error adding key");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error adding key";
+      toast.error(message);
     } finally {
       setAddingTo(null);
     }
@@ -111,8 +114,9 @@ export default function AIKeysAdminPage() {
       if (!res.ok) throw new Error("Failed to delete key");
       toast.success("Key deleted");
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || "Error deleting key");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error deleting key";
+      toast.error(message);
     }
   };
 
@@ -124,8 +128,9 @@ export default function AIKeysAdminPage() {
       if (!res.ok) throw new Error("Failed to reset key");
       toast.success("Key successfully un-exhausted");
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || "Error resetting key");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error resetting key";
+      toast.error(message);
     }
   };
 
