@@ -83,17 +83,20 @@ export async function GET() {
     );
 
     const items: ChannelListItem[] = channels.map((ch) => {
-      const isAsker = ch.askerId._id.toString() === userId;
-      const counterpart = isAsker
-        ? (ch.acceptorId as unknown as { _id: { toString(): string }; name?: string; userImage?: string })
-        : (ch.askerId as unknown as { _id: { toString(): string }; name?: string; userImage?: string });
-      const question = ch.questionId as unknown as { title?: string };
+      // Handle cases where populate might return null
+      const askerIdObj = ch.askerId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
+      const acceptorIdObj = ch.acceptorId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
+      const questionObj = ch.questionId as unknown as { title?: string } | null;
+      
+      const isAsker = askerIdObj?._id?.toString() === userId;
+      
+      const counterpart = isAsker ? acceptorIdObj : askerIdObj;
       const lastMsg = lastMessageMap.get(ch._id.toString());
       const unreadCount = unreadCountMap.get(ch._id.toString()) || 0;
 
       return {
         id: ch._id.toString(),
-        questionTitle: question?.title || "Untitled",
+        questionTitle: questionObj?.title || "Untitled",
         counterpartName: counterpart?.name || "Unknown",
         counterpartImage: counterpart?.userImage || undefined,
         status: ch.status as ChannelListItem["status"],
