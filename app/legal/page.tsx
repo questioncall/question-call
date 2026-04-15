@@ -1,6 +1,8 @@
 import { LegalContent } from "@/components/shared/legal-content";
 import { getLegalContent, getPlatformConfig } from "@/models/PlatformConfig";
 
+export const dynamic = 'force-dynamic';
+
 export default async function LegalPage() {
   const config = await getPlatformConfig();
   const legalContent = getLegalContent(config);
