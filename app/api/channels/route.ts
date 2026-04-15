@@ -114,7 +114,7 @@ export async function GET() {
           questionTitle: "Error",
           counterpartName: "Unknown",
           counterpartImage: undefined,
-          status: "OPEN" as const,
+          status: ch.status as ChannelListItem["status"],
           lastMessagePreview: undefined,
           lastMessageAt: undefined,
           unreadCount: 0,
