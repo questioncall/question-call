@@ -34,15 +34,23 @@ export async function connectToDatabase() {
   }
 
   if (!cached.promise) {
+    const opts: mongoose.ConnectOptions = {
+      bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      maxIdleTimeMS: 10000,
+    };
+
     cached.promise = mongoose
-      .connect(getMongoUri(), {
-        bufferCommands: false,
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 30000,
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: 30000,
-      })
-      .then((instance) => instance);
+      .connect(getMongoUri(), opts)
+      .then((instance) => instance)
+      .catch((err) => {
+        console.error("MongoDB connection error:", err.message);
+        cached.promise = null;
+        throw err;
+      });
   }
 
   cached.conn = await cached.promise;
