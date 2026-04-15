@@ -202,6 +202,9 @@ useEffect(() => {
       questionsAsked: 0,
       questionsRemaining: null,
       maxQuestions: 0,
+      baseMaxQuestions: 0,
+      bonusQuestions: 0,
+      referralCode: null,
     }));
   }, [dispatch, user.email, user.id, user.name, user.role, user.userImage, user.username]);
 

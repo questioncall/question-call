@@ -338,7 +338,7 @@ export function AuthenticatedHeader({
                 <Link href={primaryHref}>{primaryLabel}</Link>
               </Button>
             )}
-{showQuestionFilter ? (
+            {showQuestionFilter ? (
               <Button
                 className="hidden sm:inline-flex"
                 onClick={() => { setDraftFilters(currentFilters); setIsFilterOpen(true); }}
@@ -349,7 +349,7 @@ export function AuthenticatedHeader({
                 {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </Button>
             ) : null}
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
+            <Button asChild variant="outline" className="hidden sm:inline-flex border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary">
               <Link href="/courses">
                 <BookOpenIcon className="mr-1 size-4" />
                 Courses

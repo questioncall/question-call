@@ -26,14 +26,14 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as CreateQuestionPayload;
 
-    if (!body.title || body.title.trim().length < 6 || body.title.trim().length > 180) {
+    if (typeof body.title !== "string" || body.title.trim().length < 6 || body.title.trim().length > 180) {
       return NextResponse.json(
         { error: "Title must be between 6 and 180 characters" },
         { status: 400 },
       );
     }
 
-    if (!body.body || body.body.trim().length < 12 || body.body.trim().length > 5000) {
+    if (typeof body.body !== "string" || body.body.trim().length < 12 || body.body.trim().length > 5000) {
       return NextResponse.json(
         { error: "Body must be between 12 and 5000 characters" },
         { status: 400 },

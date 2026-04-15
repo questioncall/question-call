@@ -26,6 +26,11 @@ import {
   BarChart3Icon,
   AwardIcon,
   ChevronDownIcon,
+  PlayCircleIcon,
+  UsersIcon,
+  CalendarIcon,
+  BookOpenIcon,
+  GraduationCap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -287,6 +292,7 @@ function Nav() {
             ["#for-students", "Students"],
             ["#for-teachers", "Teachers"],
             ["#quiz", "Quiz"],
+            ["/courses", "Courses"],
           ].map(([href, label]) => (
             <a
               key={href}
@@ -1840,141 +1846,309 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
   const courses = [
     {
       subject: "Mathematics",
-      title: "Calculus Fundamentals",
-      level: "Grade 11",
+      title: "Complete Calculus Mastery",
+      level: "Grade 11-12",
       uploader: "Aarav · Teacher",
       color: "#1f766e",
+      pricing: "PAID",
+      price: "रू 499",
+      videos: 24,
+      duration: "6h 30m",
+      liveSessions: true,
+      isFeatured: true,
     },
     {
       subject: "Physics",
-      title: "Mechanics & Motion",
+      title: "Mechanics & Motion Fundamentals",
       level: "Grade 10",
-      uploader: "Platform Admin",
+      uploader: "Priya · Teacher",
       color: "#2176ae",
+      pricing: "FREE",
+      videos: 12,
+      duration: "3h 15m",
+      liveSessions: false,
+      isFeatured: false,
     },
     {
       subject: "Chemistry",
       title: "Organic Chemistry Vol. I",
-      level: "Advanced",
-      uploader: "Priya · Student",
+      level: "Grade 11",
+      uploader: "Admin",
       color: "#7c3aed",
+      pricing: "SUBSCRIPTION",
+      videos: 18,
+      duration: "5h 00m",
+      liveSessions: true,
+      isFeatured: false,
     },
     {
       subject: "Mathematics",
-      title: "Algebra Workbook",
-      level: "Beginner",
-      uploader: "Platform Admin",
+      title: "Algebra Essentials",
+      level: "Grade 9",
+      uploader: "Rohan · Teacher",
       color: "#f59e0b",
+      pricing: "FREE",
+      videos: 8,
+      duration: "2h 10m",
+      liveSessions: false,
+      isFeatured: false,
     },
   ];
+
+  const pricingBadge = (pricing: string, price?: string) => {
+    if (pricing === "FREE") {
+      return { bg: "rgba(34,197,94,0.15)", color: "#22c55e", label: "FREE" };
+    } else if (pricing === "SUBSCRIPTION") {
+      return { bg: "rgba(124,58,237,0.15)", color: "#7c3aed", label: "SUBSCRIPTION" };
+    } else {
+      return { bg: "rgba(245,158,11,0.15)", color: "#f59e0b", label: price || "PAID" };
+    }
+  };
 
   return (
     <section
       ref={ref}
       style={{ padding: "6rem 1.5rem", maxWidth: 1100, margin: "0 auto" }}
     >
-      <SectionLabel label="Course Library" />
-      <h2 style={headingStyle(isDark)}>Community-curated study resources</h2>
+      <SectionLabel label="Video Courses" />
+      <h2 style={headingStyle(isDark)}>Learn at your own pace with expert-led video courses</h2>
       <p style={subStyle(isDark)}>
-        Students, teachers, and admins upload course PDFs. Anyone can browse,
-        filter, and read — for free.
+        Structured video courses created by verified teachers. Three pricing options — free, subscription-inclusive, or one-time purchase. Includes progress tracking and live sessions for premium courses.
       </p>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))",
-          gap: 18,
+          gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
+          gap: 20,
           marginTop: "3rem",
         }}
       >
-        {courses.map(({ subject, title, level, uploader, color }, i) => (
-          <div
-            key={title}
-            style={{
-              borderRadius: 16,
-              border: `1px solid ${border}`,
-              background: isDark
-                ? "rgba(15,35,30,0.7)"
-                : "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(16px)",
-              overflow: "hidden",
-              cursor: "default",
-              opacity: visible ? 1 : 0,
-              transform: visible ? "translateY(0)" : "translateY(20px)",
-              transition: `all 0.45s ${i * 0.08}s`,
-              boxShadow: `0 4px 20px rgba(0,0,0,${isDark ? "0.25" : "0.05"})`,
-            }}
-          >
-            {/* Thumbnail placeholder */}
+        {courses.map(({ subject, title, level, uploader, color, pricing, price, videos, duration, liveSessions, isFeatured }, i) => {
+          const badge = pricingBadge(pricing, price);
+          return (
             <div
+              key={title}
               style={{
-                height: 110,
-                background: `linear-gradient(135deg,${color}22,${color}08)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderBottom: `1px solid ${border}`,
+                borderRadius: 18,
+                border: `1px solid ${border}`,
+                background: isDark
+                  ? "rgba(15,35,30,0.7)"
+                  : "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(16px)",
+                overflow: "hidden",
+                cursor: "default",
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(20px)",
+                transition: `all 0.45s ${i * 0.08}s`,
+                boxShadow: `0 4px 20px rgba(0,0,0,${isDark ? "0.25" : "0.05"})`,
                 position: "relative",
               }}
             >
+              {isFeatured && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    left: 12,
+                    zIndex: 10,
+                    background: "linear-gradient(135deg,#f59e0b,#e05c2a)",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "3px 10px",
+                    borderRadius: 20,
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  FEATURED
+                </div>
+              )}
+
               <div
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  backgroundImage: `repeating-linear-gradient(45deg,${color}08 0,${color}08 1px,transparent 0,transparent 50%)`,
-                  backgroundSize: "20px 20px",
-                }}
-              />
-              <div
-                style={{
-                  width: 48,
-                  height: 60,
-                  borderRadius: 4,
-                  background: `${color}25`,
-                  border: `1.5px solid ${color}50`,
+                  height: 140,
+                  background: `linear-gradient(135deg,${color}25,${color}08)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  borderBottom: `1px solid ${border}`,
                   position: "relative",
                 }}
               >
-                <FileTextIcon size={22} color={color} />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundImage: `repeating-linear-gradient(45deg,${color}08 0,${color}08 1px,transparent 0,transparent 50%)`,
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "50%",
+                    background: `${color}20`,
+                    border: `2px solid ${color}40`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                  }}
+                >
+                  <PlayCircleIcon size={28} color={color} />
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: color,
+                      background: `${color}15`,
+                      padding: "2px 7px",
+                      borderRadius: 5,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {subject} · {level}
+                  </span>
+                </div>
+
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: isDark ? "#c8e6e2" : "#0a2e2a",
+                    margin: "0 0 8px",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {title}
+                </p>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <PlayCircleIcon size={12} color={isDark ? "#5a9990" : "#6aaba4"} />
+                  <span style={{ fontSize: 11, color: isDark ? "#5a9990" : "#6aaba4" }}>
+                    {videos} videos · {duration}
+                  </span>
+                  {liveSessions && (
+                    <>
+                      <span style={{ color: isDark ? "#5a9990" : "#6aaba4" }}>·</span>
+                      <CalendarIcon size={12} color="#7c3aed" />
+                      <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>
+                        Live
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: badge.color,
+                      background: badge.bg,
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                    }}
+                  >
+                    {badge.label}
+                  </span>
+                  <span style={{ fontSize: 10, color: isDark ? "#5a9990" : "#6aaba4" }}>
+                    by {uploader}
+                  </span>
+                </div>
               </div>
             </div>
-            <div style={{ padding: "12px 14px" }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: color,
-                  background: `${color}15`,
-                  padding: "2px 7px",
-                  borderRadius: 5,
-                  letterSpacing: "0.04em",
-                }}
-              >
-                {subject} · {level}
-              </span>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+          gap: 16,
+          marginTop: "3rem",
+        }}
+      >
+        {[
+          {
+            icon: BookOpenIcon,
+            title: "Video-based learning",
+            desc: "High-quality recorded lessons organized by sections. Watch anytime, anywhere.",
+            color: "#1f766e",
+          },
+          {
+            icon: PlayCircleIcon,
+            title: "Progress tracking",
+            desc: "Track your watch time. Complete videos to mark progress. Pick up where you left off.",
+            color: "#2176ae",
+          },
+          {
+            icon: CalendarIcon,
+            title: "Live sessions (premium)",
+            desc: "Subscribe or purchase to join live classes with teachers via Zoom. Get real-time help.",
+            color: "#7c3aed",
+          },
+          {
+            icon: UsersIcon,
+            title: "Instructor-led courses",
+            desc: "Courses created by verified teachers and admins. Quality content, structured learning.",
+            color: "#f59e0b",
+          },
+        ].map(({ icon: Icon, title, desc, color }, i) => (
+          <div
+            key={title}
+            style={{
+              ...glassCard(isDark),
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(16px)",
+              transition: `all 0.4s ${0.5 + i * 0.08}s`,
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: `${color}15`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon size={18} color={color} />
+            </div>
+            <div>
               <p
                 style={{
                   fontSize: 14,
                   fontWeight: 700,
                   color: isDark ? "#c8e6e2" : "#0a2e2a",
-                  margin: "8px 0 4px",
-                  lineHeight: 1.3,
+                  margin: "0 0 4px",
                 }}
               >
                 {title}
               </p>
               <p
                 style={{
-                  fontSize: 11,
-                  color: isDark ? "#5a9990" : "#6aaba4",
+                  fontSize: 12.5,
+                  color: isDark ? "#6aaba4" : "#4a7a74",
                   margin: 0,
+                  lineHeight: 1.5,
                 }}
               >
-                Uploaded by {uploader}
+                {desc}
               </p>
             </div>
           </div>
