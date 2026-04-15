@@ -24,6 +24,11 @@ export async function GET() {
 
     const userId = session.user.id;
 
+    // Validate userId is a valid ObjectId
+    if (!Types.ObjectId.isValid(userId)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
     // Find all channels where user is asker or acceptor
     const channels = await Channel.find({
       $or: [{ askerId: userId }, { acceptorId: userId }],
@@ -36,6 +41,11 @@ export async function GET() {
 
     // For each channel, get the last message and unread count
     const channelIds = channels.map((c) => c._id);
+    
+    if (channelIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
     const lastMessages = await Message.aggregate([
       { $match: { channelId: { $in: channelIds } } },
       { $sort: { sentAt: -1 } },
@@ -52,7 +62,7 @@ export async function GET() {
       { 
         $match: { 
           channelId: { $in: channelIds },
-          senderId: { $ne: new Types.ObjectId(userId) }, // Assumes userId is passed
+          senderId: { $ne: new Types.ObjectId(userId) },
           isSeen: false 
         } 
       },
@@ -96,10 +106,11 @@ export async function GET() {
     });
 
     return NextResponse.json(items);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("[GET /api/channels]", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch channels" },
+      { error: "Failed to fetch channels", details: message },
       { status: 500 },
     );
   }
