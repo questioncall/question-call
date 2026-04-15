@@ -5,6 +5,7 @@ import { StoreProvider } from "@/components/providers/store-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { PageLoadingBar } from "@/components/shared/page-loading-bar";
 
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cn("h-full antialiased", "font-sans", inter.variable, dmSansHeading.variable)}>
       <body className="min-h-full flex flex-col">
+        <PageLoadingBar />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
