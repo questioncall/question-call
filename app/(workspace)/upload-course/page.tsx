@@ -5,6 +5,9 @@ import { getPlatformConfig } from "@/models/PlatformConfig";
 import Course from "@/models/Course";
 import { connectToDatabase } from "@/lib/mongodb";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function UploadCoursePage() {
   const session = await getSafeServerSession();
 

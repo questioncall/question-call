@@ -17,6 +17,7 @@ import {
   TrendingUpIcon,
   WalletIcon,
   XCircleIcon,
+  UserPlusIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { formatPoints } from "@/lib/points";
+import { InviteFriendsDialog } from "@/components/shared/invite-friends-dialog";
 
 type WithdrawalHistoryItem = {
   _id: string;
@@ -46,6 +48,7 @@ type WithdrawalHistoryItem = {
 
 type WalletData = {
   role: string;
+  userName?: string;
   pointBalance: number;
   nprEquivalent: number;
   totalAnswered: number;
@@ -61,6 +64,7 @@ type WalletData = {
   maxQuestions: number;
   withdrawalHistory: WithdrawalHistoryItem[];
   savedEsewaNumber: string | null;
+  referralCode: string | null;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -81,6 +85,7 @@ export function WalletClient() {
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
   const [saveEsewaNumber, setSaveEsewaNumber] = useState(true);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const fetchWallet = useCallback(async () => {
     try {
@@ -416,6 +421,31 @@ export function WalletClient() {
           )}
         </CardContent>
       </Card>
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlusIcon className="size-5 text-primary" />
+              Invite Friends & Earn
+            </CardTitle>
+            <CardDescription>
+              Invite friends using your referral code and earn bonus questions when they sign up!
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Your Code</p>
+                  <p className="font-mono font-bold text-primary">{wallet.referralCode || "N/A"}</p>
+                </div>
+              </div>
+              <Button onClick={() => setShowInviteDialog(true)} className="gap-2">
+                <UserPlusIcon className="size-4" />
+                Invite Friends
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader>
@@ -474,6 +504,15 @@ export function WalletClient() {
           )}
         </CardContent>
       </Card>
+
+      {wallet && (
+        <InviteFriendsDialog
+          open={showInviteDialog}
+          onOpenChange={setShowInviteDialog}
+          userName={wallet.userName || "User"}
+          referralCode={wallet.referralCode || ""}
+        />
+      )}
     </div>
   );
 }

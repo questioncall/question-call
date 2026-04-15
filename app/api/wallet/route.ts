@@ -84,6 +84,7 @@ export async function GET() {
 
     return NextResponse.json({
       role: session.user.role,
+      userName: user.name,
       pointBalance: roundPoints(pointBalance),
       nprEquivalent: pointsToNpr(pointBalance, config),
       totalAnswered: user.totalAnswered ?? 0,

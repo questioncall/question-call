@@ -7,6 +7,9 @@ import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function HomePage() {
   const session = await getSafeServerSession();
 

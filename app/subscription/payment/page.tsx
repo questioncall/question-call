@@ -12,6 +12,9 @@ import {
 } from "@/models/PlatformConfig";
 import EsewaPayButton from "@/components/payment/esewa-pay-button";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function PaymentPage({
   searchParams,
 }: {

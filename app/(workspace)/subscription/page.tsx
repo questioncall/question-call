@@ -7,6 +7,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function SubscriptionPage() {
   const session = await getSafeServerSession();
 
