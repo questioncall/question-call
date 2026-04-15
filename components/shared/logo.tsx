@@ -8,6 +8,7 @@ type LogoProps = {
   href?: string;
   prefetch?: boolean;
   showTagline?: boolean;
+  tagline?: string;
 };
 
 type LogoMarkProps = {
@@ -45,6 +46,7 @@ export function Logo({
   href = "/",
   prefetch,
   showTagline = true,
+  tagline,
 }: LogoProps) {
   return (
     <Link href={href} prefetch={prefetch} className="inline-flex items-center gap-3">
@@ -53,7 +55,7 @@ export function Logo({
         <span className="flex flex-col">
           <span className="headline text-lg font-semibold text-foreground">Question Hub</span>
           {showTagline ? (
-            <span className="eyebrow text-[11px] text-muted-foreground">Students • Teachers • Admin</span>
+            <span className="eyebrow text-[11px] text-muted-foreground">{tagline || "Students • Teachers • Admin"}</span>
           ) : null}
         </span>
       ) : null}

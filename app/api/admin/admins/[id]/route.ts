@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { sendAdminNotificationEmail } from "@/lib/sendEmails/sendAdminNotificationEmail";
 
 export async function DELETE(
   _request: Request,
@@ -78,6 +79,14 @@ export async function PATCH(
       await User.updateMany({ role: "ADMIN" }, { isMasterAdmin: false });
       targetAdmin.isMasterAdmin = true;
       await targetAdmin.save();
+
+      await sendAdminNotificationEmail({
+        email: targetAdmin.email,
+        fullName: targetAdmin.name,
+        role: "MASTER_ADMIN",
+        action: "promoted",
+        promotedBy: session.user.name || "Master Admin",
+      });
     }
 
     return NextResponse.json({ message: "Admin updated successfully" });

@@ -5,6 +5,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { pusherServer } from "@/lib/pusher/pusherServer";
+import { ADMIN_UPDATES_CHANNEL } from "@/lib/pusher/events";
 
 cloudinary.config({
   secure: true,
@@ -114,6 +116,16 @@ export async function POST(req: NextRequest) {
       planSlug,
       screenshotUrl,
     });
+
+    // Notify admins via Pusher for real-time count update
+    if (pusherServer) {
+      await pusherServer.trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
+        transactionId,
+        planName: plan.name,
+        amount: totalAmount,
+        userId: session.user.id,
+      }).catch(console.error);
+    }
 
     if (process.env.ADMIN_EMAIL) {
       void sendTransactionEmail(

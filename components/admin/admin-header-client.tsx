@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation";
 
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { getPusherClient } from "@/lib/pusher/pusherClient";
+import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
 
 interface AdminCounts {
   pendingWithdrawals: number;
@@ -19,7 +21,6 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
   const pathname = usePathname();
   const [counts, setCounts] = useState<AdminCounts>(initialCounts);
   const [loading, setLoading] = useState(false);
-  const [lastFetched, setLastFetched] = useState(Date.now());
 
   const fetchCounts = async () => {
     try {
@@ -28,13 +29,31 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setCounts(data);
-      setLastFetched(Date.now());
     } catch (err) {
       console.error("Failed to fetch counts:", err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const client = getPusherClient();
+    if (!client) return;
+
+    const channel = client.subscribe(ADMIN_UPDATES_CHANNEL);
+
+    channel.bind(ADMIN_WITHDRAWAL_EVENT, () => {
+      fetchCounts();
+    });
+
+    channel.bind("admin:manual-payment-submitted", () => {
+      fetchCounts();
+    });
+
+    return () => {
+      client.unsubscribe(ADMIN_UPDATES_CHANNEL);
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -77,7 +96,7 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
       </div>
 
       <div className="flex items-center gap-1 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs">
-        {loading && lastFetched === 0 ? (
+        {loading ? (
           <Loader2Icon className="size-3 animate-spin" />
         ) : (
           <>

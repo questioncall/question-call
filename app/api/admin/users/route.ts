@@ -14,7 +14,7 @@ export async function GET() {
     await connectToDatabase();
 
     const users = await User.find({ role: { $in: ["STUDENT", "TEACHER"] } })
-      .select("name email role points pointBalance totalAnswered subscriptionStatus isSuspended createdAt")
+      .select("name email username role points pointBalance totalAnswered subscriptionStatus isSuspended createdAt")
       .sort({ createdAt: -1 })
       .lean();
 

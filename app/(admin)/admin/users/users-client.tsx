@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UsersIcon, Loader2Icon, ShieldAlertIcon, ShieldCheckIcon } from "lucide-react";
+import { UsersIcon, Loader2Icon, ShieldAlertIcon, ShieldCheckIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatPoints } from "@/lib/points";
 import {
   AlertDialog,
@@ -23,6 +24,7 @@ type UserRecord = {
   _id: string;
   name: string;
   email: string;
+  username?: string;
   role: string;
   points?: number;
   pointBalance?: number;
@@ -40,6 +42,7 @@ export function UsersClient() {
   const [loading, setLoading] = useState(true);
   const [suspendingId, setSuspendingId] = useState<string | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<UserRecord | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchUsers = async () => {
     try {
@@ -57,6 +60,15 @@ export function UsersClient() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const filteredUsers = users.filter((user) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      (user.username && user.username.toLowerCase().includes(query))
+    );
+  });
 
   const handleToggleSuspend = async () => {
     if (!suspendTarget) return;
@@ -104,10 +116,23 @@ export function UsersClient() {
 
       <Card className="mx-auto w-fit max-w-full">
         <CardHeader>
-          <CardTitle>Registered Users</CardTitle>
-          <CardDescription>
-            Total: {users.length} users
-          </CardDescription>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Registered Users</CardTitle>
+              <CardDescription>
+                Total: {filteredUsers.length} of {users.length} users
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -122,12 +147,15 @@ export function UsersClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user._id} className={`transition-colors ${user.isSuspended ? "bg-red-500/5 hover:bg-red-500/10" : "hover:bg-muted/30"}`}>
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
+                        {user.username && (
+                          <p className="text-xs text-muted-foreground">@{user.username}</p>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">

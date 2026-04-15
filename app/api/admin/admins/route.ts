@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { sendAdminNotificationEmail } from "@/lib/sendEmails/sendAdminNotificationEmail";
 
 export async function GET() {
   try {
@@ -66,6 +67,13 @@ export async function POST(request: Request) {
       passwordHash,
       role: "ADMIN",
       isMasterAdmin: makeMasterAdmin === true,
+    });
+
+    await sendAdminNotificationEmail({
+      email: newAdmin.email,
+      fullName: newAdmin.name,
+      role: makeMasterAdmin === true ? "MASTER_ADMIN" : "ADMIN",
+      action: "created",
     });
 
     return NextResponse.json(

@@ -69,9 +69,9 @@ export default async function AdminPortalLayout({
       <header className="border-b border-border bg-background">
         <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Logo href="/admin/pricing" prefetch={false} />
-              <p className="mt-3 text-sm text-muted-foreground">Admin portal</p>
+<div>
+              <Logo href="/admin/pricing" prefetch={false} showTagline={false} />
+              <p className="mt-1 text-sm text-muted-foreground">Admin portal</p>
             </div>
             <div className="flex items-center gap-4">
               <AdminHeaderClient initialCounts={counts} />
