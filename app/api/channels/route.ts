@@ -83,29 +83,45 @@ export async function GET() {
     );
 
     const items: ChannelListItem[] = channels.map((ch) => {
-      // Handle cases where populate might return null
-      const askerIdObj = ch.askerId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
-      const acceptorIdObj = ch.acceptorId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
-      const questionObj = ch.questionId as unknown as { title?: string } | null;
-      
-      const isAsker = askerIdObj?._id?.toString() === userId;
-      
-      const counterpart = isAsker ? acceptorIdObj : askerIdObj;
-      const lastMsg = lastMessageMap.get(ch._id.toString());
-      const unreadCount = unreadCountMap.get(ch._id.toString()) || 0;
+      try {
+        // Handle cases where populate might return null
+        const askerIdObj = ch.askerId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
+        const acceptorIdObj = ch.acceptorId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
+        const questionObj = ch.questionId as unknown as { title?: string } | null;
+        
+        const isAsker = askerIdObj?._id?.toString() === userId;
+        
+        const counterpart = isAsker ? acceptorIdObj : askerIdObj;
+        const lastMsg = lastMessageMap.get(ch._id.toString());
+        const unreadCount = unreadCountMap.get(ch._id.toString()) || 0;
 
-      return {
-        id: ch._id.toString(),
-        questionTitle: questionObj?.title || "Untitled",
-        counterpartName: counterpart?.name || "Unknown",
-        counterpartImage: counterpart?.userImage || undefined,
-        status: ch.status as ChannelListItem["status"],
-        lastMessagePreview: lastMsg?.content?.substring(0, 80) || undefined,
-        lastMessageAt: lastMsg?.sentAt ? new Date(lastMsg.sentAt).toISOString() : undefined,
-        unreadCount,
-        timerDeadline: new Date(ch.timerDeadline).toISOString(),
-        role: isAsker ? "asker" : "acceptor",
-      };
+        return {
+          id: ch._id.toString(),
+          questionTitle: questionObj?.title || "Untitled",
+          counterpartName: counterpart?.name || "Unknown",
+          counterpartImage: counterpart?.userImage || undefined,
+          status: ch.status as ChannelListItem["status"],
+          lastMessagePreview: lastMsg?.content?.substring(0, 80) || undefined,
+          lastMessageAt: lastMsg?.sentAt ? new Date(lastMsg.sentAt).toISOString() : undefined,
+          unreadCount,
+          timerDeadline: new Date(ch.timerDeadline).toISOString(),
+          role: isAsker ? "asker" : "acceptor",
+        };
+      } catch (err) {
+        console.error("Error mapping channel:", ch._id, err);
+        return {
+          id: ch._id.toString(),
+          questionTitle: "Error",
+          counterpartName: "Unknown",
+          counterpartImage: undefined,
+          status: "OPEN" as const,
+          lastMessagePreview: undefined,
+          lastMessageAt: undefined,
+          unreadCount: 0,
+          timerDeadline: new Date().toISOString(),
+          role: "asker" as const,
+        };
+      }
     });
 
     return NextResponse.json(items);
