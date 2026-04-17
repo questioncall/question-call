@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -27,7 +28,7 @@ type SearchResult = {
   users: { id: string; name: string; username: string; userImage?: string; role: string }[];
 };
 
-export default function SearchResultsPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const [results, setResults] = useState<SearchResult | null>(null);
@@ -249,5 +250,17 @@ export default function SearchResultsPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function SearchResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center py-12">
+        <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

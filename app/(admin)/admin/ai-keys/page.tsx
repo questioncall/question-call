@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Plus, Trash2, RotateCcw, AlertCircle, GripVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -22,10 +22,10 @@ interface KeySlot {
 
 interface AIKeysData {
   providerOrder: string[];
-  [provider: string]: any;
+  [provider: string]: unknown;
 }
 
-export default function AIKeysAdminPage() {
+function AIKeysContent() {
   const [data, setData] = useState<AIKeysData | null>(null);
   const [loading, setLoading] = useState(true);
   const [newKey, setNewKey] = useState("");
@@ -46,7 +46,6 @@ export default function AIKeysAdminPage() {
     }
   };
 
-  // Poll every 5 minutes (300000ms) to reduce log flooding
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 300000);
@@ -60,7 +59,6 @@ export default function AIKeysAdminPage() {
     const [reorderedItem] = newOrder.splice(result.source.index, 1);
     newOrder.splice(result.destination.index, 0, reorderedItem);
 
-    // Optimistic UI update
     setData({ ...data, providerOrder: newOrder });
 
     try {
@@ -74,7 +72,7 @@ export default function AIKeysAdminPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error saving priority";
       toast.error(message);
-      fetchData(); // Revert on error
+      fetchData();
     }
   };
 
@@ -150,7 +148,7 @@ export default function AIKeysAdminPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8 max-w-5xl mx-auto">
+    <>
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">AI Provider Routing</h1>
         <p className="text-muted-foreground">
@@ -265,6 +263,16 @@ export default function AIKeysAdminPage() {
           )}
         </Droppable>
       </DragDropContext>
+    </>
+  );
+}
+
+export default function AIKeysAdminPage() {
+  return (
+    <div className="p-6 md:p-8 space-y-8 max-w-5xl mx-auto">
+      <Suspense fallback={<div className="p-8 text-center text-muted-foreground animate-pulse">Loading AI Providers...</div>}>
+        <AIKeysContent />
+      </Suspense>
     </div>
   );
 }

@@ -13,14 +13,15 @@ const PLAN_FIELDS: Array<{
   name: string;
   priceField: string | null;
   questionsField: string;
+  daysField: string | null;
   price: number;
   questions: number;
+  days: number;
 }> = [
-  { slug: "free", name: "Free Trial", priceField: null, questionsField: "trialMaxQuestions", price: 0, questions: 5 },
-  { slug: "go", name: "GO", priceField: "planGoPrice", questionsField: "planGoMaxQuestions", price: 100, questions: 20 },
-  { slug: "plus", name: "Plus", priceField: "planPlusPrice", questionsField: "planPlusMaxQuestions", price: 250, questions: 50 },
-  { slug: "pro", name: "Pro", priceField: "planProPrice", questionsField: "planProMaxQuestions", price: 500, questions: 100 },
-  { slug: "max", name: "Max", priceField: "planMaxPrice", questionsField: "planMaxMaxQuestions", price: 1000, questions: 200 },
+  { slug: "go", name: "GO", priceField: "planGoPrice", questionsField: "planGoMaxQuestions", daysField: "planGoDays", price: 100, questions: 20, days: 30 },
+  { slug: "plus", name: "Plus", priceField: "planPlusPrice", questionsField: "planPlusMaxQuestions", daysField: "planPlusDays", price: 250, questions: 50, days: 60 },
+  { slug: "pro", name: "Pro", priceField: "planProPrice", questionsField: "planProMaxQuestions", daysField: "planProDays", price: 500, questions: 100, days: 90 },
+  { slug: "max", name: "Max", priceField: "planMaxPrice", questionsField: "planMaxMaxQuestions", daysField: "planMaxDays", price: 1000, questions: 200, days: 120 },
 ];
 
 export function PricingClient() {
@@ -160,13 +161,10 @@ export function PricingClient() {
           <CardHeader>
             <CardTitle>{plan.name}</CardTitle>
             <CardDescription>
-              {plan.slug === "free" 
-                ? "Free trial on signup - no payment required"
-                : `Pricing and question limit for the ${plan.name} plan.`
-              }
+              Pricing, duration, and question limit for the {plan.name} plan.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+          <CardContent className="grid gap-4 sm:grid-cols-3">
             {plan.priceField ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Price (NPR)</label>
@@ -190,6 +188,16 @@ export function PricingClient() {
                 onChange={(e) => handleChange(plan.questionsField, e.target.value)}
               />
             </div>
+            {plan.daysField && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration (Days)</label>
+                <Input
+                  type="number"
+                  value={((config as Record<string, unknown>)[plan.daysField] as number) || plan.days}
+                  onChange={(e) => handleChange(plan.daysField as string, e.target.value)}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}

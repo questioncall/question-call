@@ -2,6 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
+const buttonStyles = `
+  .lpb-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+  .lpb-btn:hover { transform: translateY(-2px); }
+  .lpb-btn-primary { background: linear-gradient(135deg, #1f766e, #0f5c55); box-shadow: 0 4px 14px rgba(31,118,110,0.4); }
+  .lpb-btn-primary:hover { background: linear-gradient(135deg, #238e87, #1a6d65); box-shadow: 0 8px 28px rgba(31,118,110,0.55), 0 0 20px rgba(31,118,110,0.25); }
+  .lpb-btn-secondary { border: 1.5px solid rgba(31,118,110,0.35); background: rgba(255,255,255,0.8); }
+  .lpb-btn-secondary:hover { background: rgba(31,118,110,0.1); border-color: rgba(31,118,110,0.5); box-shadow: 0 0 20px rgba(31,118,110,0.15); }
+  .lpb-btn-dark { border: 1.5px solid rgba(31,118,110,0.45); background: rgba(31,118,110,0.1); }
+  .lpb-btn-dark:hover { background: rgba(31,118,110,0.2); box-shadow: 0 0 20px rgba(31,118,110,0.2); }
+  .lpb-btn-ghost { color: #4a8a82; }
+  .lpb-btn-ghost:hover { color: #1f766e; text-decoration: underline; }
+`;
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRightIcon,
@@ -35,6 +48,24 @@ import {
 import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
+
+/* ─────────────────────── STYLES ─────────────────────── */
+function LandingStyles() {
+  return (
+    <style>{`
+      .lpb-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+      .lpb-btn:hover { transform: translateY(-2px); }
+      .lpb-btn-primary { background: linear-gradient(135deg, #1f766e, #0f5c55); box-shadow: 0 4px 14px rgba(31,118,110,0.4); }
+      .lpb-btn-primary:hover { background: linear-gradient(135deg, #238e87, #1a6d65); box-shadow: 0 8px 28px rgba(31,118,110,0.55), 0 0 20px rgba(31,118,110,0.25); }
+      .lpb-btn-secondary { border: 1.5px solid rgba(31,118,110,0.35); background: rgba(255,255,255,0.8); }
+      .lpb-btn-secondary:hover { background: rgba(31,118,110,0.1); border-color: rgba(31,118,110,0.5); box-shadow: 0 0 20px rgba(31,118,110,0.15); }
+      .lpb-btn-dark { border: 1.5px solid rgba(31,118,110,0.45); background: rgba(31,118,110,0.1); }
+      .lpb-btn-dark:hover { background: rgba(31,118,110,0.2); box-shadow: 0 0 20px rgba(31,118,110,0.2); }
+      .lpb-btn-ghost { color: #4a8a82; }
+      .lpb-btn-ghost:hover { color: #1f766e; text-decoration: underline; }
+    `}</style>
+  );
+}
 
 /* ─────────────────────── PLATFORM DATA (from spec) ─────────────────────── */
 type TierItem = {
@@ -333,6 +364,7 @@ function Nav() {
 
           <Link
             href={getSignInPath()}
+            className="lpb-btn lpb-btn-ghost"
             style={{
               padding: "0.45rem 1rem",
               fontSize: 14,
@@ -342,23 +374,20 @@ function Nav() {
               color: isDark ? "#9dc8c3" : "#1f766e",
               textDecoration: "none",
               background: "transparent",
-              transition: "all 0.15s",
             }}
           >
             Sign in
           </Link>
           <Link
             href={getSignUpPath("STUDENT")}
+            className="lpb-btn lpb-btn-primary"
             style={{
               padding: "0.45rem 1.1rem",
               fontSize: 14,
               fontWeight: 600,
               borderRadius: 8,
-              background: "linear-gradient(135deg,#1f766e,#0f5c55)",
               color: "#fff",
               textDecoration: "none",
-              boxShadow: "0 4px 14px rgba(31,118,110,0.4)",
-              transition: "all 0.15s",
             }}
           >
             Get started
@@ -538,58 +567,51 @@ function Hero({ isDark }: { isDark: boolean }) {
         >
           <Link
             href={getSignUpPath("STUDENT")}
+            className="lpb-btn lpb-btn-primary"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
               padding: "0.8rem 1.8rem",
               borderRadius: 12,
-              background: "linear-gradient(135deg,#1f766e,#0f5c55)",
               color: "#fff",
               fontWeight: 700,
               fontSize: 15,
               textDecoration: "none",
-              boxShadow: "0 8px 24px rgba(31,118,110,0.45)",
-              transition: "all 0.2s",
             }}
           >
             I&apos;m a Student <ArrowRightIcon size={16} />
           </Link>
           <Link
             href={getSignUpPath("TEACHER")}
+            className={`lpb-btn ${isDark ? "lpb-btn-dark" : "lpb-btn-secondary"}`}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
               padding: "0.8rem 1.8rem",
               borderRadius: 12,
-              border: `1.5px solid rgba(31,118,110,${isDark ? "0.45" : "0.35"})`,
-              background: isDark
-                ? "rgba(31,118,110,0.1)"
-                : "rgba(255,255,255,0.8)",
               color: isDark ? "#9dc8c3" : "#1f766e",
               fontWeight: 700,
               fontSize: 15,
               textDecoration: "none",
               backdropFilter: "blur(10px)",
-              transition: "all 0.2s",
             }}
           >
             I&apos;m a Teacher
           </Link>
           <Link
             href={getSignInPath()}
+            className="lpb-btn lpb-btn-ghost"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
               padding: "0.8rem 1.4rem",
               borderRadius: 12,
-              color: isDark ? "#6ba8a2" : "#4a8a82",
               fontWeight: 600,
               fontSize: 14,
               textDecoration: "none",
-              transition: "all 0.2s",
             }}
           >
             Sign in →
@@ -2410,42 +2432,35 @@ function CTASection({ isDark }: { isDark: boolean }) {
         >
           <Link
             href={getSignUpPath("STUDENT")}
+            className="lpb-btn lpb-btn-primary"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
               padding: "0.9rem 2rem",
               borderRadius: 14,
-              background: "linear-gradient(135deg,#1f766e,#0f5c55)",
               color: "#fff",
               fontWeight: 700,
               fontSize: 15.5,
               textDecoration: "none",
-              boxShadow: "0 10px 30px rgba(31,118,110,0.45)",
-              transition: "all 0.2s",
             }}
           >
             <GraduationCapIcon size={18} /> Sign up as Student
           </Link>
           <Link
             href={getSignUpPath("TEACHER")}
+            className={`lpb-btn ${isDark ? "lpb-btn-dark" : "lpb-btn-secondary"}`}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
               padding: "0.9rem 2rem",
               borderRadius: 14,
-              border: `1.5px solid rgba(31,118,110,${isDark ? "0.45" : "0.3"})`,
-              background: isDark
-                ? "rgba(31,118,110,0.1)"
-                : "rgba(255,255,255,0.85)",
               color: isDark ? "#9dc8c3" : "#1f766e",
               fontWeight: 700,
               fontSize: 15.5,
               textDecoration: "none",
               backdropFilter: "blur(12px)",
-              boxShadow: `0 4px 20px rgba(0,0,0,${isDark ? "0.2" : "0.06"})`,
-              transition: "all 0.2s",
             }}
           >
             <Users2Icon size={18} /> Sign up as Teacher
@@ -2741,6 +2756,7 @@ export function PublicLanding() {
         color: isDark ? "#e8f5f3" : "#0a2e2a",
       }}
     >
+      <LandingStyles />
       <Nav />
       <main>
         <Hero isDark={isDark} />

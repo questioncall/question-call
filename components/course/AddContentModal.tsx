@@ -172,6 +172,7 @@ export function AddContentModal({
       if (attempt > 120) {
         setPhase("ERROR");
         setStatusText("Timed out waiting for processing.");
+        toast.error("Video processing timed out. Please check the course dashboard and try again.");
         return;
       }
 
@@ -180,6 +181,46 @@ export function AddContentModal({
           const res = await fetch(
             `/api/courses/${cId}/videos/${vId}/status`,
           );
+
+          // Handle non-OK HTTP responses explicitly
+          if (!res.ok) {
+            let errorMsg = `Server error (${res.status})`;
+            try {
+              const errData = await res.json();
+              if (errData.error) errorMsg = errData.error;
+            } catch {
+              // ignore JSON parse failure
+            }
+
+            // 404 = video record not found — don't keep retrying
+            if (res.status === 404) {
+              setPhase("ERROR");
+              setStatusText(`Video not found: ${errorMsg}`);
+              toast.error(`Video processing failed: ${errorMsg}`);
+              return;
+            }
+
+            // 401/403 = auth issue — don't retry
+            if (res.status === 401 || res.status === 403) {
+              setPhase("ERROR");
+              setStatusText(`Permission denied: ${errorMsg}`);
+              toast.error(errorMsg);
+              return;
+            }
+
+            // 5xx or other transient errors — retry a few times then give up
+            if (attempt > 10) {
+              setPhase("ERROR");
+              setStatusText(`Processing check failed: ${errorMsg}`);
+              toast.error(`Video processing check failed after multiple retries: ${errorMsg}`);
+              return;
+            }
+
+            // Retry on transient errors
+            pollStatus(cId, vId, attempt + 1);
+            return;
+          }
+
           const data = await res.json();
 
           if (data.status === "READY") {
@@ -191,11 +232,20 @@ export function AddContentModal({
           if (data.status === "ERRORED") {
             setPhase("ERROR");
             setStatusText("Mux processing failed.");
+            toast.error("Video processing failed on Mux. Please try uploading again.");
             return;
           }
           // Still processing — keep polling
           pollStatus(cId, vId, attempt + 1);
-        } catch {
+        } catch (err) {
+          // Network error — retry with backoff
+          if (attempt > 10) {
+            setPhase("ERROR");
+            const msg = err instanceof Error ? err.message : "Network error";
+            setStatusText(`Connection lost: ${msg}`);
+            toast.error("Lost connection while checking video processing status.");
+            return;
+          }
           pollStatus(cId, vId, attempt + 1);
         }
       }, 5000);

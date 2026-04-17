@@ -1,4 +1,5 @@
 import { BellRingIcon, LockIcon, ShieldCheckIcon } from "lucide-react";
+import { Suspense } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,8 @@ const settingSections = [
     icon: LockIcon,
   },
 ] as const;
+
+export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   return (

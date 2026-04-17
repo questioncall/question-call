@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { AdminCoursesClient } from "./admin-courses-client";
@@ -51,8 +52,9 @@ export default async function AdminCoursesPage() {
   });
 
   return (
-    <AdminCoursesClient
-      courses={courses.map((c) => ({
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading courses...</div>}>
+      <AdminCoursesClient
+        courses={courses.map((c) => ({
         _id: c._id.toString(),
         title: c.title,
         slug: c.slug,
@@ -73,7 +75,8 @@ export default async function AdminCoursesPage() {
         totalEnrolled: enrollments.length,
         totalRevenue,
         totalCommission,
-      }}
-    />
+        }}
+      />
+    </Suspense>
   );
 }

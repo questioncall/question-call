@@ -1,36 +1,35 @@
-# Cron Jobs
+# Cron Job Configuration Guide
 
-Add these URLs to cron.job.org (or your preferred cron service):
+To automate your scheduled tasks on your production server using a service like [cron-job.org](https://cron-job.org/), use the following configuration settings.
 
-## Active Cron Endpoints
+## Global Requirements
 
-| Endpoint | Frequency | Purpose |
-|----------|------------|---------|
-| `https://your-domain.com/api/cron/expire-channels` | Every 5 minutes | Auto-close expired channels, reset questions |
-| `https://your-domain.com/api/cron/quiz-daily-reset` | Daily at midnight | Reset daily quiz limits |
-| `https://your-domain.com/api/cron/monthly-rewards` | 1st of every month | Award bonus points to high-rated teachers |
+Every cron job needs to authenticate with your server using the secure `CRON_SECRET` defined in your `.env` file. 
 
-## Cron Headers
+You must add **one** of the following HTTP Headers to **ALL** your cron jobs:
+- `Authorization: Bearer <YOUR_CRON_SECRET>` 
+- `x-cron-secret: <YOUR_CRON_SECRET>`
 
-All cron endpoints require:
-- Header: `x-cron-secret` (set in your `.env.local` as `CRON_SECRET`)
+*Note: Replace `<YOUR_CRON_SECRET>` with the actual value from your production environment variables (e.g. `CRON_SECRET`). Make sure the HTTP Method is set to **POST**.*
 
-## Example (cron.job.org)
+---
 
-```
-# Expire channels every 5 minutes
-*/5 * * * * https://your-domain.com/api/cron/expire-channels
+## 1. Expire Channels
 
-# Reset quiz daily at midnight
-0 0 * * * https://your-domain.com/api/cron/quiz-daily-reset
+This job checks for questions where the timer has run out. If a teacher submitted an answer but the student never rated it, it auto-closes the channel and gives the teacher an automatic 3-star rating. If the teacher never submitted an answer, it expires the channel, penalizes the teacher, and resets the question for other teachers to answer.
 
-# Monthly teacher rewards (1st of every month at midnight)
-0 0 1 * * https://your-domain.com/api/cron/monthly-rewards
-```
+- **URL:** `https://your-production-url.com/api/cron/expire-channels`
+- **Method:** `POST`
+- **Recommended Schedule:** Every 5 to 10 minutes.
+- **Headers:** 
+  - `x-cron-secret: <YOUR_CRON_SECRET>`
 
-## Environment Variables
+## 2. Monthly Rewards
 
-Add to `.env.local`:
-```
-CRON_SECRET=your-secure-random-string
-```
+This job runs at the beginning of every month. It looks for monetized teachers who have maintained a high overall rating (≥ 4.0 stars) and awards them with the configured monthly bonus points directly to their wallet.
+
+- **URL:** `https://your-production-url.com/api/cron/monthly-rewards`
+- **Method:** `POST`
+- **Recommended Schedule:** Once a month on the 1st day of the month at 00:00 (Midnight).
+- **Headers:** 
+  - `x-cron-secret: <YOUR_CRON_SECRET>`

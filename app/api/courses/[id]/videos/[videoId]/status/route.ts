@@ -30,14 +30,27 @@ export async function GET(
 
     const { id, videoId } = await params;
     if (!Types.ObjectId.isValid(id) || !Types.ObjectId.isValid(videoId)) {
-      return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid course or video id." }, { status: 400 });
     }
 
     await connectToDatabase();
 
     const video = await CourseVideo.findOne({ _id: videoId, courseId: id });
     if (!video) {
-        return NextResponse.json({ error: "Video not found." }, { status: 404 });
+        // Extra diagnostic: check if the video exists at all (maybe courseId mismatch)
+        const videoAny = await CourseVideo.findById(videoId).select("_id courseId status title").lean();
+        if (videoAny) {
+          console.warn(
+            `[video-status] Video ${videoId} exists but courseId mismatch: ` +
+            `requested=${id}, actual=${videoAny.courseId}`,
+          );
+          return NextResponse.json(
+            { error: "Video not found in this course. Course ID mismatch." },
+            { status: 404 },
+          );
+        }
+        console.warn(`[video-status] Video ${videoId} does not exist in DB at all.`);
+        return NextResponse.json({ error: "Video record not found." }, { status: 404 });
     }
 
     if (video.status === "READY") {
@@ -51,19 +64,54 @@ export async function GET(
         return NextResponse.json({ status: "PROCESSING", video });
     }
 
-    const upload = await mux.video.uploads.retrieve(video.muxUploadId);
+    let upload;
+    try {
+      upload = await mux.video.uploads.retrieve(video.muxUploadId);
+    } catch (muxErr: unknown) {
+      const muxMessage = muxErr instanceof Error ? muxErr.message : String(muxErr);
+      console.error(`[video-status] Mux upload retrieve failed for ${video.muxUploadId}:`, muxMessage);
+
+      // Check for quota / auth errors from Mux
+      if (muxMessage.includes("401") || muxMessage.includes("403")) {
+        return NextResponse.json(
+          { error: "Mux API authentication failed. Check MUX_TOKEN_ID and MUX_TOKEN_SECRET." },
+          { status: 502 },
+        );
+      }
+      if (muxMessage.includes("429") || muxMessage.toLowerCase().includes("quota") || muxMessage.toLowerCase().includes("limit")) {
+        return NextResponse.json(
+          { error: "Mux API rate/quota limit reached. Please try again later." },
+          { status: 429 },
+        );
+      }
+
+      return NextResponse.json(
+        { error: `Mux API error: ${muxMessage}` },
+        { status: 502 },
+      );
+    }
 
     if (upload.status === "errored") {
         await CourseVideo.updateOne({ _id: videoId }, { $set: { status: "ERRORED" } });
-        return NextResponse.json({ status: "ERRORED" });
+        return NextResponse.json({ status: "ERRORED", error: "Mux upload errored." });
     }
 
     if (upload.status === "asset_created" && upload.asset_id) {
-        const asset = await mux.video.assets.retrieve(upload.asset_id);
+        let asset;
+        try {
+          asset = await mux.video.assets.retrieve(upload.asset_id);
+        } catch (muxErr: unknown) {
+          const muxMessage = muxErr instanceof Error ? muxErr.message : String(muxErr);
+          console.error(`[video-status] Mux asset retrieve failed for ${upload.asset_id}:`, muxMessage);
+          return NextResponse.json(
+            { error: `Mux asset lookup failed: ${muxMessage}` },
+            { status: 502 },
+          );
+        }
         
         if (asset.status === "errored") {
             await CourseVideo.updateOne({ _id: videoId }, { $set: { status: "ERRORED" } });
-            return NextResponse.json({ status: "ERRORED" });
+            return NextResponse.json({ status: "ERRORED", error: "Mux asset processing errored." });
         }
 
         if (asset.status === "ready") {
@@ -107,6 +155,7 @@ export async function GET(
 
   } catch (error) {
     console.error("[GET /api/courses/:id/videos/:videoId/status]", error);
-    return NextResponse.json({ error: "Failed to fetch video status." }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to fetch video status.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
