@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { PublicLanding } from "@/components/shared/public-landing";
 import { WorkspaceHome } from "@/components/shared/workspace-home";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
+import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
 
@@ -50,12 +51,15 @@ export default async function HomePage() {
     }));
 
   return (
-    <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>
-      <WorkspaceHome
-        role={workspaceUser.role as "STUDENT" | "TEACHER"}
-        userId={workspaceUser.id}
-        courseHighlights={courseHighlights}
-      />
-    </WorkspaceShell>
+    <>
+      <GlobalNoticeModal />
+      <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>
+        <WorkspaceHome
+          role={workspaceUser.role as "STUDENT" | "TEACHER"}
+          userId={workspaceUser.id}
+          courseHighlights={courseHighlights}
+        />
+      </WorkspaceShell>
+    </>
   );
 }

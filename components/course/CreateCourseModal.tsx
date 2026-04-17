@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { uploadFileViaServer } from "@/lib/client-upload";
 
 type CreateCourseModalProps = {
@@ -59,6 +60,52 @@ const STEPS = [
   { id: 3, title: "Media", icon: ImageIcon },
   { id: 4, title: "Schedule", icon: CalendarIcon },
   { id: 5, title: "Coupons", icon: TagIcon },
+];
+
+const SUBJECTS = [
+  "Computer Science",
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "English",
+  "Nepali",
+  "Social Studies",
+  "Economics",
+  "History",
+  "Geography",
+  "Accountancy",
+  "Business Studies",
+  "Computer Engineering",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Information Technology",
+  "Data Science",
+  "Artificial Intelligence",
+  "Machine Learning",
+  "Web Development",
+  "Mobile Development",
+  "UI/UX Design",
+  "Digital Marketing",
+  "Finance",
+  "Management",
+  "Law",
+  "Philosophy",
+  "Psychology",
+  "Sociology",
+  "Political Science",
+  "Statistics",
+  "Others",
+];
+
+const LEVELS = [
+  "Beginner",
+  "Intermediate",
+  "Advanced",
+  "Undergraduate",
+  "Graduate",
+  "Professional",
 ];
 
 function buildInitialForm(
@@ -264,7 +311,7 @@ export function CreateCourseModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-      <div className="relative z-10 flex h-[95vh] w-full max-w-5xl flex-col rounded-2xl bg-background shadow-2xl overflow-hidden">
+      <div className="relative z-10 flex h-[95vh] w-full max-w-6xl flex-col rounded-2xl bg-background shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-muted/30">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={handleClose}>
@@ -422,18 +469,20 @@ export function CreateCourseModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Subject *</Label>
-                    <Input
+                    <Select
                       value={form.subject}
-                      onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                      placeholder="e.g., Computer Science"
+                      onValueChange={(val) => setForm({ ...form, subject: val })}
+                      options={SUBJECTS.map((s) => ({ value: s, label: s }))}
+                      placeholder="Select subject"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Level *</Label>
-                    <Input
+                    <Select
                       value={form.level}
-                      onChange={(e) => setForm({ ...form, level: e.target.value })}
-                      placeholder="e.g., Beginner"
+                      onValueChange={(val) => setForm({ ...form, level: val })}
+                      options={LEVELS.map((l) => ({ value: l, label: l }))}
+                      placeholder="Select level"
                     />
                   </div>
                 </div>

@@ -1,62 +1,156 @@
 "use client";
 
-// Simple native select wrapper component
-// For filtering/dropdowns - uses native HTML select
+import * as React from "react";
+import { ChevronDownIcon, CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import { createContext, useContext } from "react";
-
-type SelectContextValue = {
+type SelectOption = {
   value: string;
-  onValueChange: (value: string) => void;
+  label: string;
 };
 
-const SelectContext = createContext<SelectContextValue | null>(null);
-
-function useSelectContext() {
-  const context = useContext(SelectContext);
-  if (!context) {
-    throw new Error("Select components must be used within a Select provider");
-  }
-  return context;
-}
-
-type SelectProps = {
+export function Select({
+  value,
+  onValueChange,
+  className,
+  placeholder = "Select",
+  disabled = false,
+  options,
+  children,
+}: {
   value: string;
   onValueChange: (value: string) => void;
   className?: string;
-  children: React.ReactNode;
-};
+  placeholder?: string;
+  disabled?: boolean;
+  options?: SelectOption[];
+  children?: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-export function Select({ value, onValueChange, className, children }: SelectProps) {
+  const optionsList: SelectOption[] = React.useMemo(() => {
+    if (options && options.length > 0) {
+      return options;
+    }
+    if (children) {
+      const items: SelectOption[] = [];
+      React.Children.forEach(children, (child) => {
+        if (React.isValidElement(child) && (child.type as any).name === "SelectItem") {
+          const childProps = child.props as { value: string; children: React.ReactNode };
+          const label = React.Children.toArray(childProps.children).join("");
+          items.push({ value: childProps.value, label });
+        }
+      });
+      return items;
+    }
+    return [];
+  }, [options, children]);
+
+  const selectedOption = optionsList.find((opt) => opt.value === value);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <SelectContext.Provider value={{ value, onValueChange }}>
-      <div className={className}>{children}</div>
-    </SelectContext.Provider>
+    <div ref={containerRef} className={cn("relative", className)} onMouseDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!disabled) setIsOpen(!isOpen);
+        }}
+        disabled={disabled}
+        className={cn(
+          "flex h-11 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm transition-colors",
+          "hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+          disabled && "opacity-50 cursor-not-allowed",
+          !selectedOption && "text-muted-foreground"
+        )}
+      >
+        <span>{selectedOption?.label || placeholder}</span>
+        <ChevronDownIcon
+          className={cn(
+            "size-4 text-muted-foreground transition-transform",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className="absolute z-[60] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border bg-background p-1 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {optionsList.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onValueChange(option.value);
+                setIsOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
+                option.value === value
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "hover:bg-muted"
+              )}
+            >
+              <span>{option.label}</span>
+              {option.value === value && (
+                <CheckIcon className="size-4 text-primary" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-export function SelectTrigger({ className, children }: { className?: string; children?: React.ReactNode }) {
-  const { value, onValueChange } = useSelectContext();
-  return (
-    <select
-      value={value}
-      onChange={(e) => onValueChange(e.target.value)}
-      className={className}
-    >
-      {children}
-    </select>
-  );
+export function SelectTrigger({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return <div className={className}>{children}</div>;
 }
 
 export function SelectValue({ placeholder }: { placeholder?: string }) {
-  const { value } = useSelectContext();
-  return value ? <option value={value}>{value}</option> : <option value="">{placeholder || "Select"}</option>;
+  return <span>{placeholder}</span>;
 }
 
-export function SelectContent({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+export function SelectContent({
+  children,
+  className,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={className}>{children}</div>;
 }
 
-export function SelectItem({ value, children }: { value: string; children: React.ReactNode }) {
-  return <option value={value}>{children}</option>;
+export function SelectItem({
+  value,
+  children,
+}: {
+  value: string;
+  children: React.ReactNode;
+}) {
+  return <div data-value={value}>{children}</div>;
 }

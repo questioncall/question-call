@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { PlusIcon, Trash2Icon, MailIcon, EyeOffIcon, EyeIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon, MailIcon, EyeOffIcon, EyeIcon, ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Notice = {
   _id: string;
@@ -82,6 +87,8 @@ export function NoticeClient() {
       setIsCreateOpen(false);
       setTitle("");
       setBody("");
+      setType("GENERAL");
+      setTargetAudience("ALL");
       setTargetEmails("");
     } catch {
       toast.error("An error occurred");
@@ -122,7 +129,7 @@ export function NoticeClient() {
           <DialogTrigger asChild>
             <Button><PlusIcon className="w-4 h-4 mr-2" /> Create Notice</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
             <form onSubmit={handleCreate}>
               <DialogHeader>
                 <DialogTitle>Create New Notice</DialogTitle>
@@ -142,26 +149,36 @@ export function NoticeClient() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Type</Label>
-                    <Select value={type} onValueChange={(v: any) => setType(v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GENERAL">General</SelectItem>
-                        <SelectItem value="ADVERTISEMENT">Advertisement</SelectItem>
-                        <SelectItem value="SPECIAL">Special</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {type === "GENERAL" ? "General" : type === "ADVERTISEMENT" ? "Advertisement" : type === "SPECIAL" ? "Special" : "Select type"}
+                          <ChevronDownIcon className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[200px]">
+                        <DropdownMenuItem onClick={() => setType("GENERAL")}>General</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setType("ADVERTISEMENT")}>Advertisement</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setType("SPECIAL")}>Special</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <div className="space-y-2">
                     <Label>Target Audience</Label>
-                    <Select value={targetAudience} onValueChange={(v: any) => setTargetAudience(v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Users</SelectItem>
-                        <SelectItem value="TEACHER">Teachers Only</SelectItem>
-                        <SelectItem value="STUDENT">Students Only</SelectItem>
-                        <SelectItem value="SPECIFIC">Specific Emails</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          {targetAudience === "ALL" ? "All Users" : targetAudience === "TEACHER" ? "Teachers Only" : targetAudience === "STUDENT" ? "Students Only" : targetAudience === "SPECIFIC" ? "Specific Emails" : "Select audience"}
+                          <ChevronDownIcon className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[200px]">
+                        <DropdownMenuItem onClick={() => setTargetAudience("ALL")}>All Users</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTargetAudience("TEACHER")}>Teachers Only</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTargetAudience("STUDENT")}>Students Only</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTargetAudience("SPECIFIC")}>Specific Emails</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
                 {targetAudience === "SPECIFIC" && (

@@ -9,15 +9,19 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.log("[GET /api/notices] No session, returning empty array");
+      return NextResponse.json([]);
     }
 
     await connectToDatabase();
 
     const user = await User.findById(session.user.id).select("seenNotices role email");
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      console.log("[GET /api/notices] User not found in DB");
+      return NextResponse.json([]);
     }
+
+    console.log("[GET /api/notices] User:", user.email, "Role:", user.role, "Seen:", user.seenNotices);
 
     const seenNotices = user.seenNotices || [];
 
@@ -47,6 +51,8 @@ export async function GET() {
 
     const notices = await Notice.find(query).sort({ createdAt: -1 });
 
+    console.log("[GET /api/notices] Query:", JSON.stringify(query), "Found:", notices.length);
+    
     return NextResponse.json(notices);
   } catch (error) {
     console.error("[GET /api/notices]", error);

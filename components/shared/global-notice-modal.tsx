@@ -20,14 +20,20 @@ export function GlobalNoticeModal() {
   const fetchNotices = useCallback(async () => {
     try {
       const res = await fetch("/api/notices");
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setNotices(data);
-        }
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.log("[GlobalNoticeModal] API Error:", res.status, data);
+        return;
       }
-    } catch {
-      // Silently fail — non-critical feature
+      
+      console.log("[GlobalNoticeModal] Fetched notices:", data.length);
+      
+      if (Array.isArray(data) && data.length > 0) {
+        setNotices(data);
+      }
+    } catch (err) {
+      console.log("[GlobalNoticeModal] Fetch exception:", err);
     }
   }, []);
 
@@ -62,6 +68,11 @@ export function GlobalNoticeModal() {
       setIsDismissing(false);
     }
   };
+
+  // Don't render if no notices
+  if (notices.length === 0) {
+    return null;
+  }
 
   if (!currentNotice) return null;
 
