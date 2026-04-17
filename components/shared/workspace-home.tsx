@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRightIcon,
@@ -20,6 +20,7 @@ import {
   HelpCircleIcon,
   SendIcon,
   SlidersHorizontalIcon,
+  XIcon,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -238,6 +239,7 @@ export function WorkspaceHome({
   const dispatch = useAppDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { items: feedItems, isHydrated } = useAppSelector((state) => state.feed);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
@@ -590,6 +592,16 @@ export function WorkspaceHome({
       return getHotScore(b) - getHotScore(a) || createdAtDiff;
     });
 
+  const clearHeaderFilters = () => {
+    // Clear subjects, streams, and levels from URL
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("subjects");
+    nextParams.delete("streams");
+    nextParams.delete("levels");
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
+
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
@@ -612,7 +624,8 @@ export function WorkspaceHome({
                 </button>
               ))}
 
-              <span className="ml-2 text-xs font-medium text-muted-foreground">Sort</span>
+              <div className="mx-1 h-5 w-px bg-border/80" />
+              <span className="text-xs font-medium text-muted-foreground pl-1">Sort</span>
 
               {FEED_SORT_OPTIONS.map(({ value, label, icon: Icon }) => (
                 <button
@@ -631,22 +644,33 @@ export function WorkspaceHome({
                 </button>
               ))}
 
-              <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <div className="mx-1 h-5 w-px bg-border/80" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground ml-1">
                 <SlidersHorizontalIcon className="size-3.5" />
                 Header filters
               </span>
 
               {activeHeaderFilters.length > 0 ? (
-                activeHeaderFilters.map((filterValue) => (
-                  <span
-                    key={filterValue}
-                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground"
+                <>
+                  {activeHeaderFilters.map((filterValue) => (
+                    <span
+                      key={filterValue}
+                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground whitespace-nowrap"
+                    >
+                      {filterValue}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={clearHeaderFilters}
+                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 px-2 py-1.5 transition-colors"
+                    title="Clear filters"
                   >
-                    {filterValue}
-                  </span>
-                ))
+                    <XIcon className="size-3.5" />
+                  </button>
+                </>
               ) : (
-                <span className="rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                <span className="rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs text-muted-foreground ml-1">
                   None
                 </span>
               )}

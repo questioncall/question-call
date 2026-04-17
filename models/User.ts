@@ -196,6 +196,12 @@ const userSchema = new Schema(
       type: [String],
       default: [],
     },
+    seenNotices: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Notice",
+      },
+    ],
   },
   {
     timestamps: true,

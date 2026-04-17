@@ -27,19 +27,11 @@ type SearchResult = {
   users: { id: string; name: string; username: string; userImage?: string; role: string }[];
 };
 
-const subjectOptions = [
-  "IT",
-  "Biology",
-  "Chemistry",
-  "Physics",
-  "Mathematics",
-  "English",
-  "Accountancy",
-] as const;
-
-const streamOptions = ["Science", "Management"] as const;
-
-const levelOptions = ["School level", "Plus 2", "Bachelor"] as const;
+type FilterOptions = {
+  subjects: string[];
+  streams: string[];
+  levels: string[];
+};
 
 type FilterState = {
   subjects: string[];
@@ -75,6 +67,8 @@ export function AuthenticatedHeader({
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -87,6 +81,23 @@ export function AuthenticatedHeader({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isFilterOpen && !filterOptions && !isLoadingFilters) {
+      setIsLoadingFilters(true);
+      fetch('/api/filters/options')
+        .then((res) => res.json())
+        .then((data) => {
+          setFilterOptions({
+            subjects: data.subjects || [],
+            streams: data.streams || [],
+            levels: data.levels || [],
+          });
+        })
+        .catch(console.error)
+        .finally(() => setIsLoadingFilters(false));
+    }
+  }, [isFilterOpen, filterOptions, isLoadingFilters]);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -398,36 +409,45 @@ export function AuthenticatedHeader({
               </div>
             </div>
 
-            <FilterSection
-              description="Choose subject-wise areas like IT, biology, chemistry, and more."
-              onToggle={(value) => toggleFilter("subjects", value)}
-              options={subjectOptions}
-              selectedValues={draftFilters.subjects}
-              title="Subjects"
-            />
+            {isLoadingFilters && !filterOptions ? (
+              <div className="flex h-32 items-center justify-center text-muted-foreground">
+                <Loader2Icon className="mr-2 size-4 animate-spin" />
+                Loading filters...
+              </div>
+            ) : (
+              <>
+                <FilterSection
+                  description="Choose subject-wise areas like IT, biology, chemistry, and more."
+                  onToggle={(value) => toggleFilter("subjects", value)}
+                  options={filterOptions?.subjects ?? []}
+                  selectedValues={draftFilters.subjects}
+                  title="Subjects"
+                />
 
-            <FilterSection
-              description="Pick the broader field or stream for the questions you want to surface first."
-              onToggle={(value) => toggleFilter("streams", value)}
-              options={streamOptions}
-              selectedValues={draftFilters.streams}
-              title="Field"
-            />
+                <FilterSection
+                  description="Pick the broader field or stream for the questions you want to surface first."
+                  onToggle={(value) => toggleFilter("streams", value)}
+                  options={filterOptions?.streams ?? []}
+                  selectedValues={draftFilters.streams}
+                  title="Field / Stream"
+                />
 
-            <FilterSection
-              description="Focus the feed by academic level such as school, plus 2, or bachelor."
-              onToggle={(value) => toggleFilter("levels", value)}
-              options={levelOptions}
-              selectedValues={draftFilters.levels}
-              title="Level"
-            />
+                <FilterSection
+                  description="Focus the feed by academic level such as school, plus 2, or bachelor."
+                  onToggle={(value) => toggleFilter("levels", value)}
+                  options={filterOptions?.levels ?? []}
+                  selectedValues={draftFilters.levels}
+                  title="Level"
+                />
+              </>
+            )}
           </div>
 
           <SheetFooter className="border-t border-border/70">
-            <Button onClick={clearFilters} variant="ghost">
+            <Button onClick={clearFilters} variant="ghost" disabled={isLoadingFilters}>
               Remove current filters
             </Button>
-            <Button onClick={applyFilters}>Apply filters</Button>
+            <Button onClick={applyFilters} disabled={isLoadingFilters}>Apply filters</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
