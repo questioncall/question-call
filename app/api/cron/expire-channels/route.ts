@@ -58,10 +58,14 @@ async function applyBayesianRating(teacherId: string, rating: number) {
 
 export async function POST(request: Request) {
   try {
-    // Verify cron secret
-    const cronSecret = request.headers.get("x-cron-secret") || request.headers.get("authorization");
+    const { searchParams } = new URL(request.url);
+    const cronKey = searchParams.get("key");
 
-    if (cronSecret !== process.env.CRON_SECRET && cronSecret !== `Bearer ${process.env.CRON_SECRET}`) {
+    // Allow header auth OR query param auth
+    const headerSecret = request.headers.get("x-cron-secret") || request.headers.get("authorization");
+    const validSecret = process.env.CRON_SECRET;
+
+    if (headerSecret !== validSecret && headerSecret !== `Bearer ${validSecret}` && cronKey !== validSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
