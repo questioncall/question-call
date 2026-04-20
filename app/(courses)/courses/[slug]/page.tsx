@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .lean<{ title?: string; description?: string } | null>();
 
   return {
-    title: `${course?.title ?? slug.replace(/-/g, " ")} — Question Hub`,
+    title: `${course?.title ?? slug.replace(/-/g, " ")} — Question Call`,
     description:
       course?.description ?? "View course details, syllabus, and enroll.",
   };

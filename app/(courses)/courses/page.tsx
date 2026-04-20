@@ -3,7 +3,7 @@ import { getCourseBrowsePageData } from "@/lib/course-page-data";
 import { CoursesBrowseClient } from "./courses-browse";
 
 export const metadata = {
-  title: "Courses — Question Hub",
+  title: "Courses — Question Call",
   description:
     "Browse free, subscription-included, and paid courses. Learn from structured lessons, recordings, and live classes.",
 };

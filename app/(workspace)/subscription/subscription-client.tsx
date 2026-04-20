@@ -8,6 +8,7 @@ import Link from "next/link";
 import { PlanDef } from "@/lib/plans";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
+import { APP_NAME } from "@/lib/constants";
 
 export function SubscriptionClient({
   hydratedPlans,
@@ -294,8 +295,8 @@ export function SubscriptionClient({
                     className="h-10 border-blue-200 text-blue-700 hover:bg-blue-100 dark:border-blue-800/50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-xl px-4"
                     onClick={() => {
                       if (typeof window !== "undefined") {
-                        const subject = encodeURIComponent("Join me on Question Hub!");
-                        const body = encodeURIComponent(`Hey! I'm using Question Hub to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask: \n\n${window.location.origin}/auth/signup/student?ref=${referralCode}`);
+                        const subject = encodeURIComponent("Join me on {APP_NAME}!");
+                        const body = encodeURIComponent(`Hey! I'm using {APP_NAME} to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask: \n\n${window.location.origin}/auth/signup/student?ref=${referralCode}`);
                         window.location.href = `mailto:?subject=${subject}&body=${body}`;
                       }
                     }}

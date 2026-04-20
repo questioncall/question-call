@@ -1,4 +1,4 @@
-# Question Hub — Agent Documentation
+# Question Call — Agent Documentation
 
 ---
 
@@ -16,7 +16,7 @@
 
 ## What Are We Building?
 
-**Question Hub** is an academic platform with two main portals:
+**Question Call** is an academic platform with two main portals:
 
 | Portal | Purpose |
 |--------|---------|

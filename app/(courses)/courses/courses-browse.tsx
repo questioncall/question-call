@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { COURSE_UPDATED_EVENT, COURSE_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
+import { APP_NAME } from "@/lib/constants";
 
 type CoursesBrowseClientProps = {
   courses: CourseCardData[];
@@ -320,7 +321,7 @@ export function CoursesBrowseClient({
               <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
                 Sharpen Your Skills With{" "}
                 <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  Question Hub Courses
+                  {APP_NAME} Courses
                 </span>
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">

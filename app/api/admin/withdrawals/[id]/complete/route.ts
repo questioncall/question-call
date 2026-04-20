@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
@@ -9,9 +10,19 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 
+class CompleteWithdrawalError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "CompleteWithdrawalError";
+    this.status = status;
+  }
+}
+
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -27,79 +38,122 @@ export async function POST(
     if (!transactionId || !amountSentValue || amountSentValue <= 0) {
       return NextResponse.json(
         { error: "transactionId and amountSent are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     await connectToDatabase();
 
-    const withdrawalRequest = await WithdrawalRequest.findById(id);
+    const dbSession = await mongoose.startSession();
+    let requesterId = "";
 
-    if (!withdrawalRequest) {
-      return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    try {
+      await dbSession.withTransaction(async () => {
+        const withdrawalRequest = await WithdrawalRequest.findById(id).session(
+          dbSession,
+        );
+
+        if (!withdrawalRequest) {
+          throw new CompleteWithdrawalError("Request not found", 404);
+        }
+
+        if (withdrawalRequest.status !== "PENDING") {
+          throw new CompleteWithdrawalError(
+            "This request is not in PENDING status",
+            400,
+          );
+        }
+
+        const requester = await User.findById(withdrawalRequest.teacherId)
+          .select("role points pointBalance totalPointsWithdrawn")
+          .session(dbSession);
+
+        if (!requester) {
+          throw new CompleteWithdrawalError("Requester not found", 404);
+        }
+
+        requesterId = requester._id.toString();
+
+        if (!withdrawalRequest.pointsReserved) {
+          const balanceField =
+            requester.role === "STUDENT" ? "points" : "pointBalance";
+          const currentBalance =
+            requester.role === "STUDENT"
+              ? requester.points ?? 0
+              : requester.pointBalance ?? 0;
+
+          if (currentBalance < withdrawalRequest.pointsRequested) {
+            throw new CompleteWithdrawalError(
+              "Requester no longer has enough points (balance may have changed)",
+              400,
+            );
+          }
+
+          await User.findByIdAndUpdate(
+            withdrawalRequest.teacherId,
+            {
+              $set: {
+                [balanceField]: roundPoints(
+                  currentBalance - (withdrawalRequest.pointsRequested ?? 0),
+                ),
+              },
+              $inc: {
+                totalPointsWithdrawn: roundPoints(
+                  withdrawalRequest.pointsRequested ?? 0,
+                ),
+              },
+            },
+            { session: dbSession },
+          );
+        } else {
+          await User.findByIdAndUpdate(
+            withdrawalRequest.teacherId,
+            {
+              $inc: {
+                totalPointsWithdrawn: roundPoints(
+                  withdrawalRequest.pointsRequested ?? 0,
+                ),
+              },
+            },
+            { session: dbSession },
+          );
+        }
+
+        withdrawalRequest.status = "COMPLETED";
+        withdrawalRequest.transactionId = transactionId;
+        withdrawalRequest.amountSent = roundPoints(amountSentValue);
+        withdrawalRequest.processedAt = new Date();
+        withdrawalRequest.processedBy = session.user.id;
+        withdrawalRequest.adminNote = adminNote || null;
+        await withdrawalRequest.save({ session: dbSession });
+      });
+    } finally {
+      await dbSession.endSession();
     }
 
-    if (withdrawalRequest.status !== "PENDING") {
-      return NextResponse.json(
-        { error: "This request is not in PENDING status" },
-        { status: 400 }
-      );
-    }
+    if (requesterId) {
+      const notif = await Notification.create({
+        userId: requesterId,
+        type: "PAYMENT",
+        message: `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`,
+        isRead: false,
+      }).catch(() => null);
 
-    const requester = await User.findById(withdrawalRequest.teacherId).select(
-      "role points pointBalance",
-    );
-
-    if (!requester) {
-      return NextResponse.json({ error: "Requester not found" }, { status: 404 });
-    }
-
-    const balanceField =
-      requester.role === "STUDENT" ? "points" : "pointBalance";
-    const currentBalance =
-      requester.role === "STUDENT"
-        ? requester.points ?? 0
-        : requester.pointBalance ?? 0;
-
-    if (currentBalance < withdrawalRequest.pointsRequested) {
-      return NextResponse.json(
-        { error: "Requester no longer has enough points (balance may have changed)" },
-        { status: 400 }
-      );
-    }
-
-    const updatedBalance = roundPoints(
-      currentBalance - (withdrawalRequest.pointsRequested ?? 0),
-    );
-    await User.findByIdAndUpdate(withdrawalRequest.teacherId, {
-      $set: { [balanceField]: updatedBalance },
-    });
-
-    withdrawalRequest.status = "COMPLETED";
-    withdrawalRequest.transactionId = transactionId;
-    withdrawalRequest.amountSent = roundPoints(amountSentValue);
-    withdrawalRequest.processedAt = new Date();
-    withdrawalRequest.processedBy = session.user.id;
-    withdrawalRequest.adminNote = adminNote || null;
-    await withdrawalRequest.save();
-
-    const notif = await Notification.create({
-      userId: withdrawalRequest.teacherId,
-      type: "PAYMENT",
-      message: `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`,
-      isRead: false,
-    }).catch(() => null);
-
-    if (notif) {
-      await emitNotification(withdrawalRequest.teacherId.toString(), notif).catch(() => {});
+      if (notif) {
+        await emitNotification(requesterId, notif).catch(() => {});
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof CompleteWithdrawalError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("[POST /api/admin/withdrawals/complete]", error);
     return NextResponse.json(
       { error: "Failed to complete withdrawal" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -107,14 +107,26 @@ export async function POST(req: NextRequest) {
 
   const durationDays = transaction.meta?.durationDays || 30;
   const planSlug = transaction.meta?.planSlug || "unknown";
+  const user = await User.findById(session.user.id).select("subscriptionEnd");
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
 
-  const subscriptionEnd = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const currentSubscriptionEnd =
+    user.subscriptionEnd && new Date(user.subscriptionEnd) > now
+      ? new Date(user.subscriptionEnd)
+      : now;
+  const subscriptionEnd = new Date(
+    currentSubscriptionEnd.getTime() + durationDays * 24 * 60 * 60 * 1000,
+  );
 
   await User.findByIdAndUpdate(session.user.id, {
     subscriptionStatus: "ACTIVE",
     subscriptionEnd,
     planSlug,
     trialUsed: true,
+    questionsAsked: 0,
   });
 
   return NextResponse.json({ success: true, planSlug });

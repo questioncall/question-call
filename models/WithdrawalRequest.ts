@@ -6,7 +6,6 @@ const withdrawalRequestSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     /** How many points teacher wants to withdraw */
     pointsRequested: {
@@ -31,6 +30,11 @@ const withdrawalRequestSchema = new Schema(
       enum: ["PENDING", "COMPLETED", "REJECTED"],
       default: "PENDING",
       index: true,
+    },
+    /** Whether the requester balance was already held when the request was created */
+    pointsReserved: {
+      type: Boolean,
+      default: false,
     },
 
     // ─── Admin-filled fields (null until admin processes) ────────
@@ -62,6 +66,15 @@ const withdrawalRequestSchema = new Schema(
   },
   {
     timestamps: true,
+  },
+);
+
+// Only one pending withdrawal should exist per user at a time.
+withdrawalRequestSchema.index(
+  { teacherId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "PENDING" },
   },
 );
 

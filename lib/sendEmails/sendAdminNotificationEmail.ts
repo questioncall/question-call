@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { APP_NAME } from "@/lib/constants";
 
 interface SendAdminNotificationEmailParams {
   email: string;
@@ -16,7 +17,7 @@ export async function sendAdminNotificationEmail({
   promotedBy,
 }: SendAdminNotificationEmailParams) {
   try {
-    const appName = process.env.NEXT_PUBLIC_APP_NAME || "Question Hub";
+    const appName = APP_NAME;
     const isPromotion = action === "promoted";
     
     const subject = isPromotion

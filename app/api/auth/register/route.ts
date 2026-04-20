@@ -12,6 +12,7 @@ import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
+import { APP_NAME } from "@/lib/constants";
 
 export const runtime = "nodejs";
 
@@ -139,7 +140,7 @@ if (referrerUser) {
         referrerUser.name,
         "You Earned Bonus Questions! 🎉",
         `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/subscription`,
-        `Someone just joined Question Hub using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
+        `Someone just joined {APP_NAME} using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
       ).catch(console.error);
     }
 
@@ -175,7 +176,7 @@ if (referrerUser) {
       void sendGreetingEmail(
         email,
         name,
-        "Welcome to Question Hub! (+ Bonus Questions 🎉)",
+        "Welcome to {APP_NAME}! (+ Bonus Questions 🎉)",
         process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${refereeBonus} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
       ).catch(console.error);
@@ -183,7 +184,7 @@ if (referrerUser) {
       void sendGreetingEmail(
         email,
         name,
-        "Welcome to Question Hub! Your account has been created successfully.",
+        "Welcome to {APP_NAME}! Your account has been created successfully.",
         process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         "We're excited to have you on board! Explore courses, ask questions, and start your learning journey today."
       ).catch(console.error);

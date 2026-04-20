@@ -4,6 +4,7 @@ import { LogoMark } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
+import { APP_NAME } from "@/lib/constants";
 
 type GuestHeaderProps = {
   portalLabel?: string;
@@ -16,7 +17,7 @@ export function GuestHeader({ portalLabel = "Students • Teachers • Public" }
         <Link className="flex min-w-0 items-center gap-3" href="/">
           <LogoMark size={36} className="rounded-2xl" />
           <span className="flex min-w-0 flex-col">
-            <span className="headline truncate text-base font-semibold text-foreground">Question Hub</span>
+            <span className="headline truncate text-base font-semibold text-foreground">{APP_NAME}</span>
             <span className="truncate text-[11px] text-muted-foreground">{portalLabel}</span>
           </span>
         </Link>

@@ -10,6 +10,7 @@ import { PageLoadingBar } from "@/components/shared/page-loading-bar";
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 
 const dmSansHeading = DM_Sans({subsets:['latin'],variable:'--font-heading'});
 
@@ -17,8 +18,8 @@ const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: {
-    default: "Listeners",
-    template: "%s | Listeners",
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
   description:
     "Listeners is a platform for students, teachers, and admins.",

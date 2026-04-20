@@ -7,7 +7,7 @@ import CourseVideo from "@/models/CourseVideo";
 import { CourseStudioClient } from "./studio-client";
 
 export const metadata = {
-  title: "Course Studio — Question Hub",
+  title: "Course Studio — Question Call",
   description: "Create and manage your courses",
 };
 

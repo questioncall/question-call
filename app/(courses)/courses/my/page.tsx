@@ -4,7 +4,7 @@ import { getMyCoursesPageData } from "@/lib/course-page-data";
 import { MyCoursesClient } from "./my-courses-client";
 
 export const metadata = {
-  title: "My Courses — Question Hub",
+  title: "My Courses — Question Call",
   description: "Track your enrolled courses and continue learning.",
 };
 

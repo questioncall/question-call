@@ -1,5 +1,6 @@
 import resend from "@/lib/resend/resend";
 import { LiveSessionInviteEmail } from "@/emails/LiveSessionInviteEmail";
+import { APP_NAME } from "@/lib/constants";
 
 type SendLiveSessionInviteEmailInput = {
   email: string;
@@ -24,7 +25,7 @@ export async function sendLiveSessionInviteEmail({
 }: SendLiveSessionInviteEmailInput) {
   try {
     const { data, error } = await resend.emails.send({
-      from: `${process.env.NEXT_PUBLIC_APP_NAME || "Question Hub"} <no-reply@siddhantyadav.com.np>`,
+      from: `${APP_NAME} <no-reply@siddhantyadav.com.np>`,
       to: email,
       subject: `Live Class: ${sessionTitle} — ${scheduledLabel}`,
       react: LiveSessionInviteEmail({

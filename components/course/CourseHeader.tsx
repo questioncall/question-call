@@ -8,6 +8,7 @@ import { LogoMark } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 
 type CourseHeaderProps = {
   user?: {
@@ -39,7 +40,7 @@ export function CourseHeader({ user }: CourseHeaderProps) {
         <Link href="/" className="flex items-center gap-3">
           <LogoMark size={34} className="rounded-xl" />
           <span className="text-[17px] font-bold tracking-tight text-foreground">
-            Question Hub
+            {APP_NAME}
           </span>
         </Link>
 

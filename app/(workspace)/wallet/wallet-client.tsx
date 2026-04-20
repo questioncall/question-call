@@ -13,7 +13,6 @@ import {
   Loader2Icon,
   MinusCircleIcon,
   SendIcon,
-  ShieldCheckIcon,
   StarIcon,
   TrendingUpIcon,
   WalletIcon,
@@ -30,7 +29,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { formatPoints } from "@/lib/points";
 import { InviteFriendsDialog } from "@/components/shared/invite-friends-dialog";
 
@@ -344,13 +342,17 @@ export function WalletClient() {
               <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-center gap-2">
                 <ClockIcon className="size-4 text-amber-600" />
                 <span className="text-sm text-amber-700">
-                  You have <strong>{formatPoints(wallet.pendingWithdrawal)} pts</strong> pending withdrawal request.
+                  You have <strong>{formatPoints(wallet.pendingWithdrawal)} pts</strong> held in a pending withdrawal request.
                 </span>
               </div>
             )}
 
             <div className="mt-4 text-sm text-muted-foreground">
-              <p>Calculation: Earned ({formatPoints(wallet.totalPointsEarned)}) - Withdrawn ({formatPoints(wallet.totalPointsWithdrawn)}) - Penalties ({formatPoints(wallet.totalPenaltyPoints)}) = Balance ({formatPoints(wallet.creditablePoints)})</p>
+              <p>
+                {wallet.pendingWithdrawal > 0
+                  ? `Calculation: Earned (${formatPoints(wallet.totalPointsEarned)}) - Withdrawn (${formatPoints(wallet.totalPointsWithdrawn)}) - Penalties (${formatPoints(wallet.totalPenaltyPoints)}) = Available (${formatPoints(wallet.creditablePoints)}) + Pending Hold (${formatPoints(wallet.pendingWithdrawal)})`
+                  : `Calculation: Earned (${formatPoints(wallet.totalPointsEarned)}) - Withdrawn (${formatPoints(wallet.totalPointsWithdrawn)}) - Penalties (${formatPoints(wallet.totalPenaltyPoints)}) = Balance (${formatPoints(wallet.creditablePoints)})`}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -471,8 +473,9 @@ export function WalletClient() {
                     <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                       <input
                         type="checkbox"
-                        defaultChecked={!!wallet?.savedEsewaNumber}
+                        checked={saveEsewaNumber}
                         className="rounded border-input"
+                        onChange={(e) => setSaveEsewaNumber(e.target.checked)}
                       />
                       Save my eSewa number for future withdrawals
                     </label>

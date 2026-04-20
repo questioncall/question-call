@@ -1,5 +1,6 @@
 import resend from "@/lib/resend/resend";
 import { ReferralInviteEmail } from "@/emails/ReferralInviteEmail";
+import { APP_NAME } from "@/lib/constants";
 
 interface SendReferralInviteEmailParams {
   email: string;
@@ -15,7 +16,7 @@ export async function sendReferralInviteEmail({
   message,
 }: SendReferralInviteEmailParams) {
   try {
-    const appName = process.env.NEXT_PUBLIC_APP_NAME || "Question Hub";
+    const appName = APP_NAME;
 
     const { data, error } = await resend.emails.send({
       from: `${appName} <no-reply@siddhantyadav.com.np>`,

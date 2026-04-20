@@ -1,4 +1,5 @@
 import * as React from "react";
+import { APP_NAME } from "@/lib/constants";
 
 interface ReferralInviteEmailProps {
   referrerName: string;
@@ -11,7 +12,7 @@ export function ReferralInviteEmail({
   referralLink,
   message,
 }: ReferralInviteEmailProps) {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Question Hub";
+  const appName = APP_NAME;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', maxWidth: '600px', margin: '0 auto', padding: '20px', backgroundColor: '#f8fafc' }}>

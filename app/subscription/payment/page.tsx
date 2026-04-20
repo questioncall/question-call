@@ -11,6 +11,7 @@ import {
   getPlatformConfig,
 } from "@/models/PlatformConfig";
 import EsewaPayButton from "@/components/payment/esewa-pay-button";
+import { APP_NAME } from "@/lib/constants";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,7 +48,7 @@ export default async function PaymentPage({
           Configure your plan
         </Link>
         <div className="font-bold text-xl tracking-tight hidden md:block text-[#1B7258] dark:text-[#27A883]">
-          EduAsk
+          {APP_NAME}
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { APP_NAME } from "@/lib/constants";
 
 interface LiveSessionInviteEmailProps {
   studentName: string;
@@ -51,7 +52,7 @@ export function LiveSessionInviteEmail({
               }}
             >
               <div style={{ fontSize: "13px", letterSpacing: "1.5px", textTransform: "uppercase", opacity: 0.9 }}>
-                Question Hub Live Class
+                {APP_NAME} Live Class
               </div>
               <div style={{ fontSize: "28px", fontWeight: 700, marginTop: "10px" }}>
                 {sessionTitle}
@@ -130,7 +131,7 @@ export function LiveSessionInviteEmail({
                 backgroundColor: "#f8fafc",
               }}
             >
-              © {new Date().getFullYear()} {process.env.NEXT_PUBLIC_APP_NAME || "Question Hub"}
+              © {new Date().getFullYear()} {APP_NAME}
             </td>
           </tr>
         </tbody>

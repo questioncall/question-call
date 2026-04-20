@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 
 type LogoProps = {
   compact?: boolean;
@@ -31,7 +32,7 @@ export function LogoMark({
     >
       <Image
         src="/logo.png"
-        alt="Question Hub logo"
+        alt="Question Call logo"
         fill
         priority={priority}
         sizes={`${size}px`}
@@ -53,7 +54,7 @@ export function Logo({
       <LogoMark size={36} className="rounded-2xl" />
       {!compact ? (
         <span className="flex flex-col">
-          <span className="headline text-lg font-semibold text-foreground">Question Hub</span>
+          <span className="headline text-lg font-semibold text-foreground">{APP_NAME}</span>
           {showTagline ? (
             <span className="eyebrow text-[11px] text-muted-foreground">{tagline || "Students • Teachers • Admin"}</span>
           ) : null}

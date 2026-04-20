@@ -1,4 +1,5 @@
 import * as React from "react";
+import { APP_NAME } from "@/lib/constants";
 
 interface TransactionAlertEmailProps {
   title: string;
@@ -69,7 +70,7 @@ export function TransactionAlertEmail({
 
               <hr style={{ border: "0", borderTop: "1px solid #e5e7eb", margin: "24px 0", padding: "0" }} />
               <p style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}>
-                This is an automated notification from Question Hub.
+                This is an automated notification from {APP_NAME}.
               </p>
             </td>
           </tr>

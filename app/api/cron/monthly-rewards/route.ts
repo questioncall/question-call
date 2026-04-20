@@ -67,10 +67,31 @@ export async function POST(request: Request) {
 
       if (avgRating < 4.0) continue;
 
-      // Award bonus
-      teacher.pointBalance = (teacher.pointBalance || 0) + bonusPoints;
-      teacher.monthlyBonusClaimedAt = now;
-      await teacher.save();
+      const rewardedTeacher = await User.findOneAndUpdate(
+        {
+          _id: teacher._id,
+          $or: [
+            { monthlyBonusClaimedAt: null },
+            { monthlyBonusClaimedAt: { $lt: startOfMonth } },
+          ],
+        },
+        [
+          {
+            $set: {
+              pointBalance: {
+                $add: [{ $ifNull: ["$pointBalance", 0] }, bonusPoints],
+              },
+              totalPointsEarned: {
+                $add: [{ $ifNull: ["$totalPointsEarned", 0] }, bonusPoints],
+              },
+              monthlyBonusClaimedAt: now,
+            },
+          },
+        ],
+        { new: true },
+      );
+
+      if (!rewardedTeacher) continue;
 
       // Notify teacher
       const notif = await Notification.create({

@@ -15,6 +15,7 @@ import {
 } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
 import VideoProgress from "@/models/VideoProgress";
+import { APP_NAME } from "@/lib/constants";
 
 export type CoursePricingModel = "FREE" | "SUBSCRIPTION_INCLUDED" | "PAID";
 export type CourseStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
@@ -204,7 +205,7 @@ function toCourseCardData(
     thumbnailUrl: course.thumbnailUrl ?? null,
     totalDurationMinutes: course.totalDurationMinutes ?? 0,
     enrollmentCount: course.enrollmentCount ?? 0,
-    instructorName: course.instructorName ?? "Question Hub",
+    instructorName: course.instructorName ?? APP_NAME,
     instructorRole: course.instructorRole ?? "TEACHER",
     isFeatured: Boolean(course.isFeatured),
     lessonsCount,
@@ -615,7 +616,7 @@ export async function getMyCoursesPageData(studentId: string) {
         title: course.title,
         thumbnailUrl: course.thumbnailUrl ?? null,
         subject: course.subject ?? "General",
-        instructorName: course.instructorName ?? "Question Hub",
+        instructorName: course.instructorName ?? APP_NAME,
         pricingModel: course.pricingModel,
         price: course.price ?? null,
         totalDurationMinutes: course.totalDurationMinutes ?? 0,

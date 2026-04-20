@@ -48,6 +48,7 @@ import {
 import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
+import { APP_NAME } from "@/lib/constants";
 
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
@@ -97,7 +98,7 @@ type PlatformData = {
 const QUALIFICATION_ANSWERS = 10;
 
 const PLATFORM: PlatformData = {
-  name: "Question Hub",
+  name: APP_NAME,
   tagline: "Where questions find answers",
   trialDays: 3,
   qualificationAnswers: QUALIFICATION_ANSWERS,
@@ -298,7 +299,7 @@ function Nav() {
           >
             <Image
               src="/logo.png"
-              alt="Question Hub logo"
+              alt="Question Call logo"
               width={26}
               height={26}
               priority
@@ -313,7 +314,7 @@ function Nav() {
               color: isDark ? "#e8f5f3" : "#0f3d38",
             }}
           >
-            Question Hub
+            {APP_NAME}
           </span>
         </Link>
 
@@ -2206,7 +2207,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
       }}
     >
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
-        <SectionLabel label="Why Question Hub" />
+        <SectionLabel label="Why Question Call" />
         <h2 style={{ ...headingStyle(isDark), textAlign: "center" }}>
           Built different from the start
         </h2>
@@ -2247,7 +2248,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
                 color: "#1f766e",
               }}
             >
-              Question Hub
+              {APP_NAME}
             </div>
             <div
               style={{
@@ -2418,7 +2419,7 @@ function CTASection({ isDark }: { isDark: boolean }) {
             lineHeight: 1.6,
           }}
         >
-          Join thousands of students and teachers on Question Hub — where every
+          Join thousands of students and teachers on {APP_NAME} — where every
           question gets a real answer.
         </p>
 
@@ -2518,7 +2519,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           >
             <Image
               src="/logo.png"
-              alt="Question Hub logo"
+              alt="Question Call logo"
               width={20}
               height={20}
               style={{ width: "72%", height: "72%", objectFit: "contain" }}
@@ -2531,7 +2532,7 @@ function Footer({ isDark }: { isDark: boolean }) {
               color: isDark ? "#9dc8c3" : "#1f766e",
             }}
           >
-            Question Hub
+            {APP_NAME}
           </span>
         </div>
 
@@ -2571,7 +2572,7 @@ function Footer({ isDark }: { isDark: boolean }) {
               margin: 0,
             }}
           >
-            © {new Date().getFullYear()} Question Hub. All rights reserved.
+            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
           <a
             href="https://github.com/siddthecoder"

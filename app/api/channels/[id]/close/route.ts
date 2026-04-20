@@ -14,6 +14,87 @@ import { getPlatformConfig } from "@/models/PlatformConfig";
 import { calcTotalPointsEarned } from "@/lib/points";
 import type { FeedQuestion } from "@/types/question";
 
+const BAYESIAN_SEED_VOTES = 5;
+const BAYESIAN_SEED_SCORE = 1;
+
+function buildTeacherPenaltyUpdatePipeline(penalty: number) {
+  return [
+    {
+      $set: {
+        pointBalance: {
+          $max: [
+            0,
+            {
+              $subtract: [{ $ifNull: ["$pointBalance", 0] }, penalty],
+            },
+          ],
+        },
+        totalPenaltyPoints: {
+          $add: [{ $ifNull: ["$totalPenaltyPoints", 0] }, penalty],
+        },
+      },
+    },
+  ];
+}
+
+function buildTeacherRatingUpdatePipeline({
+  rating,
+  pointsEarned,
+  qualificationThreshold,
+}: {
+  rating: number;
+  pointsEarned: number;
+  qualificationThreshold: number;
+}) {
+  return [
+    {
+      $set: {
+        overallRatingSum: {
+          $add: [{ $ifNull: ["$overallRatingSum", 0] }, rating],
+        },
+        overallRatingCount: {
+          $add: [{ $ifNull: ["$overallRatingCount", 0] }, 1],
+        },
+        ...(pointsEarned > 0
+          ? {
+              pointBalance: {
+                $add: [{ $ifNull: ["$pointBalance", 0] }, pointsEarned],
+              },
+              totalPointsEarned: {
+                $add: [{ $ifNull: ["$totalPointsEarned", 0] }, pointsEarned],
+              },
+            }
+          : {}),
+        teacherModeVerified: {
+          $or: [
+            { $ifNull: ["$teacherModeVerified", false] },
+            {
+              $gte: [{ $ifNull: ["$totalAnswered", 0] }, qualificationThreshold],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $set: {
+        overallScore: {
+          $divide: [
+            {
+              $add: [
+                BAYESIAN_SEED_SCORE * BAYESIAN_SEED_VOTES,
+                "$overallRatingSum",
+              ],
+            },
+            {
+              $add: [BAYESIAN_SEED_VOTES, "$overallRatingCount"],
+            },
+          ],
+        },
+      },
+    },
+  ];
+}
+
 type PopulatedQuestion = {
   _id: { toString(): string };
   askerId?: { toString(): string } | string | null;
@@ -95,14 +176,15 @@ export async function POST(
       }
 
       const penalty = config.penaltyPointsForLowRating || 1;
-      teacher.pointBalance = Math.max(0, (teacher.pointBalance || 0) - penalty);
-      teacher.totalPenaltyPoints = (teacher.totalPenaltyPoints || 0) + penalty;
-      await teacher.save();
+      await User.findByIdAndUpdate(
+        teacher._id,
+        buildTeacherPenaltyUpdatePipeline(penalty),
+      );
 
       const penaltyNotif = await Notification.create({
         userId: teacher._id,
         type: "RATING_RECEIVED",
-        message: `Student rated 1 star. ${config.penaltyPointsForLowRating} point(s) deducted.`,
+        message: `Student rated 1 star. ${penalty} point(s) deducted.`,
       }).catch(() => null);
       if (penaltyNotif) await emitNotification(teacher._id.toString(), penaltyNotif);
 
@@ -220,35 +302,19 @@ export async function POST(
     }
 
     if (teacher) {
-      teacher.overallRatingSum = (teacher.overallRatingSum || 0) + rating;
-      teacher.overallRatingCount = (teacher.overallRatingCount || 0) + 1;
+      const pointsEarned =
+        teacher.isMonetized && answer
+          ? calcTotalPointsEarned(answer.answerFormat, rating, config)
+          : 0;
 
-      const totalRatings = teacher.totalAnswered || 0;
-      const seedVotes = 5;
-      const seedScore = 1.0;
-      const currentScore = teacher.overallScore || 0;
-      const accumulatedRealScore = currentScore * totalRatings;
-      const accumulatedTotalScore = (seedScore * seedVotes) + accumulatedRealScore + rating;
-      teacher.overallScore = accumulatedTotalScore / (seedVotes + (totalRatings + 1));
-
-      teacher.totalAnswered = (teacher.totalAnswered || 0) + 1;
-
-      if (teacher.totalAnswered >= 10) {
-        teacher.teacherModeVerified = true;
-      }
-
-      if (teacher.isMonetized && answer) {
-        const pointsEarned = calcTotalPointsEarned(
-          answer.answerFormat,
+      await User.findByIdAndUpdate(
+        teacher._id,
+        buildTeacherRatingUpdatePipeline({
           rating,
-          config,
-        );
-
-        teacher.pointBalance = (teacher.pointBalance || 0) + pointsEarned;
-        teacher.totalPointsEarned = (teacher.totalPointsEarned || 0) + pointsEarned;
-      }
-
-      await teacher.save();
+          pointsEarned,
+          qualificationThreshold: config.qualificationThreshold,
+        }),
+      );
 
       const notifMessage = teacher.isMonetized && answer
         ? `Student rated your solution ${rating}/5 stars. Points credited!`

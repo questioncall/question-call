@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { formatPoints } from "@/lib/points";
 import { getPublicUserByUsername } from "@/lib/user-directory";
+import { APP_NAME } from "@/lib/constants";
 import {
   getMessagesPath,
   getSettingsPath,
@@ -189,7 +190,7 @@ export default async function PublicProfilePage({
           
           <div className="text-sm leading-snug text-foreground whitespace-pre-wrap">
             {profile.bio || (profile.role === "STUDENT" 
-              ? "Student at Question Hub. Learning and growing every day."
+              ? `Student at ${APP_NAME}. Learning and growing every day.`
               : "Platform Educator. Helping students understand core concepts.")}
           </div>
           
@@ -293,8 +294,8 @@ export default async function PublicProfilePage({
                     <h2 className="text-2xl font-bold border-b border-border pb-2 mb-4">👋 Hi, I&apos;m {profile.name}</h2>
                     <div className="text-muted-foreground leading-7 whitespace-pre-wrap">
                       {profile.bio || (profile.role === "STUDENT" 
-                        ? "I'm a student using Question Hub to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can."
-                        : "I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on Question Hub.")}                </div>
+                        ? `I'm a student using ${APP_NAME} to clear my doubts and learn collaboratively. I actively participate in discussions and help peers when I can.`
+                        : `I'm an educator dedicated to providing clear, concise, and highly visual explanations to student questions on ${APP_NAME}.`)}                </div>
                     <div className="mt-6">
                       <h3 className="font-semibold text-lg text-foreground mb-3">Core Skills & Interests</h3>
                       <div className="flex flex-wrap gap-2">

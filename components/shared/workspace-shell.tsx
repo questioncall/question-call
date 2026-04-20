@@ -62,6 +62,7 @@ import {
   upsertChannelItem,
 } from "@/store/features/channels/channels-slice";
 import type { ChannelListItem } from "@/types/channel";
+import { APP_NAME } from "@/lib/constants";
 
 type WorkspaceRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -371,7 +372,7 @@ collapseSidebarOnClick: true,
               <LogoMark size={32} className="rounded-lg" />
             </div>
             <div className="min-w-0 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
-              <h1 className="truncate text-sm font-bold text-sidebar-foreground">Question Hub</h1>
+              <h1 className="truncate text-sm font-bold text-sidebar-foreground">{APP_NAME}</h1>
               <p className="truncate text-xs text-sidebar-foreground/70">@{handle}</p>
             </div>
           </div>

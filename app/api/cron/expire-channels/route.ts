@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 
+import { calcTotalPointsEarned } from "@/lib/points";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitQuestionUpdated, emitChannelStatusUpdate, emitNotification } from "@/lib/pusher/pusherServer";
-import Channel from "@/models/Channel";
-import User from "@/models/User";
+import {
+  emitQuestionUpdated,
+  emitChannelStatusUpdate,
+  emitNotification,
+} from "@/lib/pusher/pusherServer";
 import Answer from "@/models/Answer";
+import Channel from "@/models/Channel";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
+import User from "@/models/User";
 import type { FeedQuestion } from "@/types/question";
+
+const BAYESIAN_SEED_VOTES = 5;
+const BAYESIAN_SEED_SCORE = 1;
 
 type PopulatedQuestion = {
   _id: { toString(): string };
@@ -33,27 +41,85 @@ type PopulatedQuestion = {
   save: () => Promise<unknown>;
 };
 
+function buildTeacherPenaltyUpdatePipeline(penalty: number) {
+  return [
+    {
+      $set: {
+        pointBalance: {
+          $max: [
+            0,
+            {
+              $subtract: [{ $ifNull: ["$pointBalance", 0] }, penalty],
+            },
+          ],
+        },
+        totalPenaltyPoints: {
+          $add: [{ $ifNull: ["$totalPenaltyPoints", 0] }, penalty],
+        },
+      },
+    },
+  ];
+}
+
 /** Apply Bayesian rating to teacher. Seed: 5 votes of 1.0 for bottom-up growth. */
-async function applyBayesianRating(teacherId: string, rating: number) {
-  const teacher = await User.findById(teacherId);
-  if (!teacher) return;
-
-  teacher.totalAnswered = (teacher.totalAnswered || 0) + 1;
-
-  // Update new Phase 7 rating tracking fields
-  teacher.overallRatingSum = (teacher.overallRatingSum || 0) + rating;
-  teacher.overallRatingCount = (teacher.overallRatingCount || 0) + 1;
-
-  // Legacy overallScore (Bayesian average for backward compat)
-  const currentScore = teacher.overallScore || 0;
-  const totalRatings = teacher.totalAnswered - 1;
-  const seedVotes = 5;
-  const seedScore = 1.0;
-
-  const accumulated = seedScore * seedVotes + currentScore * totalRatings + rating;
-  teacher.overallScore = accumulated / (seedVotes + teacher.totalAnswered);
-
-  await teacher.save();
+async function applyBayesianRating({
+  teacherId,
+  rating,
+  pointsEarned,
+  qualificationThreshold,
+}: {
+  teacherId: string;
+  rating: number;
+  pointsEarned: number;
+  qualificationThreshold: number;
+}) {
+  await User.findByIdAndUpdate(teacherId, [
+    {
+      $set: {
+        overallRatingSum: {
+          $add: [{ $ifNull: ["$overallRatingSum", 0] }, rating],
+        },
+        overallRatingCount: {
+          $add: [{ $ifNull: ["$overallRatingCount", 0] }, 1],
+        },
+        ...(pointsEarned > 0
+          ? {
+              pointBalance: {
+                $add: [{ $ifNull: ["$pointBalance", 0] }, pointsEarned],
+              },
+              totalPointsEarned: {
+                $add: [{ $ifNull: ["$totalPointsEarned", 0] }, pointsEarned],
+              },
+            }
+          : {}),
+        teacherModeVerified: {
+          $or: [
+            { $ifNull: ["$teacherModeVerified", false] },
+            {
+              $gte: [{ $ifNull: ["$totalAnswered", 0] }, qualificationThreshold],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $set: {
+        overallScore: {
+          $divide: [
+            {
+              $add: [
+                BAYESIAN_SEED_SCORE * BAYESIAN_SEED_VOTES,
+                "$overallRatingSum",
+              ],
+            },
+            {
+              $add: [BAYESIAN_SEED_VOTES, "$overallRatingCount"],
+            },
+          ],
+        },
+      },
+    },
+  ]);
 }
 
 export async function POST(request: Request) {
@@ -62,17 +128,25 @@ export async function POST(request: Request) {
     const cronKey = searchParams.get("key");
 
     // Allow header auth OR query param auth
-    const headerSecret = request.headers.get("x-cron-secret") || request.headers.get("authorization");
+    const headerSecret =
+      request.headers.get("x-cron-secret") ||
+      request.headers.get("authorization");
     const validSecret = process.env.CRON_SECRET;
 
-    if (headerSecret !== validSecret && headerSecret !== `Bearer ${validSecret}` && cronKey !== validSecret) {
+    if (
+      headerSecret !== validSecret &&
+      headerSecret !== `Bearer ${validSecret}` &&
+      cronKey !== validSecret
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
+    const config = await getPlatformConfig();
 
     const now = new Date();
     const autoCloseGrace = new Date(now.getTime() - 30 * 60 * 1000); // 30 min grace after deadline
+    const maxResets = config.maxQuestionResetCount || 3;
 
     // ─── Pass 1: Channels past deadline ─────────────────────────────────────────
     const expiredChannels = await Channel.find({
@@ -138,14 +212,36 @@ export async function POST(request: Request) {
           }).catch(() => {});
         }
 
-        await applyBayesianRating(channel.acceptorId._id.toString(), AUTO_CLOSE_RATING);
+        const teacher = await User.findById(channel.acceptorId._id)
+          .select("_id isMonetized")
+          .lean();
+        const pointsEarned =
+          teacher?.isMonetized && existingAnswer
+            ? calcTotalPointsEarned(
+                existingAnswer.answerFormat,
+                AUTO_CLOSE_RATING,
+                config,
+              )
+            : 0;
+
+        await applyBayesianRating({
+          teacherId: channel.acceptorId._id.toString(),
+          rating: AUTO_CLOSE_RATING,
+          pointsEarned,
+          qualificationThreshold: config.qualificationThreshold,
+        });
 
         const teacherNotif = await Notification.create({
           userId: channel.acceptorId._id,
           type: "RATING_RECEIVED",
-          message: `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time).`,
+          message:
+            pointsEarned > 0
+              ? `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time). Points credited automatically.`
+              : `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time).`,
         }).catch(() => null);
-        if (teacherNotif) await emitNotification(channel.acceptorId._id.toString(), teacherNotif);
+        if (teacherNotif) {
+          await emitNotification(channel.acceptorId._id.toString(), teacherNotif);
+        }
 
         const askerNotif = await Notification.create({
           userId: channel.askerId,
@@ -154,7 +250,9 @@ export async function POST(request: Request) {
         }).catch(() => null);
         if (askerNotif) await emitNotification(channel.askerId.toString(), askerNotif);
 
-        await emitChannelStatusUpdate(channel._id.toString(), "CLOSED").catch(() => {});
+        await emitChannelStatusUpdate(channel._id.toString(), "CLOSED").catch(
+          () => {},
+        );
 
         autoClosedCount++;
         continue;
@@ -166,23 +264,23 @@ export async function POST(request: Request) {
       channel.ratingGiven = 1;
       await channel.save();
 
-      const config = await getPlatformConfig();
-      const maxResets = config.maxQuestionResetCount || 3;
-
+      const penalty = config.scoreDeductionAmount || 1;
       const teacher = await User.findById(channel.acceptorId._id);
       if (teacher) {
-        const penalty = config.scoreDeductionAmount || 1;
-        teacher.pointBalance = Math.max(0, (teacher.pointBalance || 0) - penalty);
-        teacher.totalPenaltyPoints = (teacher.totalPenaltyPoints || 0) + penalty;
-        await teacher.save();
+        await User.findByIdAndUpdate(
+          teacher._id,
+          buildTeacherPenaltyUpdatePipeline(penalty),
+        );
       }
 
       const penaltyNotif = await Notification.create({
         userId: channel.acceptorId._id,
         type: "QUESTION_RESET",
-        message: `You did not submit an answer in time. ${config.scoreDeductionAmount} point(s) deducted.`,
+        message: `You did not submit an answer in time. ${penalty} point(s) deducted.`,
       }).catch(() => null);
-      if (penaltyNotif) await emitNotification(channel.acceptorId._id.toString(), penaltyNotif);
+      if (penaltyNotif) {
+        await emitNotification(channel.acceptorId._id.toString(), penaltyNotif);
+      }
 
       // Reset the question back to OPEN feed
       const question = channel.questionId as PopulatedQuestion | null;
@@ -203,7 +301,9 @@ export async function POST(request: Request) {
             userImage?: string;
           };
 
-          const reactions = Array.isArray(question.reactions) ? question.reactions : [];
+          const reactions = Array.isArray(question.reactions)
+            ? question.reactions
+            : [];
 
           const feedQuestion: FeedQuestion = {
             id: question._id.toString(),
@@ -221,10 +321,12 @@ export async function POST(request: Request) {
             stream: question.stream || undefined,
             level: question.level || undefined,
             resetCount: question.resetCount,
-            reactions: reactions.map((r: { userId?: { toString(): string } | string | null; type: string }) => ({
-              userId: r.userId?.toString() || "",
-              type: r.type as "like" | "insightful" | "same_doubt",
-            })),
+            reactions: reactions.map(
+              (r: { userId?: { toString(): string } | string | null; type: string }) => ({
+                userId: r.userId?.toString() || "",
+                type: r.type as "like" | "insightful" | "same_doubt",
+              }),
+            ),
             acceptedById: null,
             acceptedAt: null,
             acceptedByName: null,
@@ -242,7 +344,9 @@ export async function POST(request: Request) {
             type: "QUESTION_RESET",
             message: `Teacher didn't answer in time. Your question has been re-opened. (${question.resetCount}/${maxResets} attempts)`,
           }).catch(() => null);
-          if (reopenNotif) await emitNotification(channel.askerId._id.toString(), reopenNotif);
+          if (reopenNotif) {
+            await emitNotification(channel.askerId._id.toString(), reopenNotif);
+          }
         } else {
           question.status = "SOLVED";
           question.acceptedById = null;
@@ -254,11 +358,15 @@ export async function POST(request: Request) {
             type: "CHANNEL_EXPIRED",
             message: `Question auto-marked as solved after ${maxResets} attempts.`,
           }).catch(() => null);
-          if (maxReachedNotif) await emitNotification(channel.askerId._id.toString(), maxReachedNotif);
+          if (maxReachedNotif) {
+            await emitNotification(channel.askerId._id.toString(), maxReachedNotif);
+          }
         }
       }
 
-      await emitChannelStatusUpdate(channel._id.toString(), "EXPIRED").catch(() => {});
+      await emitChannelStatusUpdate(channel._id.toString(), "EXPIRED").catch(
+        () => {},
+      );
 
       expiredCount++;
     }

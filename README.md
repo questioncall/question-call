@@ -1,16 +1,16 @@
-# Question Hub
+# Question Call
 
 <div align="center">
-  <img src="/logo.png" alt="Question Hub Logo" width="200" />
+  <img src="/logo.png" alt="Question Call Logo" width="200" />
   <h1>The Smarter Way to Learn</h1>
   <p>A dual-portal academic platform connecting students with expert teachers through interactive questions, video courses, live sessions, and gamified learning.</p>
 </div>
 
 ---
 
-## Why Question Hub?
+## Why Question Call?
 
-| Traditional Learning | Question Hub |
+| Traditional Learning | Question Call |
 |---------------------|--------------|
 | Ask a question, wait days for answer | Get verified answers in timed channels |
 | Passive video watching | Interactive progress tracking |
