@@ -51,18 +51,20 @@ function isLeaderboardGroup(value?: string): value is LeaderboardGroup {
   return value === "students" || value === "teachers" || value === "all";
 }
 
+type LeaderboardUserPageProps = {
+  params: Promise<{ username: string }>;
+  searchParams?: Promise<{ view?: string | string[] }>;
+};
+
 export default async function LeaderboardUserPage({
   params,
   searchParams,
-}: {
-  params: Promise<{ username: string }>;
-  searchParams?: Promise<{ view?: string }>;
-}) {
-  const [session, { username }, resolvedSearchParams] = await Promise.all([
+}: LeaderboardUserPageProps) {
+  const [session, { username }] = await Promise.all([
     getSafeServerSession(),
     params,
-    searchParams ?? Promise.resolve({}),
   ]);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   if (!session?.user) {
     redirect("/auth/signin");
@@ -101,8 +103,12 @@ export default async function LeaderboardUserPage({
       ? (["students", "all"] as LeaderboardGroup[])
       : (["teachers", "all"] as LeaderboardGroup[]);
   const defaultSection = allowedSections[0];
-  const requestedSection = isLeaderboardGroup(resolvedSearchParams.view)
-    ? resolvedSearchParams.view
+  const requestedView =
+    typeof resolvedSearchParams?.view === "string"
+      ? resolvedSearchParams.view
+      : undefined;
+  const requestedSection = isLeaderboardGroup(requestedView)
+    ? requestedView
     : undefined;
   const activeSection =
     requestedSection && allowedSections.includes(requestedSection)

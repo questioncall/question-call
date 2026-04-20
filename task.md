@@ -1,16 +1,15 @@
 # Task Tracking
 
 ## Chunk
-- Restrict leaderboard switch buttons by signed-in user role.
-- Students can switch between `Student vs Student` and `All`.
-- Teachers can switch between `Teacher vs Teacher` and `All`.
+- Fix the production build type error in the leaderboard profile page.
+- Ensure `searchParams.view` is typed safely for Next.js App Router pages.
+- Keep invalid or unsupported leaderboard views falling back to the allowed default.
 
 ## Files To Touch
 - [task.md](d:\siddhant-files\projects\LISTNERS\listeners\task.md)
 - [app\(workspace)\leaderboard\[username]\page.tsx](d:\siddhant-files\projects\LISTNERS\listeners\app\(workspace)\leaderboard\[username]\page.tsx)
-- [lib\auth.ts](d:\siddhant-files\projects\LISTNERS\listeners\lib\auth.ts)
 
 ## Exit Condition
-- Students only see `Student vs Student` and `All` leaderboard switch options.
-- Teachers only see `Teacher vs Teacher` and `All` leaderboard switch options.
-- The active leaderboard view always resolves to an allowed option for the signed-in user.
+- `next build` no longer fails on `resolvedSearchParams.view` in the leaderboard user page.
+- The page only accepts a string `view` query when resolving the active leaderboard section.
+- Unsupported or missing `view` values still fall back to the signed-in user's default section.
