@@ -602,11 +602,302 @@ export function WorkspaceHome({
     router.replace(query ? `${pathname}?${query}` : pathname);
   };
 
+  const mobileCourseRail = (
+    <section className="space-y-3 md:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Browse courses
+          </p>
+          <h3 className="text-sm font-semibold text-foreground">
+            Quick lessons for your next scroll
+          </h3>
+        </div>
+        <Button asChild size="sm" variant="ghost" className="shrink-0">
+          <Link href="/courses">See all</Link>
+        </Button>
+      </div>
+
+      {courseHighlights.length > 0 ? (
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [overscroll-behavior-x:contain] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {courseHighlights.map((course, index) => (
+            <Link
+              key={course.id}
+              href={`/courses/${course.slug}`}
+              className="group relative h-[10.75rem] w-[10rem] shrink-0 snap-start overflow-hidden rounded-[1.75rem] border border-border/70 bg-background shadow-sm transition-colors hover:border-primary/30"
+            >
+              <div
+                className={cn(
+                  "relative h-full w-full bg-gradient-to-br",
+                  COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                )}
+              >
+                {course.thumbnailUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={course.thumbnailUrl}
+                      alt={course.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-slate-950/45" />
+                  </>
+                ) : null}
+                <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(15,23,42,0.88),rgba(15,23,42,0.18))]" />
+                <div className="absolute left-2.5 top-2.5 rounded-full bg-white/15 px-2 py-1 text-[9px] font-semibold text-white backdrop-blur-sm">
+                  {course.subject}
+                </div>
+                <div className="absolute right-2.5 top-2.5 rounded-full bg-black/20 px-2 py-1 text-[9px] font-semibold text-white backdrop-blur-sm">
+                  {formatCoursePrice(course)}
+                </div>
+                <div className="absolute inset-x-3 bottom-3">
+                  <p className="line-clamp-2 text-sm font-semibold text-white">
+                    {course.title}
+                  </p>
+                  <p className="mt-1 line-clamp-1 text-[11px] text-white/80">
+                    {course.instructorName}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-4 text-sm text-muted-foreground">
+          No active courses yet.
+        </div>
+      )}
+    </section>
+  );
+
+  const renderCourseHighlightsPanel = () => (
+    <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <CardDescription>Courses</CardDescription>
+        <CardTitle className="text-base">Course highlights</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        {courseHighlights.length > 0 ? (
+          <>
+            <div className="overflow-hidden rounded-2xl">
+              <div
+                className="flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
+              >
+                {courseHighlights.map((course, index) => (
+                  <div key={course.id} className="min-w-full">
+                    <Link
+                      href={`/courses/${course.slug}`}
+                      className="block overflow-hidden rounded-2xl border border-border/70 bg-background transition-colors hover:border-primary/30"
+                    >
+                      <div
+                        className={cn(
+                          "relative h-40 bg-gradient-to-br",
+                          COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                        )}
+                      >
+                        {course.thumbnailUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={course.thumbnailUrl}
+                              alt={course.title}
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-slate-950/45" />
+                          </>
+                        ) : null}
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)]" />
+                        <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                          <BookOpenIcon className="size-3" />
+                          {course.subject}
+                        </div>
+                        <div className="absolute right-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                          {formatCoursePrice(course)}
+                        </div>
+                        <div className="absolute inset-x-4 bottom-4">
+                          <p className="text-lg font-semibold text-white">{course.title}</p>
+                          <p className="mt-1 text-sm text-white/85">{course.level}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 p-4">
+                        <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+                          {course.description || "Structured lessons and guided practice from the course library."}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{course.lessonsCount} lessons</span>
+                          <span>{course.enrollmentCount} learners</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>By {course.instructorName}</span>
+                          <span className="inline-flex items-center gap-1 font-medium text-primary">
+                            Open course
+                            <ArrowUpRightIcon className="size-3.5" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                {courseHighlights.map((course, index) => (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => setActiveCourseIndex(index)}
+                    className={cn(
+                      "size-2.5 rounded-full transition-colors",
+                      index === activeCourseIndex ? "bg-primary" : "bg-border",
+                    )}
+                    aria-label={`Show course ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveCourseIndex((current) =>
+                      current === 0 ? courseHighlights.length - 1 : current - 1,
+                    )
+                  }
+                  className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Previous course"
+                  disabled={courseHighlights.length <= 1}
+                >
+                  <ChevronLeftIcon className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
+                  }
+                  className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Next course"
+                  disabled={courseHighlights.length <= 1}
+                >
+                  <ChevronRightIcon className="size-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
+            <p className="text-sm font-medium text-foreground">No active courses yet</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              As soon as courses are published, they will appear here automatically.
+            </p>
+            <Button asChild size="sm" className="mt-4">
+              <Link href="/courses">Browse courses</Link>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderTopTeachersPanel = () => (
+    <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <CardDescription>Top rated teachers</CardDescription>
+        <CardTitle className="text-base">Trusted answerers</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-4">
+        {isTopTeachersLoading ? (
+          [1, 2, 3].map((item) => (
+            <div key={item} className="rounded-xl border border-border/70 bg-muted/15 p-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-3 h-3 w-20" />
+              <Skeleton className="mt-3 h-9 w-full" />
+            </div>
+          ))
+        ) : topTeachers.length > 0 ? (
+          topTeachers.map((teacher, index) => (
+            <Link
+              key={teacher.id}
+              href={getProfilePath({
+                id: teacher.id,
+                name: teacher.name,
+                username: teacher.username,
+              })}
+              className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/15 p-4 transition-colors hover:border-primary/30 hover:bg-muted/25"
+            >
+              <div className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {index + 1}
+              </div>
+
+              {teacher.userImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={teacher.userImage}
+                  alt={teacher.name}
+                  className="size-10 rounded-full border border-border/60 object-cover shrink-0"
+                />
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {teacher.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
+                    <p className="text-xs text-muted-foreground">@{teacher.username}</p>
+                  </div>
+                  {teacher.teacherModeVerified && (
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                      Verified
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <StarIcon
+                        key={star}
+                        className={cn(
+                          "size-3.5",
+                          star <= Math.round(teacher.overallScore)
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground/30",
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-medium text-foreground">
+                    {teacher.overallScore.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {teacher.totalAnswered} answers
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))
+        ) : (
+          <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
+            Top rated teachers will appear here as soon as ratings start coming in.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
+        {mobileCourseRail}
         <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-          <CardContent className="overflow-x-auto py-3">
+          <CardContent className="overflow-x-auto px-3 py-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-max items-center gap-2">
               {FEED_VIEW_OPTIONS.map((option) => (
                 <button
@@ -614,7 +905,7 @@ export function WorkspaceHome({
                   type="button"
                   onClick={() => setActiveView(option.value)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
                     activeView === option.value
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-background text-muted-foreground hover:text-foreground",
@@ -625,7 +916,7 @@ export function WorkspaceHome({
               ))}
 
               <div className="mx-1 h-5 w-px bg-border/80" />
-              <span className="text-xs font-medium text-muted-foreground pl-1">Sort</span>
+              <span className="text-[11px] font-medium text-muted-foreground">Sort</span>
 
               {FEED_SORT_OPTIONS.map(({ value, label, icon: Icon }) => (
                 <button
@@ -633,21 +924,21 @@ export function WorkspaceHome({
                   type="button"
                   onClick={() => setActiveSort(value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
                     activeSort === value
                       ? "border-primary/40 bg-primary/10 text-primary"
                       : "border-border bg-background text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <Icon className="size-3.5" />
+                  <Icon className="size-3" />
                   {label}
                 </button>
               ))}
 
               <div className="mx-1 h-5 w-px bg-border/80" />
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground ml-1">
-                <SlidersHorizontalIcon className="size-3.5" />
-                Header filters
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                <SlidersHorizontalIcon className="size-3" />
+                Filters
               </span>
 
               {activeHeaderFilters.length > 0 ? (
@@ -655,7 +946,7 @@ export function WorkspaceHome({
                   {activeHeaderFilters.map((filterValue) => (
                     <span
                       key={filterValue}
-                      className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground whitespace-nowrap"
+                      className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground whitespace-nowrap"
                     >
                       {filterValue}
                     </span>
@@ -663,14 +954,14 @@ export function WorkspaceHome({
                   <button
                     type="button"
                     onClick={clearHeaderFilters}
-                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 px-2 py-1.5 transition-colors"
+                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 px-1.5 py-1 transition-colors"
                     title="Clear filters"
                   >
-                    <XIcon className="size-3.5" />
+                    <XIcon className="size-3" />
                   </button>
                 </>
               ) : (
-                <span className="rounded-full border border-dashed border-border bg-background px-3 py-1.5 text-xs text-muted-foreground ml-1">
+                <span className="rounded-full border border-dashed border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground whitespace-nowrap">
                   None
                 </span>
               )}
@@ -739,9 +1030,9 @@ export function WorkspaceHome({
           return (
             <article
               key={item.id}
-              className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
+              className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
             >
-              <div className="grid md:grid-cols-[64px_minmax(0,1fr)]">
+              <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
                 <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
                   {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
                     const count = item.reactions.filter((reaction) => reaction.type === type).length;
@@ -776,41 +1067,46 @@ export function WorkspaceHome({
                   <div className="space-y-4 px-4 py-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-semibold text-foreground">
-                            {item.subject || item.stream || item.level || "General"}
-                          </span>
-                          <span>Asked by</span>
-                          <Link
-                            href={askerProfileHref}
-                            className="inline-flex items-center gap-2 font-medium text-foreground transition-colors hover:text-primary"
-                          >
-                            {item.askerImage ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={item.askerImage}
-                                alt={item.askerName}
-                                className="size-5 rounded-full border border-border/60 object-cover"
-                              />
-                            ) : (
-                              <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                                {item.askerName.charAt(0).toUpperCase()}
+                        <div className="space-y-2 text-xs text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-foreground">
+                              {item.subject || item.stream || item.level || "General"}
+                            </span>
+                            <span>{formatTimeAgo(item.createdAt)}</span>
+                          </div>
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span>Asked by</span>
+                            <Link
+                              href={askerProfileHref}
+                              className="inline-flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-hidden rounded-full bg-muted/30 px-2.5 py-1 font-medium text-foreground whitespace-nowrap transition-colors hover:text-primary sm:max-w-56"
+                            >
+                              {item.askerImage ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={item.askerImage}
+                                  alt={item.askerName}
+                                  className="size-5 rounded-full border border-border/60 object-cover"
+                                />
+                              ) : (
+                                <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                  {item.askerName.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                              <span className="truncate">{item.askerName}</span>
+                            </Link>
+                            {item.askerUsername && (
+                              <span className="max-w-full truncate text-muted-foreground/80 sm:max-w-40">
+                                @{item.askerUsername}
                               </span>
                             )}
-                            <span>{item.askerName}</span>
-                          </Link>
-                          {item.askerUsername && (
-                            <span className="text-muted-foreground/80">@{item.askerUsername}</span>
-                          )}
-                          <span>•</span>
-                          <span>{formatTimeAgo(item.createdAt)}</span>
+                          </div>
                         </div>
 
                         <div className="space-y-2">
-                          <h2 className="text-lg font-semibold leading-7 text-foreground sm:text-xl">
+                          <h2 className="text-lg font-semibold leading-7 text-foreground [overflow-wrap:anywhere] sm:text-xl">
                             {item.title}
                           </h2>
-                          <p className="text-sm leading-7 text-muted-foreground whitespace-pre-wrap">
+                          <p className="text-sm leading-7 text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
                             {item.body}
                           </p>
                         </div>
@@ -861,25 +1157,20 @@ export function WorkspaceHome({
                     </div>
 
                     {item.images && item.images.length > 0 && (
-                      <div
-                        className={cn(
-                          "grid gap-2 overflow-hidden rounded-2xl",
-                          item.images.length === 1 ? "grid-cols-1" : "grid-cols-2",
-                        )}
-                      >
+                      <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
                         {item.images.map((imgUrl, index) => (
                           <a
                             key={index}
                             href={imgUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="group block overflow-hidden rounded-xl border border-border/70 bg-muted/10"
+                            className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={imgUrl}
                               alt={`Question media ${index + 1}`}
-                              className="h-44 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-56"
+                              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                             />
                           </a>
                         ))}
@@ -969,7 +1260,7 @@ export function WorkspaceHome({
                             </div>
 
                             {answer.content && (
-                              <p className="text-sm leading-7 text-foreground whitespace-pre-wrap">
+                              <p className="text-sm leading-7 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
                                 {answer.content}
                               </p>
                             )}
@@ -978,7 +1269,7 @@ export function WorkspaceHome({
                               <div
                                 className={cn(
                                   "grid gap-2 overflow-hidden rounded-2xl",
-                                  answer.mediaUrls.length === 1 ? "grid-cols-1" : "grid-cols-2",
+                                  answer.mediaUrls.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
                                 )}
                               >
                                 {answer.mediaUrls.map((url, index) => {
@@ -1006,7 +1297,7 @@ export function WorkspaceHome({
                                       <img
                                         src={url}
                                         alt={`Answer media ${index + 1}`}
-                                        className="h-48 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                                        className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-48"
                                       />
                                     </a>
                                   );
@@ -1028,7 +1319,7 @@ export function WorkspaceHome({
                         <p className="mt-1 text-sm font-medium text-foreground">
                           {item.previewAuthor || "No public answer yet"}
                         </p>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
                           {item.previewText || "Accept this question and be the first to help with a clear answer."}
                         </p>
                       </div>
@@ -1062,12 +1353,13 @@ export function WorkspaceHome({
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       {canComment && (
                         <Button
                           onClick={() => toggleComments(item.id)}
                           size="sm"
                           variant={isExpandedComments ? "secondary" : "outline"}
+                          className="w-full sm:w-auto"
                         >
                           <MessageSquareIcon className="mr-1 size-3.5" />
                           Comment
@@ -1075,7 +1367,12 @@ export function WorkspaceHome({
                       )}
 
                       {canAccept && (
-                        <Button disabled={isAcceptLoading} onClick={() => handleAccept(item.id)} size="sm">
+                        <Button
+                          disabled={isAcceptLoading}
+                          onClick={() => handleAccept(item.id)}
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
                           {isAcceptLoading ? (
                             <Loader2Icon className="mr-1 size-3.5 animate-spin" />
                           ) : (
@@ -1086,7 +1383,7 @@ export function WorkspaceHome({
                       )}
 
                       {canOpenThread && (
-                        <Button asChild size="sm" variant="ghost">
+                        <Button asChild size="sm" variant="ghost" className="w-full justify-between sm:w-auto sm:justify-center">
                           <Link href={getChannelPath(item.channelId)}>
                             Open thread
                             <ArrowUpRightIcon />
@@ -1105,7 +1402,7 @@ export function WorkspaceHome({
                             </p>
                           ) : (
                             comments.map((comment) => (
-                              <div key={comment._id} className="flex gap-3">
+                              <div key={comment._id} className="flex min-w-0 gap-3">
                                 {comment.studentId?.userImage ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
@@ -1130,7 +1427,7 @@ export function WorkspaceHome({
                                     <span>•</span>
                                     <span>{formatTimeAgo(comment.createdAt)}</span>
                                   </div>
-                                  <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap">
+                                  <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
                                     {comment.content}
                                   </p>
                                 </div>
@@ -1182,226 +1479,248 @@ export function WorkspaceHome({
             </article>
           );
         })}
-      </div>
+        </div>
 
-      <div className="space-y-6">
-        <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <CardDescription>Courses</CardDescription>
-            <CardTitle className="text-base">Course highlights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            {courseHighlights.length > 0 ? (
-              <>
-                <div className="overflow-hidden rounded-2xl">
-                  <div
-                    className="flex transition-transform duration-500 ease-out"
-                    style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
-                  >
-                    {courseHighlights.map((course, index) => (
-                      <div key={course.id} className="min-w-full">
-                        <Link
-                          href={`/courses/${course.slug}`}
-                          className="block overflow-hidden rounded-2xl border border-border/70 bg-background transition-colors hover:border-primary/30"
-                        >
-                          <div
-                            className={cn(
-                              "relative h-40 bg-gradient-to-br",
-                              COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
-                            )}
-                          >
-                            {course.thumbnailUrl ? (
-                              <>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={course.thumbnailUrl}
-                                  alt={course.title}
-                                  className="absolute inset-0 h-full w-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-slate-950/45" />
-                              </>
-                            ) : null}
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)]" />
-                            <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-                              <BookOpenIcon className="size-3" />
-                              {course.subject}
-                            </div>
-                            <div className="absolute right-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-                              {formatCoursePrice(course)}
-                            </div>
-                            <div className="absolute inset-x-4 bottom-4">
-                              <p className="text-lg font-semibold text-white">{course.title}</p>
-                              <p className="mt-1 text-sm text-white/85">{course.level}</p>
-                            </div>
+        <div className="hidden space-y-6 md:block xl:hidden">
+          {renderCourseHighlightsPanel()}
+          {renderTopTeachersPanel()}
+        </div>
+
+        <div id="top-teachers" className="hidden space-y-6 xl:block">
+          <div className="space-y-6">
+            <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
+              <CardHeader className="border-b border-border/60 pb-4">
+                <CardDescription>Courses</CardDescription>
+                <CardTitle className="text-base">Course highlights</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {courseHighlights.length > 0 ? (
+                  <>
+                    <div className="overflow-hidden rounded-2xl">
+                      <div
+                        className="flex transition-transform duration-500 ease-out"
+                        style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
+                      >
+                        {courseHighlights.map((course, index) => (
+                          <div key={course.id} className="min-w-full">
+                            <Link
+                              href={`/courses/${course.slug}`}
+                              className="block overflow-hidden rounded-2xl border border-border/70 bg-background transition-colors hover:border-primary/30"
+                            >
+                              <div
+                                className={cn(
+                                  "relative h-40 bg-gradient-to-br",
+                                  COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                                )}
+                              >
+                                {course.thumbnailUrl ? (
+                                  <>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={course.thumbnailUrl}
+                                      alt={course.title}
+                                      className="absolute inset-0 h-full w-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-slate-950/45" />
+                                  </>
+                                ) : null}
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)]" />
+                                <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                                  <BookOpenIcon className="size-3" />
+                                  {course.subject}
+                                </div>
+                                <div className="absolute right-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                                  {formatCoursePrice(course)}
+                                </div>
+                                <div className="absolute inset-x-4 bottom-4">
+                                  <p className="text-lg font-semibold text-white">{course.title}</p>
+                                  <p className="mt-1 text-sm text-white/85">{course.level}</p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3 p-4">
+                                <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+                                  {course.description || "Structured lessons and guided practice from the course library."}
+                                </p>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                  <span>{course.lessonsCount} lessons</span>
+                                  <span>{course.enrollmentCount} learners</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                  <span>By {course.instructorName}</span>
+                                  <span className="inline-flex items-center gap-1 font-medium text-primary">
+                                    Open course
+                                    <ArrowUpRightIcon className="size-3.5" />
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
                           </div>
-
-                          <div className="space-y-3 p-4">
-                            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
-                              {course.description || "Structured lessons and guided practice from the course library."}
-                            </p>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>{course.lessonsCount} lessons</span>
-                              <span>{course.enrollmentCount} learners</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>By {course.instructorName}</span>
-                              <span className="inline-flex items-center gap-1 font-medium text-primary">
-                                Open course
-                                <ArrowUpRightIcon className="size-3.5" />
-                              </span>
-                            </div>
-                          </div>
-                        </Link>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {courseHighlights.map((course, index) => (
-                      <button
-                        key={course.id}
-                        type="button"
-                        onClick={() => setActiveCourseIndex(index)}
-                        className={cn(
-                          "size-2.5 rounded-full transition-colors",
-                          index === activeCourseIndex ? "bg-primary" : "bg-border",
-                        )}
-                        aria-label={`Show course ${index + 1}`}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveCourseIndex((current) =>
-                          current === 0 ? courseHighlights.length - 1 : current - 1,
-                        )
-                      }
-                      className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Previous course"
-                      disabled={courseHighlights.length <= 1}
-                    >
-                      <ChevronLeftIcon className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
-                      }
-                      className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Next course"
-                      disabled={courseHighlights.length <= 1}
-                    >
-                      <ChevronRightIcon className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
-                <p className="text-sm font-medium text-foreground">No active courses yet</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  As soon as courses are published, they will appear here automatically.
-                </p>
-                <Button asChild size="sm" className="mt-4">
-                  <Link href="/courses">Browse courses</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <CardDescription>Top rated teachers</CardDescription>
-            <CardTitle className="text-base">Trusted answerers</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-4">
-            {isTopTeachersLoading ? (
-              [1, 2, 3].map((item) => (
-                <div key={item} className="rounded-xl border border-border/70 bg-muted/15 p-4">
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="mt-3 h-3 w-20" />
-                  <Skeleton className="mt-3 h-9 w-full" />
-                </div>
-              ))
-            ) : topTeachers.length > 0 ? (
-              topTeachers.map((teacher, index) => (
-                <Link
-                  key={teacher.id}
-                  href={getProfilePath({
-                    id: teacher.id,
-                    name: teacher.name,
-                    username: teacher.username,
-                  })}
-                  className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/15 p-4 transition-colors hover:border-primary/30 hover:bg-muted/25"
-                >
-                  <div className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                    {index + 1}
-                  </div>
-
-                  {teacher.userImage ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={teacher.userImage}
-                      alt={teacher.name}
-                      className="size-10 rounded-full border border-border/60 object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {teacher.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
-                        <p className="text-xs text-muted-foreground">@{teacher.username}</p>
-                      </div>
-                      {teacher.teacherModeVerified && (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-                          Verified
-                        </span>
-                      )}
                     </div>
 
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <StarIcon
-                            key={star}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {courseHighlights.map((course, index) => (
+                          <button
+                            key={course.id}
+                            type="button"
+                            onClick={() => setActiveCourseIndex(index)}
                             className={cn(
-                              "size-3.5",
-                              star <= Math.round(teacher.overallScore)
-                                ? "fill-amber-400 text-amber-400"
-                                : "text-muted-foreground/30",
+                              "size-2.5 rounded-full transition-colors",
+                              index === activeCourseIndex ? "bg-primary" : "bg-border",
                             )}
+                            aria-label={`Show course ${index + 1}`}
                           />
                         ))}
                       </div>
-                      <span className="text-xs font-medium text-foreground">
-                        {teacher.overallScore.toFixed(1)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {teacher.totalAnswered} answers
-                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveCourseIndex((current) =>
+                              current === 0 ? courseHighlights.length - 1 : current - 1,
+                            )
+                          }
+                          className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Previous course"
+                          disabled={courseHighlights.length <= 1}
+                        >
+                          <ChevronLeftIcon className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
+                          }
+                          className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Next course"
+                          disabled={courseHighlights.length <= 1}
+                        >
+                          <ChevronRightIcon className="size-4" />
+                        </button>
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
+                    <p className="text-sm font-medium text-foreground">No active courses yet</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      As soon as courses are published, they will appear here automatically.
+                    </p>
+                    <Button asChild size="sm" className="mt-4">
+                      <Link href="/courses">Browse courses</Link>
+                    </Button>
                   </div>
-                </Link>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-                Top rated teachers will appear here as soon as ratings start coming in.
-              </div>
-            )}
+                )}
+              </CardContent>
+            </Card>
+
+            <Card id="top-teachers-desktop" className="overflow-hidden border border-border/70 bg-background shadow-sm">
+              <CardHeader className="border-b border-border/60 pb-4">
+                <CardDescription>Top rated teachers</CardDescription>
+                <CardTitle className="text-base">Trusted answerers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4">
+                {isTopTeachersLoading ? (
+                  [1, 2, 3].map((item) => (
+                    <div key={item} className="rounded-xl border border-border/70 bg-muted/15 p-4">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="mt-3 h-3 w-20" />
+                      <Skeleton className="mt-3 h-9 w-full" />
+                    </div>
+                  ))
+                ) : topTeachers.length > 0 ? (
+                  topTeachers.map((teacher, index) => (
+                    <Link
+                      key={teacher.id}
+                      href={getProfilePath({
+                        id: teacher.id,
+                        name: teacher.name,
+                        username: teacher.username,
+                      })}
+                      className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/15 p-4 transition-colors hover:border-primary/30 hover:bg-muted/25"
+                    >
+                      <div className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {index + 1}
+                      </div>
+
+                      {teacher.userImage ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={teacher.userImage}
+                          alt={teacher.name}
+                          className="size-10 rounded-full border border-border/60 object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                          {teacher.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
+                            <p className="text-xs text-muted-foreground">@{teacher.username}</p>
+                          </div>
+                          {teacher.teacherModeVerified && (
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <StarIcon
+                                key={star}
+                                className={cn(
+                                  "size-3.5",
+                                  star <= Math.round(teacher.overallScore)
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-muted-foreground/30",
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-medium text-foreground">
+                            {teacher.overallScore.toFixed(1)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {teacher.totalAnswered} answers
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
+                    Top rated teachers will appear here as soon as ratings start coming in.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {role === "TEACHER" ? (
+        <Card className="hidden border border-border/70 bg-background shadow-sm xl:block">
+          <CardContent className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Want to compare with the best?</p>
+              <p className="text-sm text-muted-foreground">Jump to the top-rated teachers section and check the current top 5.</p>
+            </div>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="#top-teachers">See Top 5 Teachers</Link>
+            </Button>
           </CardContent>
         </Card>
-      </div>
+      ) : null}
     </div>
   );
 }

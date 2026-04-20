@@ -159,15 +159,15 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[24rem] max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-background shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 sm:w-[26rem]">
+        <div className="fixed inset-x-3 top-[4.5rem] z-50 max-h-[calc(100svh-5.5rem)] overflow-hidden rounded-2xl border border-border bg-background shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[420px] sm:w-[26rem] sm:max-w-[calc(100vw-1rem)]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
-            <div className="flex items-center gap-1">
+            <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                className="h-8 gap-1 px-2 text-xs text-muted-foreground"
                 disabled={unreadCount === 0}
                 onClick={() => { void markAllRead(); }}
               >
@@ -185,7 +185,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           </div>
 
           {/* List */}
-          <div className="max-h-[420px] overflow-y-auto divide-y divide-border/60">
+          <div className="max-h-[calc(100svh-11rem)] overflow-y-auto divide-y divide-border/60 sm:max-h-[420px]">
             {isLoading ? (
               <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
                 Loading…

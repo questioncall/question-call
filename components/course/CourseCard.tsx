@@ -74,9 +74,9 @@ export function CourseCard({
             <BookOpenIcon className="size-10 transition-transform duration-300 group-hover:scale-110" />
           </div>
         )}
-        <div className="absolute left-3 top-3 flex gap-2">
+        <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-2">
           <Badge className={getPricingColor(pricingModel)}>{getPricingLabel(pricingModel, price)}</Badge>
-          <Badge variant="outline" className="bg-background/80 backdrop-blur">
+          <Badge variant="outline" className="max-w-full bg-background/80 backdrop-blur">
             {subject}
           </Badge>
         </div>
@@ -86,7 +86,7 @@ export function CourseCard({
         <CardTitle className="line-clamp-2 text-base font-semibold transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
           {title}
         </CardTitle>
-        <div className="text-xs text-muted-foreground">
+        <div className="line-clamp-2 text-xs text-muted-foreground">
           {instructorName} · {instructorRole}
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">

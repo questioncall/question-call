@@ -222,7 +222,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-full max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <SparklesIcon className="size-5 text-primary" />
@@ -281,7 +281,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
           {/* Image Attachments */}
           <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Label className="text-sm font-medium">Attached Images ({pendingImages.length}/4)</Label>
               <Button
                 type="button"
@@ -306,14 +306,14 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
             />
 
             {pendingImages.length > 0 && (
-              <div className="flex flex-wrap gap-4 pt-2">
+              <div className="flex flex-wrap gap-3 pt-2 sm:gap-4">
                 {pendingImages.map((img, i) => (
                   <div key={i} className="relative group rounded-md border border-border overflow-hidden bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
                       src={img.preview} 
                       alt="pending attachment preview" 
-                      className="size-24 object-cover" 
+                      className="size-20 object-cover sm:size-24" 
                     />
                     <button
                       type="button"
@@ -330,7 +330,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isSubmitting}
-                    className="size-24 flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border hover:bg-muted/50 transition-colors text-muted-foreground"
+                    className="flex size-20 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:bg-muted/50 sm:size-24"
                   >
                     <PlusIcon className="size-5" />
                     <span className="text-[10px] font-medium uppercase tracking-wider">Add More</span>
@@ -350,10 +350,10 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
           </div>
 
           {/* Configuration Grid */}
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-3">
               <Label>Answer format</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {FORMAT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -377,7 +377,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
             {/* Visibility */}
             <div className="space-y-3">
               <Label>Answer visibility</Label>
-              <div className="flex gap-2 h-[calc(100%-28px)]">
+              <div className="grid gap-2 sm:h-[calc(100%-28px)] sm:grid-cols-2">
                 {VISIBILITY_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -397,7 +397,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
           </div>
 
           {/* Optional metadata */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          <div className="grid gap-3 pt-2 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-subject">Subject</Label>
               <select

@@ -187,7 +187,7 @@ export default function AskQuestionPage() {
 
             <div className="space-y-3">
               <Label>Answer format</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {FORMAT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -210,7 +210,7 @@ export default function AskQuestionPage() {
 
             <div className="space-y-3">
               <Label>Answer visibility</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {VISIBILITY_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -233,7 +233,7 @@ export default function AskQuestionPage() {
 
             <Separator />
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="q-subject">Subject</Label>
                 <select
@@ -284,8 +284,8 @@ export default function AskQuestionPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-3 pt-2">
-              <Button disabled={!canSubmit} onClick={handleSubmit} size="lg">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+              <Button className="w-full sm:w-auto" disabled={!canSubmit} onClick={handleSubmit} size="lg">
                 {isSubmitting ? (
                   <Loader2Icon className="mr-2 size-4 animate-spin" />
                 ) : (
@@ -294,6 +294,7 @@ export default function AskQuestionPage() {
                 Post Question
               </Button>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => setShowPreview(!showPreview)}
                 size="lg"
                 variant="outline"

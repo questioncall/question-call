@@ -330,40 +330,52 @@ export function AuthenticatedHeader({
               </div>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
             {showQuizLink ? (
-              <Button asChild className="hidden sm:inline-flex" variant="outline">
-                <Link href="/quiz">Play Quiz</Link>
+              <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5">
+                <Link href="/quiz">
+                  <BookOpenIcon className="size-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Play Quiz</span>
+                </Link>
               </Button>
             ) : null}
             {useModalForPrimary ? (
               <Button
-                className="hidden sm:inline-flex"
+                size="icon-sm"
+                className="sm:size-auto sm:px-3 sm:py-1.5"
                 onClick={() => setIsPostModalOpen(true)}
               >
-                <PlusIcon className="mr-1 size-4" />
-                {primaryLabel}
+                <PlusIcon className="size-4 sm:mr-1" />
+                <span className="hidden sm:inline">{primaryLabel}</span>
               </Button>
             ) : (
-              <Button asChild className="hidden sm:inline-flex" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
-                <Link href={primaryHref}>{primaryLabel}</Link>
+              <Button asChild size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
+                <Link href={primaryHref}>
+                  <PlusIcon className="size-4 sm:hidden" />
+                  <span className="hidden sm:inline">{primaryLabel}</span>
+                </Link>
               </Button>
             )}
             {showQuestionFilter ? (
               <Button
-                className="hidden sm:inline-flex"
+                size="icon-sm"
+                className="sm:size-auto sm:px-3 sm:py-1.5"
                 onClick={() => { setDraftFilters(currentFilters); setIsFilterOpen(true); }}
                 variant="outline"
               >
-                <SlidersHorizontalIcon />
-                Filter
-                {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+                <SlidersHorizontalIcon className="size-4 sm:mr-1" />
+                <span className="hidden sm:inline">
+                  Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+                </span>
+                {activeFilterCount > 0 ? (
+                  <span className="flex sm:hidden size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">{activeFilterCount}</span>
+                ) : null}
               </Button>
             ) : null}
-            <Button asChild variant="outline" className="hidden sm:inline-flex border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary">
+            <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary">
               <Link href="/courses">
-                <BookOpenIcon className="mr-1 size-4" />
-                Courses
+                <BookOpenIcon className="size-4 sm:mr-1" />
+                <span className="hidden sm:inline">Courses</span>
               </Link>
             </Button>
             <ThemeToggle />
@@ -497,5 +509,3 @@ function FilterSection({
     </section>
   );
 }
-
-

@@ -67,7 +67,7 @@ export default function CallSessionPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] bg-background gap-4">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-background px-4 text-center">
         <AlertTriangleIcon className="size-10 text-red-500" />
         <h2 className="text-xl font-bold">Call Error</h2>
         <p className="text-muted-foreground">{error}</p>
@@ -80,7 +80,7 @@ export default function CallSessionPage() {
 
   if (!token || !serverUrl) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] bg-background gap-4">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-background px-4 text-center">
         <Loader2Icon className="size-10 animate-spin text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Connecting to securely encrypted room...</p>
       </div>
@@ -88,12 +88,12 @@ export default function CallSessionPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] w-full flex-col bg-black text-white relative isolate">
-      <div className="absolute top-4 left-4 z-50">
+    <div className="relative isolate flex h-full min-h-0 w-full flex-col bg-black text-white">
+      <div className="absolute inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:inset-x-auto sm:bottom-auto sm:left-4 sm:top-4 sm:px-0">
         <Button 
           variant="destructive" 
           onClick={handleEndCall} 
-          className="rounded-full shadow-lg gap-2"
+          className="w-full max-w-xs gap-2 rounded-full shadow-lg sm:w-auto"
         >
            <PhoneOffIcon className="size-4" /> End Call
         </Button>
@@ -103,7 +103,7 @@ export default function CallSessionPage() {
         audio={true}
         token={token}
         serverUrl={serverUrl}
-        className="flex-1 w-full relative"
+        className="relative flex-1 w-full"
         data-lk-theme="default"
         onDisconnected={handleEndCall}
       >

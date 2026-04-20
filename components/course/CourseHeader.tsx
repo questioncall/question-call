@@ -102,6 +102,52 @@ export function CourseHeader({ user }: CourseHeaderProps) {
           )}
         </div>
       </div>
+      <div className="border-t border-border/60 md:hidden">
+        <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6">
+          <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Button asChild size="sm" variant="ghost" className="shrink-0">
+              <Link href="/">Home</Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-emerald-600/30 text-emerald-700 dark:text-emerald-400"
+            >
+              <Link href="/courses">
+                <BookOpenIcon className="mr-1 size-4" />
+                Courses
+              </Link>
+            </Button>
+            {user ? (
+              <>
+                <Button asChild size="sm" variant="ghost" className="shrink-0">
+                  <Link href="/courses/my">
+                    <GraduationCapIcon className="mr-1 size-4" />
+                    My Courses
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="shrink-0">
+                  <Link href="/">Dashboard</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild size="sm" variant="ghost" className="shrink-0">
+                  <Link href="/auth/signin">Sign in</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="shrink-0 bg-emerald-600 text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700"
+                >
+                  <Link href="/auth/register/STUDENT">Get started</Link>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </header>
   );
 }

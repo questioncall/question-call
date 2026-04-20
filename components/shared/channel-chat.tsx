@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import { cn } from "@/lib/utils";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
   CHANNEL_MESSAGE_EVENT,
@@ -323,7 +324,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       pusherChannel.unbind(CALL_INCOMING_EVENT, handleIncomingCall);
       client.unsubscribe(pusherChannelName);
     };
-  }, [channelId, userId, dispatch]);
+  }, [channelId, userId, dispatch, router]);
 
   // ─── Auto-scroll ──────────────────────────────────────
   useEffect(() => {
@@ -816,129 +817,125 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const countdownWarning = countdown > 0 && countdown < 15 * 60 * 1000; // < 15 min
 
   return (
-    <div className="flex h-full flex-col bg-background relative">
+    <div className="relative flex h-full min-h-0 flex-col bg-background">
       {/* ─── Header ─────────────────────────────────────── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3 sticky top-0 z-10">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground line-clamp-1">
-            {channel.questionTitle}
-          </h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm font-medium text-muted-foreground">
-              {counterpartName}
-            </span>
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-            <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-              {channel.answerFormat} format
-            </span>
-            {isActive && (
-              <>
-                <span className="h-1 w-1 rounded-full bg-muted-foreground/40 hidden sm:inline-block" />
-                <span className="text-xs text-muted-foreground hidden sm:inline-block">
-                  {channel.formatDurationMinutes} min to answer
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Actions based on role and answer status */}
-        <div className="flex items-center gap-3">
-          {isActive && countdown > 0 && (
-            <div className="flex items-center gap-1 shrink-0 bg-muted/30 rounded-full p-1 border">
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={startingCallType !== null}
-                className="rounded-full size-8 hover:bg-muted text-muted-foreground"
-                onClick={() => handleStartCall("AUDIO")}
-              >
-                {startingCallType === "AUDIO" ? <Loader2Icon className="size-4 animate-spin" /> : <PhoneIcon className="size-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={startingCallType !== null}
-                className="rounded-full size-8 hover:bg-muted text-muted-foreground"
-                onClick={() => handleStartCall("VIDEO")}
-              >
-                {startingCallType === "VIDEO" ? <Loader2Icon className="size-4 animate-spin" /> : <VideoIcon className="size-4" />}
-              </Button>
-            </div>
-          )}
-          {/* Timer */}
-          {isActive && (
-            <div
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm transition-colors ${
-                countdownUrgent
-                  ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
-                  : countdownWarning
-                    ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : "border-border bg-background text-foreground"
-              }`}
-            >
-              <ClockIcon className="size-4" />
-              {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
-            </div>
-          )}
-
-          {isClosed && (
-            <div className="flex items-center gap-2 rounded-full border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-              <LockIcon className="size-4" />
-              Closed
-            </div>
-          )}
-
-          {isExpired && (
-            <div className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400">
-              <AlertTriangleIcon className="size-4" />
-              Expired
-            </div>
-          )}
-
-          {/* Teacher Submit Answer Button */}
-          {!isAsker && isActive && !isAnswerSubmitted && (
-            <Button
-              size="sm"
-              className="rounded-full bg-blue-600 text-white hover:bg-blue-700 shadow shadow-blue-500/20 gap-1.5"
-              onClick={handleSubmitAnswer}
-              disabled={isSubmittingAnswer}
-            >
-              {isSubmittingAnswer ? (
+      <div className="sticky top-0 z-10 shrink-0 border-b border-border bg-background px-3 py-3 sm:px-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground sm:line-clamp-1">
+              {channel.questionTitle}
+            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
+              <span className="font-medium text-muted-foreground">{counterpartName}</span>
+              <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:inline-block" />
+              <span className="font-bold uppercase tracking-wider text-muted-foreground">
+                {channel.answerFormat} format
+              </span>
+              {isActive && (
                 <>
-                  <Loader2Icon className="size-4 animate-spin" />
-                  Submitting
-                </>
-              ) : (
-                <>
-                  Submit Answer Now
-                  {markedMessagesCount > 0 && (
-                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] tabular-nums font-bold">
-                      {markedMessagesCount}
-                    </span>
-                  )}
+                  <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:inline-block" />
+                  <span>{channel.formatDurationMinutes} min to answer</span>
                 </>
               )}
-            </Button>
-          )}
+            </div>
+          </div>
 
-          {/* Asker Close Channel Button */}
-          {isAsker && isActive && isAnswerSubmitted && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="rounded-full shadow-sm"
-              onClick={() => setIsRatingModalOpen(true)}
-            >
-              Close Channel
-            </Button>
-          )}
+          {/* Actions based on role and answer status */}
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-3">
+            {isActive && countdown > 0 && (
+              <div className="flex shrink-0 items-center gap-1 rounded-full border bg-muted/30 p-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={startingCallType !== null}
+                  className="size-8 rounded-full text-muted-foreground hover:bg-muted"
+                  onClick={() => handleStartCall("AUDIO")}
+                >
+                  {startingCallType === "AUDIO" ? <Loader2Icon className="size-4 animate-spin" /> : <PhoneIcon className="size-4" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={startingCallType !== null}
+                  className="size-8 rounded-full text-muted-foreground hover:bg-muted"
+                  onClick={() => handleStartCall("VIDEO")}
+                >
+                  {startingCallType === "VIDEO" ? <Loader2Icon className="size-4 animate-spin" /> : <VideoIcon className="size-4" />}
+                </Button>
+              </div>
+            )}
+            {isActive && (
+              <div
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors sm:text-sm",
+                  countdownUrgent
+                    ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
+                    : countdownWarning
+                      ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "border-border bg-background text-foreground",
+                )}
+              >
+                <ClockIcon className="size-4" />
+                {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
+              </div>
+            )}
+
+            {isClosed && (
+              <div className="flex items-center gap-2 rounded-full border border-green-500/50 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 sm:text-sm">
+                <LockIcon className="size-4" />
+                Closed
+              </div>
+            )}
+
+            {isExpired && (
+              <div className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 sm:text-sm">
+                <AlertTriangleIcon className="size-4" />
+                Expired
+              </div>
+            )}
+
+            {!isAsker && isActive && !isAnswerSubmitted && (
+              <Button
+                size="sm"
+                className="min-w-[9rem] rounded-full gap-1.5 bg-blue-600 text-white shadow shadow-blue-500/20 hover:bg-blue-700 sm:min-w-0"
+                onClick={handleSubmitAnswer}
+                disabled={isSubmittingAnswer}
+              >
+                {isSubmittingAnswer ? (
+                  <>
+                    <Loader2Icon className="size-4 animate-spin" />
+                    Submitting
+                  </>
+                ) : (
+                  <>
+                    Submit Answer
+                    {markedMessagesCount > 0 && (
+                      <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                        {markedMessagesCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </Button>
+            )}
+
+            {isAsker && isActive && isAnswerSubmitted && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="rounded-full shadow-sm"
+                onClick={() => setIsRatingModalOpen(true)}
+              >
+                Close Channel
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ─── Status banners ─────────────────────────────── */}
       {isAnswerSubmitted && isActive && isAsker && (
-        <div className="flex justify-between items-center w-full bg-blue-500/10 px-4 py-2 border-b border-blue-500/20 text-xs">
+        <div className="flex w-full flex-col gap-2 border-b border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
             <InfoIcon className="size-3.5" />
             <span className="font-medium">Answer Submitted!</span> Please review and close the channel.
@@ -954,7 +951,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       )}
 
       {isAnswerSubmitted && isActive && !isAsker && (
-        <div className="flex justify-center w-full my-1">
+        <div className="my-1 flex w-full justify-center px-3">
           <div className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
             <InfoIcon className="size-3" />
             Answer submitted. Waiting for asker review.
@@ -963,7 +960,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       )}
 
       {isClosed && (
-        <div className="flex justify-center w-full my-1">
+        <div className="my-1 flex w-full justify-center px-3">
           <div className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600 dark:text-green-400 flex items-center gap-1.5">
             <LockIcon className="size-3" />
             Channel closed — read-only
@@ -972,7 +969,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       )}
 
       {isExpired && (
-        <div className="flex justify-center w-full my-1">
+        <div className="my-1 flex w-full justify-center px-3">
           <div className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1.5">
             <AlertTriangleIcon className="size-3" />
             Channel expired — time limit exceeded
@@ -981,7 +978,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       )}
 
       {/* ─── Messages feed ──────────────────────────────── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-5 overflow-y-auto px-3 py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:space-y-6 sm:px-4 sm:py-6 lg:px-6"
+      >
 
 
         {groupedMessages.map((group) => (
@@ -994,6 +994,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             
             {group.messages.map((msg) => {
               const isOwn = msg.isOwn;
+              const canToggleMark = !isAsker && isOwn && isActive && !isAnswerSubmitted;
 
               // System messages get a special style
               if (msg.isSystemMessage) {
@@ -1063,9 +1064,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                   className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[75%] lg:max-w-[60%] flex flex-col gap-1.5 ${
-                      isOwn ? "items-end" : "items-start"
-                    }`}
+                    className={cn(
+                      "flex max-w-[88%] flex-col gap-1.5 sm:max-w-[75%] lg:max-w-[60%]",
+                      isOwn ? "items-end" : "items-start",
+                    )}
                   >
                     {!isOwn && (
                       <span className="text-xs font-medium text-muted-foreground ml-1">
@@ -1074,25 +1076,29 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                     )}
 
                     <div
-                      className={`group relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
+                      className={cn(
+                        "group relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
                         isOwn
-                          ? "bg-[#183620] text-[#d4ebd9] dark:bg-[#d4ebd9] dark:text-[#183620] rounded-tr-sm"
-                          : "bg-background text-foreground border rounded-tl-sm"
-                      } ${
+                          ? "rounded-tr-sm bg-[#183620] text-[#d4ebd9] dark:bg-[#d4ebd9] dark:text-[#183620]"
+                          : "rounded-tl-sm border bg-background text-foreground",
                         msg.isMarkedAsAnswer
-                          ? "ring-2 ring-yellow-400 ring-offset-1 ring-offset-background border-transparent"
-                          : isOwn ? "" : "border-border"
-                      }`}
+                          ? "border-transparent ring-2 ring-yellow-400 ring-offset-1 ring-offset-background"
+                          : isOwn
+                            ? ""
+                            : "border-border",
+                        canToggleMark ? "pr-10 md:pr-4" : "",
+                      )}
                     >
                       {/* Mark as answer toggle */}
-                      {!isAsker && isOwn && isActive && !isAnswerSubmitted && (
+                      {canToggleMark && (
                         <button
                           type="button"
-                          className={`absolute -left-10 top-1/2 -translate-y-1/2 flex items-center justify-center size-8 rounded-full ${
-                            msg.isMarkedAsAnswer 
-                              ? "text-yellow-500 opacity-100" 
-                              : "text-muted-foreground opacity-0 group-hover:opacity-100"
-                          } hover:text-yellow-500 hover:bg-yellow-500/10 transition-all`}
+                          className={cn(
+                            "absolute right-2 top-2 flex size-8 items-center justify-center rounded-full transition-all md:right-auto md:-left-10 md:top-1/2 md:-translate-y-1/2",
+                            msg.isMarkedAsAnswer
+                              ? "bg-yellow-500/10 text-yellow-500 opacity-100"
+                              : "bg-background/80 text-muted-foreground opacity-90 backdrop-blur-sm hover:bg-yellow-500/10 hover:text-yellow-500 md:bg-transparent md:opacity-0 md:backdrop-blur-0 md:group-hover:opacity-100",
+                          )}
                           onClick={() => handleToggleMark(msg.id, msg.isMarkedAsAnswer ?? false)}
                           title={msg.isMarkedAsAnswer ? "Unmark part of answer" : "Mark as part of answer"}
                         >
@@ -1110,7 +1116,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                       {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
 
                       {msg.mediaUrl && (
-                        <div className="mt-1 relative">
+                        <div className="relative mt-1 max-w-full">
                           {msg.isSending && (
                             <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-xl z-10 backdrop-blur-sm">
                               <Loader2Icon className="size-5 animate-spin text-foreground" />
@@ -1122,7 +1128,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                               href={msg.mediaUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="block w-full max-w-sm overflow-hidden rounded-xl bg-muted/50 border border-border"
+                              className="block w-full max-w-full overflow-hidden rounded-xl border border-border bg-muted/50 sm:max-w-sm"
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
@@ -1137,7 +1143,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                             <video
                               src={msg.mediaUrl}
                               controls
-                              className="w-full max-w-sm rounded-xl overflow-hidden bg-muted/50 border border-border"
+                              className="w-full max-w-full overflow-hidden rounded-xl border border-border bg-muted/50 sm:max-w-sm"
                             />
                           )}
 
@@ -1150,7 +1156,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                               <audio
                                 src={msg.mediaUrl}
                                 controls
-                                className="h-10 max-w-[240px]"
+                                className="h-10 w-full max-w-[220px] sm:max-w-[240px]"
                               />
                             </div>
                           )}
@@ -1189,10 +1195,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
       {/* ─── Input Area ─────────────────────────────────── */}
       {isActive ? (
-        <div className="shrink-0 border-t border-border bg-background p-2.5 sticky bottom-0 flex flex-col gap-2">
+        <div className="sticky bottom-0 flex shrink-0 flex-col gap-2 border-t border-border bg-background p-2.5">
           {/* Pending file preview */}
           {pendingFile && (
-            <div className="flex animate-in slide-in-from-bottom-2 fade-in items-center gap-3 rounded-lg border border-border bg-muted/40 p-2 max-w-xs relative">
+            <div className="relative flex w-full max-w-sm animate-in items-center gap-3 rounded-lg border border-border bg-muted/40 p-2 fade-in slide-in-from-bottom-2">
               <button
                 onClick={() => setPendingFile(null)}
                 className="absolute -right-2 -top-2 rounded-full border border-border bg-background p-1 shadow-sm hover:bg-muted"
@@ -1235,7 +1241,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               label={uploadProgress.label}
               value={uploadProgress.value}
               detail={uploadProgress.detail}
-              className="max-w-sm"
+              className="w-full max-w-sm"
             />
           ) : null}
 
@@ -1249,7 +1255,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           />
 
           {isRecording ? (
-            <div className="flex items-center justify-between gap-4 rounded-full border border-border bg-muted/40 py-2 pl-6 pr-2">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:rounded-full sm:py-2 sm:pl-6 sm:pr-2">
               <div className="flex items-center gap-3 text-red-500">
                 <div className="size-2.5 rounded-full bg-red-500 animate-pulse" />
                 <span className="font-mono text-sm font-medium">
@@ -1300,7 +1306,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               <div className="relative flex-1">
                 <Input
                   placeholder="Type your message..."
-                  className="min-h-12 w-full resize-none rounded-2xl border-border bg-muted/40 pr-10 focus-visible:ring-1 focus-visible:ring-foreground/20 text-base py-3"
+                  className="min-h-11 w-full resize-none rounded-2xl border-border bg-muted/40 py-3 pr-10 text-base focus-visible:ring-1 focus-visible:ring-foreground/20"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -1335,7 +1341,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       ) : (
         /* Disabled input for closed/expired channels */
         <div className="shrink-0 border-t border-border bg-muted/30 p-3 sticky bottom-0">
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+          <div className="flex items-center justify-center gap-2 py-2 text-center text-xs text-muted-foreground">
             <LockIcon className="size-3.5" />
             <span>
               {isClosed
@@ -1347,17 +1353,17 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       )}
       {/* ─── Rating Modal ───────────────────────────────── */}
       {isRatingModalOpen && isAsker && (
-        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-background rounded-2xl border border-border shadow-2xl p-6 max-w-sm w-full mx-auto flex flex-col items-center">
-            <div className="size-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="mx-auto flex w-full max-w-sm flex-col items-center rounded-2xl border border-border bg-background p-6 shadow-2xl">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-blue-500/10">
               <StarIcon className="size-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-xl font-semibold mb-2">Rate Teacher</h3>
-            <p className="text-sm text-muted-foreground text-center mb-6">
+            <h3 className="mb-2 text-center text-xl font-semibold">Rate Teacher</h3>
+            <p className="mb-6 text-center text-sm text-muted-foreground">
               Please rate the quality of the answer before closing the channel permanently.
             </p>
             
-            <div className="flex gap-2 mb-8">
+            <div className="mb-8 flex gap-1 sm:gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
@@ -1371,7 +1377,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               ))}
             </div>
 
-            <div className="flex w-full gap-3">
+            <div className="flex w-full flex-col-reverse gap-3 sm:flex-row">
               <Button
                 variant="outline"
                 className="flex-1 rounded-full"

@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 
 import type { RootState } from "@/store/store";
-import { clearUploadJob, type UploadJob } from "@/store/features/upload/upload-slice";
+import { clearUploadJob } from "@/store/features/upload/upload-slice";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
@@ -48,7 +48,7 @@ export function GlobalUploadProgress() {
   if (jobList.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] w-80 rounded-xl border border-border bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-3 right-2 z-[9999] w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-border bg-background shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 sm:bottom-4 sm:right-4">
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-2.5 bg-muted/40 cursor-pointer border-b border-border"

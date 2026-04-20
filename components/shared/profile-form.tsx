@@ -133,9 +133,10 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Avatar Upload (Custom UI) */}
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
           {currentUserImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img 
               src={currentUserImage} 
               alt="Avatar" 
@@ -148,7 +149,7 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
           )}
         </div>
         
-        <div>
+        <div className="w-full sm:w-auto">
           <input 
             type="file" 
             accept="image/*" 
@@ -166,7 +167,7 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
           </Button>
           {isUploadingImage && imageUploadProgress !== null ? (
             <UploadProgressBar
-              className="mt-3 w-[240px]"
+              className="mt-3 w-full max-w-[240px]"
               label="Uploading avatar"
               value={imageUploadProgress}
             />
@@ -211,7 +212,7 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
         </div>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
         {isSubmitting ? "Saving..." : "Save changes"}
       </Button>
     </form>

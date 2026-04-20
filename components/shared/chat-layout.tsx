@@ -57,10 +57,10 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
     : channels;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full overflow-hidden bg-background">
+    <div className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-background">
       <div
         className={cn(
-          "group absolute inset-y-0 left-0 z-20 flex min-h-0 shrink-0 flex-col border-r border-border bg-background transition-all duration-300 ease-in-out md:static",
+          "group absolute inset-y-0 left-0 z-20 flex min-h-0 max-w-full shrink-0 flex-col border-r border-border bg-background transition-all duration-300 ease-in-out md:static",
           isCollapsed
             ? "-translate-x-full md:w-20 md:translate-x-0 md:hover:w-80 md:hover:shadow-md md:[&:hover>div.sidebar-content]:pointer-events-auto md:[&:hover>div.sidebar-content]:opacity-100 md:[&:hover>div.sidebar-collapsed-icons]:opacity-0 md:[&:not(:hover)>div.sidebar-content]:pointer-events-none md:[&:not(:hover)>div.sidebar-content]:opacity-0 md:[&:not(:hover)>div.sidebar-collapsed-icons]:opacity-100"
             : "w-full translate-x-0 md:w-80",
@@ -86,7 +86,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
 
         <div
           className={cn(
-            "sidebar-content flex h-full min-h-0 w-80 shrink-0 flex-col bg-background transition-opacity duration-300",
+            "sidebar-content flex h-full min-h-0 w-full shrink-0 flex-col bg-background transition-opacity duration-300 md:w-80",
             isCollapsed ? "pointer-events-none opacity-0" : "opacity-100",
           )}
         >
@@ -188,7 +188,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <div className="relative flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {isChannelPage && (
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background p-4 md:hidden">
             <Link

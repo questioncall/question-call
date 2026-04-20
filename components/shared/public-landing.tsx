@@ -2,19 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
-const buttonStyles = `
-  .lpb-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-  .lpb-btn:hover { transform: translateY(-2px); }
-  .lpb-btn-primary { background: linear-gradient(135deg, #1f766e, #0f5c55); box-shadow: 0 4px 14px rgba(31,118,110,0.4); }
-  .lpb-btn-primary:hover { background: linear-gradient(135deg, #238e87, #1a6d65); box-shadow: 0 8px 28px rgba(31,118,110,0.55), 0 0 20px rgba(31,118,110,0.25); }
-  .lpb-btn-secondary { border: 1.5px solid rgba(31,118,110,0.35); background: rgba(255,255,255,0.8); }
-  .lpb-btn-secondary:hover { background: rgba(31,118,110,0.1); border-color: rgba(31,118,110,0.5); box-shadow: 0 0 20px rgba(31,118,110,0.15); }
-  .lpb-btn-dark { border: 1.5px solid rgba(31,118,110,0.45); background: rgba(31,118,110,0.1); }
-  .lpb-btn-dark:hover { background: rgba(31,118,110,0.2); box-shadow: 0 0 20px rgba(31,118,110,0.2); }
-  .lpb-btn-ghost { color: #4a8a82; }
-  .lpb-btn-ghost:hover { color: #1f766e; text-decoration: underline; }
-`;
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowRightIcon,
@@ -43,7 +30,6 @@ import {
   UsersIcon,
   CalendarIcon,
   BookOpenIcon,
-  GraduationCap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -64,6 +50,45 @@ function LandingStyles() {
       .lpb-btn-dark:hover { background: rgba(31,118,110,0.2); box-shadow: 0 0 20px rgba(31,118,110,0.2); }
       .lpb-btn-ghost { color: #4a8a82; }
       .lpb-btn-ghost:hover { color: #1f766e; text-decoration: underline; }
+      @media (max-width: 767px) {
+        .lpb-mobile-btn {
+          font-size: 12px !important;
+          padding: 0.38rem 0.75rem !important;
+          border-radius: 10px !important;
+        }
+        .lpb-student-feed-shell {
+          grid-template-columns: 1fr !important;
+        }
+        .lpb-student-feed-sidebar {
+          display: none !important;
+        }
+        .lpb-two-col {
+          grid-template-columns: 1fr !important;
+          gap: 18px !important;
+        }
+        .lpb-compare-grid {
+          grid-template-columns: minmax(0, 1fr) 74px 74px !important;
+        }
+        .lpb-footer-shell {
+          justify-content: center !important;
+          text-align: center !important;
+        }
+        .lpb-footer-links {
+          justify-content: center !important;
+          width: 100%;
+          flex-wrap: wrap;
+        }
+        .lpb-footer-meta {
+          align-items: center !important;
+          width: 100%;
+        }
+        .lpb-stats-bar {
+          min-width: 0 !important;
+          justify-content: center !important;
+          flex-wrap: wrap !important;
+          gap: 14px 18px !important;
+        }
+      }
     `}</style>
   );
 }
@@ -240,7 +265,10 @@ function Nav() {
   const isDark = resolvedTheme === "dark";
   const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -266,17 +294,17 @@ function Nav() {
         backdropFilter: scrolled ? "blur(20px)" : "none",
       }}
     >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 1.5rem",
-          height: 64,
-        }}
-      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 1rem",
+            height: 56,
+          }}
+        >
         <Link
           href="/"
           style={{
@@ -318,7 +346,7 @@ function Nav() {
           </span>
         </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {[
             ["#how-it-works", "How it works"],
             ["#for-students", "Students"],
@@ -331,8 +359,8 @@ function Nav() {
               href={href}
               style={{
                 display: "none",
-                padding: "0.4rem 0.8rem",
-                fontSize: 14,
+                padding: "0.35rem 0.7rem",
+                fontSize: 13,
                 fontWeight: 500,
                 color: isDark ? "#9dc8c3" : "#2a6b64",
                 textDecoration: "none",
@@ -346,11 +374,12 @@ function Nav() {
           ))}
 
           <button
+            className="lpb-mobile-btn"
             onClick={() => setTheme(isDark ? "light" : "dark")}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
+              width: 32,
+              height: 32,
+              borderRadius: 6,
               border: "1px solid rgba(31,118,110,0.25)",
               background: "transparent",
               cursor: "pointer",
@@ -360,17 +389,17 @@ function Nav() {
               color: isDark ? "#9dc8c3" : "#2a6b64",
             }}
           >
-            {mounted && (isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />)}
+            {mounted && (isDark ? <SunIcon size={14} /> : <MoonIcon size={14} />)}
           </button>
 
           <Link
             href={getSignInPath()}
-            className="lpb-btn lpb-btn-ghost"
+            className="lpb-btn lpb-btn-ghost lpb-mobile-btn"
             style={{
-              padding: "0.45rem 1rem",
-              fontSize: 14,
+              padding: "0.35rem 0.75rem",
+              fontSize: 12,
               fontWeight: 600,
-              borderRadius: 8,
+              borderRadius: 6,
               border: "1px solid rgba(31,118,110,0.3)",
               color: isDark ? "#9dc8c3" : "#1f766e",
               textDecoration: "none",
@@ -381,12 +410,12 @@ function Nav() {
           </Link>
           <Link
             href={getSignUpPath("STUDENT")}
-            className="lpb-btn lpb-btn-primary"
+            className="lpb-btn lpb-btn-primary lpb-mobile-btn"
             style={{
-              padding: "0.45rem 1.1rem",
-              fontSize: 14,
+              padding: "0.35rem 0.85rem",
+              fontSize: 12,
               fontWeight: 600,
-              borderRadius: 8,
+              borderRadius: 6,
               color: "#fff",
               textDecoration: "none",
             }}
@@ -479,7 +508,14 @@ function Hero({ isDark }: { isDark: boolean }) {
         />
       </div>
 
-      <div style={{ position: "relative", maxWidth: 900, textAlign: "center" }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 900,
+          textAlign: "center",
+        }}
+      >
         {/* Pill badge */}
         <div
           style={{
@@ -668,6 +704,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
     <div
       style={{
         position: "relative",
+        width: "100%",
         maxWidth: 820,
         margin: "0 auto",
         borderRadius: 20,
@@ -720,6 +757,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
 
       {/* Content area */}
       <div
+        className="lpb-student-feed-shell"
         style={{
           display: "grid",
           gridTemplateColumns: "220px 1fr",
@@ -728,6 +766,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
       >
         {/* Sidebar */}
         <div
+          className="lpb-student-feed-sidebar"
           style={{
             borderRight: `1px solid ${border}`,
             padding: "16px 12px",
@@ -928,6 +967,7 @@ function StatsBar({ isDark }: { isDark: boolean }) {
       }}
     >
       <div
+        className="lpb-stats-bar"
         style={{
           maxWidth: 1100,
           margin: "0 auto",
@@ -935,7 +975,6 @@ function StatsBar({ isDark }: { isDark: boolean }) {
           justifyContent: "space-around",
           padding: "1.2rem 1.5rem",
           gap: 24,
-          minWidth: 500,
         }}
       >
         {stats.map(({ value, label }) => (
@@ -956,7 +995,6 @@ function StatsBar({ isDark }: { isDark: boolean }) {
                 fontSize: 12,
                 color: isDark ? "#5a9990" : "#5a8a84",
                 margin: 0,
-                whiteSpace: "nowrap",
               }}
             >
               {label}
@@ -983,12 +1021,15 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
         A focused, time-bound workflow that keeps both sides accountable.
       </p>
 
-      <div
+<div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-          gap: 24,
+          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))",
+          gap: 20,
           marginTop: "3rem",
+          padding: "0 1rem",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {HOW_IT_WORKS.map(({ step, title, desc }, i) => (
@@ -1080,7 +1121,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,200px),1fr))",
             gap: 16,
           }}
         >
@@ -1165,7 +1206,7 @@ function ForStudents({ isDark }: { isDark: boolean }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))",
             gap: 20,
             marginTop: "3rem",
           }}
@@ -1208,7 +1249,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+        gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))",
         gap: 20,
       }}
     >
@@ -1479,12 +1520,16 @@ function ForTeachers({ isDark }: { isDark: boolean }) {
         {PLATFORM.qualificationAnswers} answers, then get paid per solution.
       </p>
 
-      <div
+<div
+        className="lpb-two-col"
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 24,
+          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))",
+          gap: 20,
           marginTop: "3.5rem",
+          padding: "0 1rem",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
@@ -1778,7 +1823,7 @@ function QuizPortal({ isDark }: { isDark: boolean }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))",
             gap: 20,
             marginTop: "3rem",
           }}
@@ -1942,7 +1987,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
+          gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))",
           gap: 20,
           marginTop: "3rem",
         }}
@@ -2095,7 +2140,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))",
           gap: 16,
           marginTop: "3rem",
         }}
@@ -2229,6 +2274,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
           }}
         >
           <div
+            className="lpb-compare-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 120px 120px",
@@ -2265,6 +2311,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
           {rows.map(({ feature, us, other }, i) => (
             <div
               key={feature}
+              className="lpb-compare-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 120px 120px",
@@ -2494,6 +2541,7 @@ function Footer({ isDark }: { isDark: boolean }) {
       }}
     >
       <div
+        className="lpb-footer-shell"
         style={{
           maxWidth: 1100,
           margin: "0 auto",
@@ -2536,7 +2584,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 20 }}>
+        <div className="lpb-footer-links" style={{ display: "flex", gap: 20 }}>
           {[
             [getSignInPath(), "Sign in"],
             [getSignUpPath("STUDENT"), "Students"],
@@ -2558,6 +2606,7 @@ function Footer({ isDark }: { isDark: boolean }) {
         </div>
 
         <div
+          className="lpb-footer-meta"
           style={{
             display: "flex",
             flexDirection: "column",
