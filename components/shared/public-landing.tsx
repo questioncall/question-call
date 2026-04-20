@@ -48,7 +48,7 @@ import {
 import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, CONTACT_SERVICE_EMAIL } from "@/lib/constants";
 
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
@@ -2574,6 +2574,17 @@ function Footer({ isDark }: { isDark: boolean }) {
           >
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
+          <a
+            href={`mailto:${CONTACT_SERVICE_EMAIL}`}
+            style={{
+              fontSize: 12,
+              color: isDark ? "#5a9990" : "#6aaba4",
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Contact service: {CONTACT_SERVICE_EMAIL}
+          </a>
           <a
             href="https://github.com/siddthecoder"
             target="_blank"

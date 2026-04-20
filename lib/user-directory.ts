@@ -22,6 +22,7 @@ type DirectoryUser = {
   skills?: string[];
   interests?: string[];
   totalAsked?: number;
+  questionsAsked?: number;
   teacherModeVerified?: boolean;
 };
 
@@ -41,11 +42,14 @@ export type PublicDirectoryUser = {
   skills?: string[];
   interests?: string[];
   totalAsked?: number;
+  questionsAsked: number;
   teacherModeVerified?: boolean;
 };
 
+export type LeaderboardGroup = "students" | "teachers" | "all";
+
 const publicDirectorySelect =
-  "name email username role points pointBalance totalAnswered overallScore overallRatingSum overallRatingCount createdAt bio userImage skills interests totalAsked teacherModeVerified";
+  "name email username role points pointBalance totalAnswered overallScore overallRatingSum overallRatingCount createdAt bio userImage skills interests totalAsked questionsAsked teacherModeVerified";
 
 function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
   const id = typeof user._id === "string" ? user._id : user._id.toString();
@@ -71,8 +75,39 @@ function mapDirectoryUser(user: DirectoryUser): PublicDirectoryUser {
     skills: user.skills || [],
     interests: user.interests || [],
     totalAsked: user.totalAsked ?? 0,
+    questionsAsked: user.questionsAsked ?? 0,
     teacherModeVerified: user.teacherModeVerified ?? false,
   };
+}
+
+function getStudentActivityCount(user: PublicDirectoryUser) {
+  return Math.max(user.totalAsked ?? 0, user.questionsAsked ?? 0);
+}
+
+function sortLeaderboardProfiles(
+  left: PublicDirectoryUser,
+  right: PublicDirectoryUser,
+  group: LeaderboardGroup,
+) {
+  const scoreDifference = getLeaderboardScore(right, group) - getLeaderboardScore(left, group);
+
+  if (scoreDifference !== 0) {
+    return scoreDifference;
+  }
+
+  const pointsDifference = (right.points ?? 0) - (left.points ?? 0);
+
+  if (pointsDifference !== 0) {
+    return pointsDifference;
+  }
+
+  const ratingDifference = (right.overallScore ?? 0) - (left.overallScore ?? 0);
+
+  if (ratingDifference !== 0) {
+    return ratingDifference;
+  }
+
+  return left.name.localeCompare(right.name);
 }
 
 export async function generateUniqueUsername(input: {
@@ -118,20 +153,67 @@ export const getPublicUserByUsername = cache(async (username: string) => {
   return fallbackUser ? mapDirectoryUser(fallbackUser) : null;
 });
 
-export function getLeaderboardScore(user: PublicDirectoryUser) {
-  return user.totalAnswered * 5 + user.points * 2 + user.overallScore * 25;
+export function getLeaderboardScore(
+  user: PublicDirectoryUser,
+  group: LeaderboardGroup = "all",
+) {
+  if (group === "students") {
+    return getStudentActivityCount(user);
+  }
+
+  if (group === "teachers") {
+    return user.totalAnswered;
+  }
+
+  return user.role === "STUDENT"
+    ? getStudentActivityCount(user)
+    : user.totalAnswered;
 }
 
-export const getLeaderboardProfiles = cache(async () => {
+export function getLeaderboardMetricLabel(
+  user: PublicDirectoryUser,
+  group: LeaderboardGroup = "all",
+) {
+  if (group === "students" || user.role === "STUDENT") {
+    return "questions asked";
+  }
+
+  return "questions solved";
+}
+
+export function getLeaderboardMetricValue(
+  user: PublicDirectoryUser,
+  group: LeaderboardGroup = "all",
+) {
+  return getLeaderboardScore(user, group);
+}
+
+const getDirectoryUsers = cache(async () => {
   await connectToDatabase();
 
   const users = (await User.find({ role: { $in: ["STUDENT", "TEACHER"] } })
     .select(publicDirectorySelect)
     .lean()) as DirectoryUser[];
 
+  return users.map(mapDirectoryUser);
+});
+
+export const getLeaderboardProfiles = cache(async (group: LeaderboardGroup = "all") => {
+  const users = await getDirectoryUsers();
+
   return users
-    .map(mapDirectoryUser)
-    .sort((left, right) => getLeaderboardScore(right) - getLeaderboardScore(left));
+    .filter((user) => {
+      if (group === "students") {
+        return user.role === "STUDENT";
+      }
+
+      if (group === "teachers") {
+        return user.role === "TEACHER";
+      }
+
+      return true;
+    })
+    .sort((left, right) => sortLeaderboardProfiles(left, right, group));
 });
 
 export async function getMasterAdminEmails(): Promise<string[]> {

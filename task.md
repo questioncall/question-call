@@ -1,19 +1,16 @@
 # Task Tracking
 
 ## Chunk
-- Rebrand the platform name across user-facing code and docs so the app uses `Question Call`.
-- Do not modify any `.env` files or env variable names.
-- Leave internal storage folder names, legacy asset paths, and other non-user-facing identifiers unchanged unless required for display text.
+- Restrict leaderboard switch buttons by signed-in user role.
+- Students can switch between `Student vs Student` and `All`.
+- Teachers can switch between `Teacher vs Teacher` and `All`.
 
 ## Files To Touch
 - [task.md](d:\siddhant-files\projects\LISTNERS\listeners\task.md)
-- User-facing app pages, components, email templates, and docs that display the platform name
-- [lib/config.ts](d:\siddhant-files\projects\LISTNERS\listeners\lib\config.ts) for seed/default branding text only
-- [MONEY_FLOW.md](d:\siddhant-files\projects\LISTNERS\listeners\MONEY_FLOW.md)
-- [README.md](d:\siddhant-files\projects\LISTNERS\listeners\README.md)
-- [AGENTS.md](d:\siddhant-files\projects\LISTNERS\listeners\AGENTS.md)
+- [app\(workspace)\leaderboard\[username]\page.tsx](d:\siddhant-files\projects\LISTNERS\listeners\app\(workspace)\leaderboard\[username]\page.tsx)
+- [lib\auth.ts](d:\siddhant-files\projects\LISTNERS\listeners\lib\auth.ts)
 
 ## Exit Condition
-- Visible platform name reads `Question Call`.
-- `.env` files remain unchanged.
-- Internal folder names and asset paths that do not need renaming for display remain unchanged.
+- Students only see `Student vs Student` and `All` leaderboard switch options.
+- Teachers only see `Teacher vs Teacher` and `All` leaderboard switch options.
+- The active leaderboard view always resolves to an allowed option for the signed-in user.
