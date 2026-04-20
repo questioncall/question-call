@@ -1,3 +1,15 @@
-1. Filtering is not wokring . like in header filet it shoould not be hard coded for filetign the stuffs like we need to anayaelze te db and create tehe possibel filter and store that in the in cache so other user when need filter we dont need to calacuate the db, . and then i  th equestion above bx which shows the all new hot sort header filer sync the filter there too. 
+Next Steps After Deployment
+Once these changes are pushed and live on production, you should submit your site to search engines to kickstart the indexing process:
 
-2. make a notice tab in the amdnal panl from which the amdin can emit notification to teacher and student oegtrerly or seperately to tracher group pr student group or particualty to anyone via email. -- this notification can be only one time notification ( one time see by user or teachr or student then dont make that appear again.) -  this notification is like a modal get popoed up in the screen . the notificatio  have type too like adverstiesemtn or general or special etc. all will have their own ui of preseation but all the notification should need to be opened in the custom own crated modal w-80 h-60. 
+1. Google Search Console (GSC)
+
+Go to Google Search Console.
+Add your property using the Domain method (you'll need to add a DNS TXT record to verify ownership of questioncall.com).
+Once verified, go to Sitemaps in the left menu.
+Submit your new sitemap URL: https://questioncall.com/sitemap.xml.
+(Optional) Enter https://questioncall.com/ into the URL Inspection tool at the top and click "Request Indexing" to speed things up.
+2. Bing Webmaster Tools
+
+Go to Bing Webmaster Tools.
+You can easily import your verified site directly from Google Search Console (saves you from verifying DNS again).
+Go to Sitemaps and submit https://questioncall.com/sitemap.xml if it didn't import automatically.
