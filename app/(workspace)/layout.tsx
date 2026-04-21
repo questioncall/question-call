@@ -5,6 +5,7 @@ import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getSignInPath } from "@/lib/user-paths";
+import { getPlatformConfig, getPlatformSocialHandles } from "@/models/PlatformConfig";
 
 export default async function WorkspaceLayout({
   children,
@@ -24,11 +25,12 @@ export default async function WorkspaceLayout({
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const workspaceUser = await getWorkspaceUser(session.user);
+  const socialHandles = getPlatformSocialHandles(await getPlatformConfig());
 
   return (
     <>
       <GlobalNoticeModal />
-      <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>
+      <WorkspaceShell user={workspaceUser} socialHandles={socialHandles} defaultOpen={defaultOpen}>
         {children}
       </WorkspaceShell>
     </>

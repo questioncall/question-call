@@ -27,6 +27,10 @@ import {
 } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getPrimaryAnswerFormat } from "@/lib/question-types";
+import {
+  DEFAULT_PLATFORM_SOCIAL_HANDLES,
+  type SocialHandleKey,
+} from "@/lib/constants";
 
 const platformConfigSchema = new Schema(
   {
@@ -123,6 +127,41 @@ const platformConfigSchema = new Schema(
       type: Number,
       default: TRIAL.MAX_QUESTIONS,
       min: 0,
+    },
+    socialFacebookHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.facebook,
+      trim: true,
+    },
+    socialInstagramHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.instagram,
+      trim: true,
+    },
+    socialWhatsappHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.whatsapp,
+      trim: true,
+    },
+    socialYoutubeHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.youtube,
+      trim: true,
+    },
+    socialTwitterHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.twitter,
+      trim: true,
+    },
+    socialLinkedinHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.linkedin,
+      trim: true,
+    },
+    socialTelegramHandle: {
+      type: String,
+      default: DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
+      trim: true,
     },
 
     // Subscription Plan Pricing
@@ -511,6 +550,29 @@ export function getLegalContent(config: Partial<PlatformConfigRecord> | null | u
     privacyPolicyContent:
       config?.privacyPolicyContent?.trim() || LEGAL.PRIVACY_POLICY,
     updatedAt: config && "updatedAt" in config ? config.updatedAt ?? null : null,
+  };
+}
+
+export type PlatformSocialHandles = Record<SocialHandleKey, string>;
+
+export function getPlatformSocialHandles(
+  config: Partial<PlatformConfigRecord> | null | undefined,
+): PlatformSocialHandles {
+  return {
+    facebook:
+      config?.socialFacebookHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.facebook,
+    instagram:
+      config?.socialInstagramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.instagram,
+    whatsapp:
+      config?.socialWhatsappHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.whatsapp,
+    youtube:
+      config?.socialYoutubeHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.youtube,
+    twitter:
+      config?.socialTwitterHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.twitter,
+    linkedin:
+      config?.socialLinkedinHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.linkedin,
+    telegram:
+      config?.socialTelegramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
   };
 }
 

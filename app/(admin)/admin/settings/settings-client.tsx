@@ -10,6 +10,7 @@ import {
   Trash2Icon,
   CrownIcon,
   CpuIcon,
+  Share2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DEFAULT_PLATFORM_SOCIAL_HANDLES } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +49,68 @@ type SettingsUser = {
   createdAt: string;
 };
 
+type SocialConfigForm = {
+  socialFacebookHandle: string;
+  socialInstagramHandle: string;
+  socialWhatsappHandle: string;
+  socialYoutubeHandle: string;
+  socialTwitterHandle: string;
+  socialLinkedinHandle: string;
+  socialTelegramHandle: string;
+};
+
+const DEFAULT_SOCIAL_CONFIG: SocialConfigForm = {
+  socialFacebookHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.facebook,
+  socialInstagramHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.instagram,
+  socialWhatsappHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.whatsapp,
+  socialYoutubeHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.youtube,
+  socialTwitterHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.twitter,
+  socialLinkedinHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.linkedin,
+  socialTelegramHandle: DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
+};
+
+const SOCIAL_FIELD_META: {
+  key: keyof SocialConfigForm;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    key: "socialFacebookHandle",
+    label: "Facebook",
+    placeholder: "@questioncall24",
+  },
+  {
+    key: "socialInstagramHandle",
+    label: "Instagram",
+    placeholder: "@questioncall24",
+  },
+  {
+    key: "socialWhatsappHandle",
+    label: "WhatsApp",
+    placeholder: "@questioncall24",
+  },
+  {
+    key: "socialYoutubeHandle",
+    label: "YouTube",
+    placeholder: "@questioncall24",
+  },
+  {
+    key: "socialTwitterHandle",
+    label: "Twitter / X",
+    placeholder: "@questioncall24",
+  },
+  {
+    key: "socialLinkedinHandle",
+    label: "LinkedIn",
+    placeholder: "/questioncall24",
+  },
+  {
+    key: "socialTelegramHandle",
+    label: "Telegram",
+    placeholder: "@questioncall24",
+  },
+] as const;
+
 export function SettingsClient({ user }: { user: SettingsUser }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -64,6 +128,9 @@ export function SettingsClient({ user }: { user: SettingsUser }) {
 
   const [promoteTarget, setPromoteTarget] = useState<Admin | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Admin | null>(null);
+  const [socialConfig, setSocialConfig] = useState<SocialConfigForm>(DEFAULT_SOCIAL_CONFIG);
+  const [loadingSocialConfig, setLoadingSocialConfig] = useState(true);
+  const [savingSocialConfig, setSavingSocialConfig] = useState(false);
 
   const fetchAdmins = async () => {
     try {
@@ -79,8 +146,43 @@ export function SettingsClient({ user }: { user: SettingsUser }) {
     }
   };
 
+  const fetchSocialConfig = async () => {
+    try {
+      setLoadingSocialConfig(true);
+      const response = await fetch("/api/admin/config");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch social handles");
+      }
+
+      const data = await response.json();
+      setSocialConfig({
+        socialFacebookHandle:
+          data.socialFacebookHandle || DEFAULT_SOCIAL_CONFIG.socialFacebookHandle,
+        socialInstagramHandle:
+          data.socialInstagramHandle || DEFAULT_SOCIAL_CONFIG.socialInstagramHandle,
+        socialWhatsappHandle:
+          data.socialWhatsappHandle || DEFAULT_SOCIAL_CONFIG.socialWhatsappHandle,
+        socialYoutubeHandle:
+          data.socialYoutubeHandle || DEFAULT_SOCIAL_CONFIG.socialYoutubeHandle,
+        socialTwitterHandle:
+          data.socialTwitterHandle || DEFAULT_SOCIAL_CONFIG.socialTwitterHandle,
+        socialLinkedinHandle:
+          data.socialLinkedinHandle || DEFAULT_SOCIAL_CONFIG.socialLinkedinHandle,
+        socialTelegramHandle:
+          data.socialTelegramHandle || DEFAULT_SOCIAL_CONFIG.socialTelegramHandle,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not load social handles.");
+    } finally {
+      setLoadingSocialConfig(false);
+    }
+  };
+
   useEffect(() => {
     fetchAdmins();
+    fetchSocialConfig();
     setIsMaster(user.isMasterAdmin === true);
   }, [user.isMasterAdmin]);
 
@@ -177,6 +279,51 @@ export function SettingsClient({ user }: { user: SettingsUser }) {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to promote admin";
       toast.error(message);
+    }
+  };
+
+  const handleSaveSocialConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSocialConfig(true);
+
+    try {
+      const response = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          Object.fromEntries(
+            Object.entries(socialConfig).map(([key, value]) => [key, value.trim()]),
+          ),
+        ),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save social handles");
+      }
+
+      setSocialConfig({
+        socialFacebookHandle:
+          data.socialFacebookHandle || DEFAULT_SOCIAL_CONFIG.socialFacebookHandle,
+        socialInstagramHandle:
+          data.socialInstagramHandle || DEFAULT_SOCIAL_CONFIG.socialInstagramHandle,
+        socialWhatsappHandle:
+          data.socialWhatsappHandle || DEFAULT_SOCIAL_CONFIG.socialWhatsappHandle,
+        socialYoutubeHandle:
+          data.socialYoutubeHandle || DEFAULT_SOCIAL_CONFIG.socialYoutubeHandle,
+        socialTwitterHandle:
+          data.socialTwitterHandle || DEFAULT_SOCIAL_CONFIG.socialTwitterHandle,
+        socialLinkedinHandle:
+          data.socialLinkedinHandle || DEFAULT_SOCIAL_CONFIG.socialLinkedinHandle,
+        socialTelegramHandle:
+          data.socialTelegramHandle || DEFAULT_SOCIAL_CONFIG.socialTelegramHandle,
+      });
+      toast.success("Social handles updated.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save social handles";
+      toast.error(message);
+    } finally {
+      setSavingSocialConfig(false);
     }
   };
 
@@ -350,6 +497,61 @@ export function SettingsClient({ user }: { user: SettingsUser }) {
           <Button asChild>
             <Link href="/admin/ai-keys">Manage AI Keys</Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Share2Icon className="size-5 text-primary" /> Header Social Handles
+          </CardTitle>
+          <CardDescription>
+            These values power the hover panel behind the social button in the workspace header.
+            Keep them short so they stay neat inside the popup cards.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingSocialConfig ? (
+            <div className="flex justify-center py-8">
+              <Loader2Icon className="size-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <form onSubmit={handleSaveSocialConfig} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {SOCIAL_FIELD_META.map((field) => (
+                  <div key={field.key} className="space-y-2">
+                    <label className="text-sm font-medium">{field.label}</label>
+                    <Input
+                      placeholder={field.placeholder}
+                      value={socialConfig[field.key]}
+                      onChange={(e) =>
+                        setSocialConfig((current) => ({
+                          ...current,
+                          [field.key]: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Examples: `@questioncall24`, `/questioncall24`, or a short public username.
+                </p>
+                <Button type="submit" disabled={savingSocialConfig}>
+                  {savingSocialConfig ? (
+                    <>
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Social Handles"
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
 

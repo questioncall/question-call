@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon, Loader2Icon, MessageCircleIcon, BookIcon, UserIcon } from "lucide-react";
 
 import { PostQuestionModal } from "@/components/shared/post-question-modal";
+import { SocialHandlesHover } from "@/components/shared/social-handles-hover";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { useWorkspaceFilters, type WorkspaceFilterState } from "@/components/shared/workspace-filter-context";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import type { PlatformSocialHandles } from "@/models/PlatformConfig";
 
 type SearchResult = {
   questions: { id: string; title: string; body: string; subject?: string; level?: string }[];
@@ -47,6 +50,7 @@ type AuthenticatedHeaderProps = {
   showQuestionFilter?: boolean;
   useModalForPrimary?: boolean;
   userId?: string;
+  socialHandles: PlatformSocialHandles;
 };
 
 export function AuthenticatedHeader({
@@ -57,10 +61,16 @@ export function AuthenticatedHeader({
   showQuestionFilter = false,
   useModalForPrimary = false,
   userId,
+  socialHandles,
 }: AuthenticatedHeaderProps) {
-  const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const {
+    filters: currentFilters,
+    activeFilterCount,
+    updateFilters,
+    clearFilters: clearWorkspaceFilters,
+    isSyncing: isSyncingFilters,
+  } = useWorkspaceFilters();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -81,6 +91,12 @@ export function AuthenticatedHeader({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isFilterOpen) {
+      setDraftFilters(currentFilters);
+    }
+  }, [currentFilters, isFilterOpen]);
 
   useEffect(() => {
     if (isFilterOpen && !filterOptions && !isLoadingFilters) {
@@ -139,27 +155,7 @@ export function AuthenticatedHeader({
     }
   };
 
-  const currentFilters = useMemo<FilterState>(() => {
-    const readValues = (key: string) =>
-      searchParams
-        .get(key)
-        ?.split(",")
-        .map((value) => value.trim())
-        .filter(Boolean) ?? [];
-
-    return {
-      subjects: readValues("subjects"),
-      streams: readValues("streams"),
-      levels: readValues("levels"),
-    };
-  }, [searchParams]);
-
   const [draftFilters, setDraftFilters] = useState<FilterState>(currentFilters);
-
-  const activeFilterCount =
-    currentFilters.subjects.length +
-    currentFilters.streams.length +
-    currentFilters.levels.length;
 
   const toggleFilter = (group: keyof FilterState, value: string) => {
     setDraftFilters((currentState) => {
@@ -176,41 +172,19 @@ export function AuthenticatedHeader({
   };
 
   const applyFilters = () => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-
-    const writeValues = (key: string, values: string[]) => {
-      if (values.length === 0) {
-        nextParams.delete(key);
-        return;
-      }
-
-      nextParams.set(key, values.join(","));
-    };
-
-    writeValues("subjects", draftFilters.subjects);
-    writeValues("streams", draftFilters.streams);
-    writeValues("levels", draftFilters.levels);
-
-    const query = nextParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
+    updateFilters(draftFilters as WorkspaceFilterState);
     setIsFilterOpen(false);
   };
 
   const clearFilters = () => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete("subjects");
-    nextParams.delete("streams");
-    nextParams.delete("levels");
-
-    const query = nextParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
+    clearWorkspaceFilters();
     setDraftFilters({
       subjects: [],
       streams: [],
       levels: [],
     });
     setIsFilterOpen(false);
-};
+  };
 
   return (
     <>
@@ -224,7 +198,7 @@ export function AuthenticatedHeader({
       >
         <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
           <SidebarTrigger className="shrink-0" />
-<div className="relative hidden max-w-xl flex-1 md:mx-auto md:block" ref={searchRef}>
+          <div className="relative hidden max-w-xl flex-1 md:mx-auto md:block" ref={searchRef}>
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-[18px] -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-10 pl-10 text-base md:text-sm"
@@ -330,7 +304,7 @@ export function AuthenticatedHeader({
               </div>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             {showQuizLink ? (
               <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5">
                 <Link href="/quiz">
@@ -378,6 +352,7 @@ export function AuthenticatedHeader({
                 <span className="hidden sm:inline">Courses</span>
               </Link>
             </Button>
+            <SocialHandlesHover handles={socialHandles} />
             <ThemeToggle />
             {userId && <NotificationBell userId={userId} />}
           </div>
@@ -456,10 +431,12 @@ export function AuthenticatedHeader({
           </div>
 
           <SheetFooter className="border-t border-border/70">
-            <Button onClick={clearFilters} variant="ghost" disabled={isLoadingFilters}>
-              Remove current filters
+            <Button onClick={clearFilters} variant="ghost" disabled={isLoadingFilters || isSyncingFilters}>
+              Clear filters
             </Button>
-            <Button onClick={applyFilters} disabled={isLoadingFilters}>Apply filters</Button>
+            <Button onClick={applyFilters} disabled={isLoadingFilters || isSyncingFilters}>
+              Apply filters
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

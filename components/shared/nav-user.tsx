@@ -25,17 +25,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getSignOutPath } from "@/lib/user-paths"
 import { useAppSelector } from "@/store/hooks"
 
 export function NavUser({
   user: fallbackUser,
+  loading = false,
 }: {
   user: {
     name: string
     email: string
     userImage?: string
   }
+  loading?: boolean
 }) {
   const { isMobile } = useSidebar()
   const profile = useAppSelector((state) => state.user)
@@ -45,6 +48,28 @@ export function NavUser({
   const avatar = profile.userImage || fallbackUser.userImage || ""
 
   const fallback = name ? name.substring(0, 2).toUpperCase() : "U"
+
+  if (loading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            aria-hidden="true"
+            disabled
+            size="lg"
+            className="opacity-100 hover:bg-transparent"
+          >
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <div className="grid flex-1 gap-1">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+            <Skeleton className="ml-auto h-4 w-4 rounded-sm" />
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
 
   return (
     <SidebarMenu>

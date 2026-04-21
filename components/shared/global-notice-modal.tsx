@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MegaphoneIcon, PartyPopperIcon, InfoIcon } from "lucide-react";
+import { toast } from "sonner";
 
 type Notice = {
   _id: string;
@@ -15,7 +16,13 @@ type Notice = {
 export function GlobalNoticeModal() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [currentNotice, setCurrentNotice] = useState<Notice | null>(null);
-  const [isDismissing, setIsDismissing] = useState(false);
+  const pendingDismissIdsRef = useRef(new Set<string>());
+
+  const getVisibleNotices = useCallback((incomingNotices: Notice[]) => {
+    return incomingNotices.filter(
+      (notice) => !pendingDismissIdsRef.current.has(notice._id),
+    );
+  }, []);
 
   const fetchNotices = useCallback(async () => {
     try {
@@ -29,13 +36,24 @@ export function GlobalNoticeModal() {
       
       console.log("[GlobalNoticeModal] Fetched notices:", data.length);
       
-      if (Array.isArray(data) && data.length > 0) {
-        setNotices(data);
+      if (Array.isArray(data)) {
+        const visibleNotices = getVisibleNotices(data);
+        setNotices(visibleNotices);
+        setCurrentNotice((existingNotice) => {
+          if (
+            existingNotice &&
+            visibleNotices.some((notice) => notice._id === existingNotice._id)
+          ) {
+            return existingNotice;
+          }
+
+          return visibleNotices[0] ?? null;
+        });
       }
     } catch (err) {
       console.log("[GlobalNoticeModal] Fetch exception:", err);
     }
-  }, []);
+  }, [getVisibleNotices]);
 
   // Fetch on mount + every 2 minutes
   useEffect(() => {
@@ -51,21 +69,36 @@ export function GlobalNoticeModal() {
     }
   }, [notices, currentNotice]);
 
-  const handleDismiss = async () => {
-    if (!currentNotice) return;
-    
-    setIsDismissing(true);
+  const handleDismiss = async (noticeToDismiss = currentNotice) => {
+    if (!noticeToDismiss) return;
+    if (pendingDismissIdsRef.current.has(noticeToDismiss._id)) return;
+
+    pendingDismissIdsRef.current.add(noticeToDismiss._id);
+    const nextNotices = notices.filter((notice) => notice._id !== noticeToDismiss._id);
+    setNotices(nextNotices);
+    setCurrentNotice((current) => {
+      if (!current || current._id !== noticeToDismiss._id) {
+        return current;
+      }
+
+      return nextNotices[0] ?? null;
+    });
+
     try {
-      await fetch(`/api/notices/${currentNotice._id}/dismiss`, { method: "POST" });
-      
-      // Update local state to remove the notice and pick the next one
-      const remaining = notices.filter(n => n._id !== currentNotice._id);
-      setNotices(remaining);
-      setCurrentNotice(remaining.length > 0 ? remaining[0] : null);
+      const response = await fetch(`/api/notices/${noticeToDismiss._id}/dismiss`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to dismiss notice");
+      }
+
+      pendingDismissIdsRef.current.delete(noticeToDismiss._id);
     } catch (err) {
       console.error(err);
-    } finally {
-      setIsDismissing(false);
+      pendingDismissIdsRef.current.delete(noticeToDismiss._id);
+      toast.error("Could not dismiss the notice. It will appear again.");
+      fetchNotices();
     }
   };
 
@@ -107,10 +140,11 @@ export function GlobalNoticeModal() {
         <DialogFooter className="sm:justify-center pt-2">
           <Button 
             className="w-full sm:w-auto min-w-[120px]" 
-            onClick={handleDismiss} 
-            disabled={isDismissing}
+            onClick={() => {
+              void handleDismiss();
+            }}
           >
-            {isDismissing ? "Closing..." : "Ok, got it!"}
+            Ok, got it!
           </Button>
         </DialogFooter>
       </DialogContent>

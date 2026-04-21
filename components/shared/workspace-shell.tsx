@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
-  CircleHelpIcon,
   CreditCardIcon,
   GraduationCapIcon,
   HomeIcon,
@@ -19,7 +18,8 @@ import {
 } from "lucide-react";
 
 import { AuthenticatedHeader } from "@/components/shared/authenticated-header";
-import { Logo, LogoMark } from "@/components/shared/logo";
+import { WorkspaceFilterProvider } from "@/components/shared/workspace-filter-context";
+import { LogoMark } from "@/components/shared/logo";
 import { NavUser } from "@/components/shared/nav-user";
 import {
   Sidebar,
@@ -34,13 +34,14 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
-  getAskQuestionPath,
   getLeaderboardPath,
   getMessagesPath,
   getProfilePath,
@@ -63,6 +64,7 @@ import {
 } from "@/store/features/channels/channels-slice";
 import type { ChannelListItem } from "@/types/channel";
 import { APP_NAME } from "@/lib/constants";
+import type { PlatformSocialHandles } from "@/models/PlatformConfig";
 
 type WorkspaceRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -77,6 +79,7 @@ type WorkspaceUser = {
 
 type WorkspaceShellProps = {
   user: WorkspaceUser;
+  socialHandles: PlatformSocialHandles;
   defaultOpen?: boolean;
   children: ReactNode;
 };
@@ -93,10 +96,62 @@ type NewChannelPayload = {
   channel?: ChannelListItem;
 };
 
-export function WorkspaceShell({ user, defaultOpen = true, children }: WorkspaceShellProps) {
+const SIDEBAR_SKELETON_ITEMS = 8;
+
+function WorkspaceSidebarHeaderSkeleton() {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/75 p-2 shadow-sm group-data-[collapsible=icon]:justify-center">
+      <Skeleton className="size-8 rounded-lg" />
+      <div className="min-w-0 flex-1 space-y-1.5 group-data-[collapsible=icon]:hidden">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-3 w-18" />
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceSidebarNavigationSkeleton() {
+  return (
+    <SidebarMenu>
+      {Array.from({ length: SIDEBAR_SKELETON_ITEMS }, (_, index) => (
+        <SidebarMenuItem key={`sidebar-skeleton-${index}`}>
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+}
+
+function WorkspaceSidebarModeSkeleton() {
+  return (
+    <div className="rounded-xl border border-sidebar-border/80 bg-sidebar-accent/70 p-3 shadow-sm group-data-[collapsible=icon]:hidden">
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-4 rounded-sm" />
+        <Skeleton className="h-3.5 w-24" />
+      </div>
+      <div className="mt-3 space-y-2">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-[88%]" />
+        <Skeleton className="h-3 w-[64%]" />
+      </div>
+    </div>
+  );
+}
+
+export function WorkspaceShell({
+  user,
+  socialHandles,
+  defaultOpen = true,
+  children,
+}: WorkspaceShellProps) {
   const dispatch = useAppDispatch();
   const profile = useAppSelector((state) => state.user);
-  const { items: channels, isHydrated: channelsHydrated } = useAppSelector((state) => state.channels);
+  const {
+    items: channels,
+    isHydrated: channelsHydrated,
+  } = useAppSelector((state) => state.channels);
+  const [hasCompletedInitialSidebarLoad, setHasCompletedInitialSidebarLoad] =
+    useState(channelsHydrated);
 
   const totalUnreadChannels = channels.reduce(
     (acc, ch) => acc + (ch.unreadCount > 0 ? 1 : 0),
@@ -114,6 +169,8 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       }
     } catch {
       // Silently fail
+    } finally {
+      setHasCompletedInitialSidebarLoad(true);
     }
   }, [dispatch]);
 
@@ -122,6 +179,12 @@ export function WorkspaceShell({ user, defaultOpen = true, children }: Workspace
       fetchChannels();
     }
   }, [fetchChannels, channelsHydrated]);
+
+  useEffect(() => {
+    if (channelsHydrated) {
+      setHasCompletedInitialSidebarLoad(true);
+    }
+  }, [channelsHydrated]);
 
   // Subscribe to user-specific channel for real-time list updates (global)
   useEffect(() => {
@@ -238,9 +301,6 @@ useEffect(() => {
   const settingsHref = getSettingsPath(resolvedUser);
   const subscriptionHref = getSubscriptionPath(resolvedUser);
   const walletHref = getWalletPath(resolvedUser);
-  const primaryHref = messageHref;
-  const primaryLabel = "Open messages";
-  const useModalForPrimary = false;
   const showQuestionFilter = pathname === "/";
   const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel/");
 
@@ -362,94 +422,123 @@ collapseSidebarOnClick: true,
     resolvedUser.role === "STUDENT"
       ? "Ask doubts, follow answers, and manage your learning flow."
       : "Track question activity, channel updates, and reputation from one place.";
+  const isSidebarLoading = !hasCompletedInitialSidebarLoad;
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <Sidebar collapsible="icon">
-<SidebarHeader className="p-2">
-          <div className="flex items-center gap-2 rounded-lg border border-sidebar-border/70 bg-background p-2 group-data-[collapsible=icon]:justify-center">
-            <div className="shrink-0">
-              <LogoMark size={32} className="rounded-lg" />
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
-              <h1 className="truncate text-sm font-bold text-sidebar-foreground">{APP_NAME}</h1>
-              <p className="truncate text-xs text-sidebar-foreground/70">@{handle}</p>
-            </div>
-          </div>
-        </SidebarHeader>
-
-        <SidebarSeparator />
-
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Navigate</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {mainItems.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      collapseSidebarOnClick={item.collapseSidebarOnClick}
-                      isActive={item.isActive}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                    {item.badge ? (
-                      <SidebarMenuBadge className={item.badgeClassName}>
-                        {item.badge}
-                      </SidebarMenuBadge>
-                    ) : null}
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarGroup>
-            <SidebarGroupLabel>Mode</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/50 p-3 text-xs leading-6 text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
-                <div className="flex items-center gap-2 text-sidebar-foreground">
-                  <SparklesIcon className="size-4" />
-                  <span className="font-medium">{roleLabel} mode</span>
+    <WorkspaceFilterProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <Sidebar collapsible="icon">
+          <SidebarHeader className="p-2">
+            {isSidebarLoading ? (
+              <WorkspaceSidebarHeaderSkeleton />
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/75 p-2 shadow-sm group-data-[collapsible=icon]:justify-center">
+                <div className="shrink-0">
+                  <LogoMark size={32} className="rounded-lg" />
                 </div>
-                <p className="mt-2">{roleSummary}</p>
+                <div className="min-w-0 flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                  <h1 className="truncate text-sm font-bold text-sidebar-foreground">{APP_NAME}</h1>
+                  <p className="truncate text-xs text-sidebar-foreground/70">@{handle}</p>
+                </div>
               </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+            )}
+          </SidebarHeader>
 
-        <SidebarFooter>
-          <NavUser
-            user={{
-              name: resolvedUser.name || roleLabel,
-              email: resolvedUser.email || "",
-              userImage: resolvedUser.userImage || "",
-            }}
+          <SidebarSeparator />
+
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Navigate</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {isSidebarLoading ? (
+                  <WorkspaceSidebarNavigationSkeleton />
+                ) : (
+                  <SidebarMenu>
+                    {mainItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          collapseSidebarOnClick={item.collapseSidebarOnClick}
+                          isActive={item.isActive}
+                          tooltip={item.label}
+                        >
+                          <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                        {item.badge ? (
+                          <SidebarMenuBadge className={item.badgeClassName}>
+                            {item.badge}
+                          </SidebarMenuBadge>
+                        ) : null}
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                )}
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Mode</SidebarGroupLabel>
+              <SidebarGroupContent>
+                {isSidebarLoading ? (
+                  <WorkspaceSidebarModeSkeleton />
+                ) : (
+                  <div className="rounded-xl border border-sidebar-border/80 bg-sidebar-accent/70 p-3 text-xs leading-6 text-sidebar-foreground/85 shadow-sm group-data-[collapsible=icon]:hidden">
+                    <div className="flex items-center gap-2 text-sidebar-foreground">
+                      <SparklesIcon className="size-4" />
+                      <span className="font-medium">{roleLabel} mode</span>
+                    </div>
+                    <p className="mt-2">{roleSummary}</p>
+                  </div>
+                )}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          <SidebarFooter>
+            <NavUser
+              loading={isSidebarLoading}
+              user={{
+                name: resolvedUser.name || roleLabel,
+                email: resolvedUser.email || "",
+                userImage: resolvedUser.userImage || "",
+              }}
+            />
+          </SidebarFooter>
+
+          <SidebarRail />
+        </Sidebar>
+
+        <SidebarInset
+          className={cn(
+            "flex flex-col bg-[#f6f8fb] dark:bg-background",
+            isChatPage ? "h-svh overflow-hidden" : "min-h-svh",
+          )}
+        >
+          <AuthenticatedHeader
+            isScrolled={isScrolled}
+            primaryHref={headerPrimaryHref}
+            primaryLabel={headerPrimaryLabel}
+            showQuizLink={resolvedUser.role === "STUDENT"}
+            showQuestionFilter={showQuestionFilter}
+            useModalForPrimary={headerUseModal}
+            socialHandles={socialHandles}
+            userId={resolvedUser.id}
           />
-        </SidebarFooter>
 
-        <SidebarRail />
-      </Sidebar>
-
-      <SidebarInset className={cn("bg-[#f6f8fb] dark:bg-background flex flex-col", isChatPage ? "h-svh overflow-hidden" : "min-h-svh")}>
-<AuthenticatedHeader
-          isScrolled={isScrolled}
-          primaryHref={headerPrimaryHref}
-          primaryLabel={headerPrimaryLabel}
-          showQuizLink={resolvedUser.role === "STUDENT"}
-          showQuestionFilter={showQuestionFilter}
-          useModalForPrimary={headerUseModal}
-          userId={resolvedUser.id}
-        />
-
-        <div className={cn("flex flex-1 flex-col", isChatPage ? "overflow-hidden" : "gap-6 px-4 py-6 lg:px-6")}>{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+          <div
+            className={cn(
+              "flex flex-1 flex-col",
+              isChatPage ? "overflow-hidden" : "gap-6 px-4 py-6 lg:px-6",
+            )}
+          >
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </WorkspaceFilterProvider>
   );
 }
 

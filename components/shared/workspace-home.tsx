@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRightIcon,
@@ -62,6 +62,7 @@ import {
   upsertFeedQuestion,
 } from "@/store/features/feed/feed-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useWorkspaceFilters } from "@/components/shared/workspace-filter-context";
 
 type WorkspaceRole = "STUDENT" | "TEACHER";
 type FeedView = "all" | "waiting" | "solved" | "media" | "discussion";
@@ -243,8 +244,7 @@ export function WorkspaceHome({
 }: WorkspaceHomeProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const { filters: activeFilters, clearFilters: clearWorkspaceFilters } = useWorkspaceFilters();
   const { items: feedItems, isHydrated } = useAppSelector((state) => state.feed);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
@@ -536,9 +536,9 @@ export function WorkspaceHome({
     }
   };
 
-  const searchSubjects = searchParams.get("subjects")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
-  const searchStreams = searchParams.get("streams")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
-  const searchLevels = searchParams.get("levels")?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
+  const searchSubjects = activeFilters.subjects;
+  const searchStreams = activeFilters.streams;
+  const searchLevels = activeFilters.levels;
 
   const activeHeaderFilters = [
     ...searchSubjects,
@@ -595,16 +595,6 @@ export function WorkspaceHome({
 
       return getHotScore(b) - getHotScore(a) || createdAtDiff;
     });
-
-  const clearHeaderFilters = () => {
-    // Clear subjects, streams, and levels from URL
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete("subjects");
-    nextParams.delete("streams");
-    nextParams.delete("levels");
-    const query = nextParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  };
 
   const mobileCourseRail = (
     <section className="space-y-3 md:hidden">
@@ -976,8 +966,8 @@ export function WorkspaceHome({
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
                     activeSort === value
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
+                      ? "border-primary/45 bg-primary/14 text-primary shadow-sm dark:bg-primary/18"
+                      : "border-border/80 bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground",
                   )}
                 >
                   <Icon className="size-3" />
@@ -1003,8 +993,8 @@ export function WorkspaceHome({
                   ))}
                   <button
                     type="button"
-                    onClick={clearHeaderFilters}
-                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 px-1.5 py-1 transition-colors"
+                    onClick={clearWorkspaceFilters}
+                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 px-1.5 py-1 text-red-600 transition-colors hover:bg-red-500/20"
                     title="Clear filters"
                   >
                     <XIcon className="size-3" />

@@ -24,6 +24,7 @@ import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { Button } from "@/components/ui/button";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { formatPoints } from "@/lib/points";
+import { getPlatformConfig, getPlatformSocialHandles } from "@/models/PlatformConfig";
 import { getPublicUserByUsername } from "@/lib/user-directory";
 import { APP_NAME } from "@/lib/constants";
 import {
@@ -515,8 +516,9 @@ export default async function PublicProfilePage({
     const cookieStore = await cookies();
     const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
     const workspaceUser = await getWorkspaceUser(session.user);
+    const socialHandles = getPlatformSocialHandles(await getPlatformConfig());
 
-    return <WorkspaceShell user={workspaceUser} defaultOpen={defaultOpen}>{profileContent}</WorkspaceShell>;
+    return <WorkspaceShell user={workspaceUser} socialHandles={socialHandles} defaultOpen={defaultOpen}>{profileContent}</WorkspaceShell>;
   }
 
   return (
