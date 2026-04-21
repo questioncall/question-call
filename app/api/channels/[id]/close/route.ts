@@ -16,6 +16,7 @@ import type { FeedQuestion } from "@/types/question";
 
 const BAYESIAN_SEED_VOTES = 5;
 const BAYESIAN_SEED_SCORE = 1;
+const UPDATE_PIPELINE_OPTIONS = { updatePipeline: true } as const;
 
 function buildTeacherPenaltyUpdatePipeline(penalty: number) {
   return [
@@ -179,6 +180,7 @@ export async function POST(
       await User.findByIdAndUpdate(
         teacher._id,
         buildTeacherPenaltyUpdatePipeline(penalty),
+        UPDATE_PIPELINE_OPTIONS,
       );
 
       const penaltyNotif = await Notification.create({
@@ -314,6 +316,7 @@ export async function POST(
           pointsEarned,
           qualificationThreshold: config.qualificationThreshold,
         }),
+        UPDATE_PIPELINE_OPTIONS,
       );
 
       const notifMessage = teacher.isMonetized && answer

@@ -17,6 +17,7 @@ const BAYESIAN_SEED_VOTES = 5;
 const BAYESIAN_SEED_SCORE = 1;
 export const AUTO_CLOSE_RATING = 3;
 export const AUTO_CLOSE_GRACE_PERIOD_MS = 30 * 60 * 1000;
+const UPDATE_PIPELINE_OPTIONS = { updatePipeline: true } as const;
 
 type PopulatedUserRef = {
   _id?: { toString(): string } | string | null;
@@ -125,53 +126,57 @@ async function applyBayesianRating({
   pointsEarned: number;
   qualificationThreshold: number;
 }) {
-  await User.findByIdAndUpdate(teacherId, [
-    {
-      $set: {
-        overallRatingSum: {
-          $add: [{ $ifNull: ["$overallRatingSum", 0] }, rating],
-        },
-        overallRatingCount: {
-          $add: [{ $ifNull: ["$overallRatingCount", 0] }, 1],
-        },
-        ...(pointsEarned > 0
-          ? {
-              pointBalance: {
-                $add: [{ $ifNull: ["$pointBalance", 0] }, pointsEarned],
+  await User.findByIdAndUpdate(
+    teacherId,
+    [
+      {
+        $set: {
+          overallRatingSum: {
+            $add: [{ $ifNull: ["$overallRatingSum", 0] }, rating],
+          },
+          overallRatingCount: {
+            $add: [{ $ifNull: ["$overallRatingCount", 0] }, 1],
+          },
+          ...(pointsEarned > 0
+            ? {
+                pointBalance: {
+                  $add: [{ $ifNull: ["$pointBalance", 0] }, pointsEarned],
+                },
+                totalPointsEarned: {
+                  $add: [{ $ifNull: ["$totalPointsEarned", 0] }, pointsEarned],
+                },
+              }
+            : {}),
+          teacherModeVerified: {
+            $or: [
+              { $ifNull: ["$teacherModeVerified", false] },
+              {
+                $gte: [{ $ifNull: ["$totalAnswered", 0] }, qualificationThreshold],
               },
-              totalPointsEarned: {
-                $add: [{ $ifNull: ["$totalPointsEarned", 0] }, pointsEarned],
-              },
-            }
-          : {}),
-        teacherModeVerified: {
-          $or: [
-            { $ifNull: ["$teacherModeVerified", false] },
-            {
-              $gte: [{ $ifNull: ["$totalAnswered", 0] }, qualificationThreshold],
-            },
-          ],
+            ],
+          },
         },
       },
-    },
-    {
-      $set: {
-        overallScore: {
-          $divide: [
-            {
-              $add: [
-                BAYESIAN_SEED_SCORE * BAYESIAN_SEED_VOTES,
-                "$overallRatingSum",
-              ],
-            },
-            {
-              $add: [BAYESIAN_SEED_VOTES, "$overallRatingCount"],
-            },
-          ],
+      {
+        $set: {
+          overallScore: {
+            $divide: [
+              {
+                $add: [
+                  BAYESIAN_SEED_SCORE * BAYESIAN_SEED_VOTES,
+                  "$overallRatingSum",
+                ],
+              },
+              {
+                $add: [BAYESIAN_SEED_VOTES, "$overallRatingCount"],
+              },
+            ],
+          },
         },
       },
-    },
-  ]);
+    ],
+    UPDATE_PIPELINE_OPTIONS,
+  );
 }
 
 export async function processExpiredChannels(
@@ -335,6 +340,7 @@ export async function processExpiredChannels(
       await User.findByIdAndUpdate(
         teacherId,
         buildTeacherPenaltyUpdatePipeline(penalty),
+        UPDATE_PIPELINE_OPTIONS,
       );
 
       const penaltyNotif = await Notification.create({

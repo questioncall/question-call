@@ -87,7 +87,7 @@ export async function POST(request: Request) {
             },
           },
         ],
-        { new: true },
+        { new: true, updatePipeline: true },
       );
 
       if (!rewardedTeacher) continue;
