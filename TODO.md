@@ -1,15 +1,5 @@
-Next Steps After Deployment
-Once these changes are pushed and live on production, you should submit your site to search engines to kickstart the indexing process:
-
-1. Google Search Console (GSC)
-
-Go to Google Search Console.
-Add your property using the Domain method (you'll need to add a DNS TXT record to verify ownership of questioncall.com).
-Once verified, go to Sitemaps in the left menu.
-Submit your new sitemap URL: https://questioncall.com/sitemap.xml.
-(Optional) Enter https://questioncall.com/ into the URL Inspection tool at the top and click "Request Indexing" to speed things up.
-2. Bing Webmaster Tools
-
-Go to Bing Webmaster Tools.
-You can easily import your verified site directly from Google Search Console (saves you from verifying DNS again).
-Go to Sitemaps and submit https://questioncall.com/sitemap.xml if it didn't import automatically.
+1. In the workspace page, the clear filter button react sso late coz it need to travel the db calls to make the ui reactive and do the db wokr in the bg . 
+2. Increase the contrast of sort buttons like a bit more dark green than now. in the sort filter section ( You can see the sort buttons in the filter sections of workspace page ). 
+3. Add social media handle in the header. show one icons as social only and hoverign that below show the social media handles. fb, insta, whatsapp, youtube, twitter, linkedin, telegram. - this at not hovered only show the social icon and hoerivn the icon it revelas the social handles under thier icons in good animation use shadcn components for showing hovering contents animations. 
+4. increase the hover contrast in the sidebar like right now when we hover sidebar compoents then the hover contrast is very low. make it more visible. 
+also make the sidebar color more visible than workspace home like in whitemode make it slightly whitish gray and in dark greensih gray. 
