@@ -694,18 +694,21 @@ function Hero({ isDark }: { isDark: boolean }) {
 }
 
 /* ─────────────────────── HERO MOCKUP ─────────────────────── */
+/* ─────────────────────── HERO MOCKUP ─────────────────────── */
 function HeroMockup({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? "rgba(15,35,30,0.85)" : "rgba(255,255,255,0.85)";
+  const bg = isDark ? "rgba(10,13,11,0.85)" : "rgba(255,255,255,0.85)";
   const border = isDark ? "rgba(31,118,110,0.3)" : "rgba(31,118,110,0.2)";
-  const card = isDark ? "rgba(31,118,110,0.12)" : "rgba(31,118,110,0.07)";
-  const textMuted = isDark ? "#5a9990" : "#6aaba4";
+  const card = isDark ? "rgba(15,20,18,0.9)" : "rgba(250,250,250,0.9)";
+  const cardBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const textMuted = isDark ? "#82a19e" : "#6aaba4";
+  const textMain = isDark ? "#e8f5f3" : "#0d2b27";
 
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
-        maxWidth: 820,
+        maxWidth: 1050,
         margin: "0 auto",
         borderRadius: 20,
         border: `1px solid ${border}`,
@@ -723,7 +726,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
           gap: 8,
           padding: "12px 16px",
           borderBottom: `1px solid ${border}`,
-          background: isDark ? "rgba(10,30,25,0.6)" : "rgba(248,252,251,0.9)",
+          background: isDark ? "rgba(7,10,8,0.6)" : "rgba(248,252,251,0.9)",
         }}
       >
         {["#ff5f56", "#ffbd2e", "#27c93f"].map((c) => (
@@ -750,7 +753,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
           }}
         >
           <span style={{ fontSize: 11, color: textMuted }}>
-            questionhub.app/feed
+            app.questioncall.com
           </span>
         </div>
       </div>
@@ -760,184 +763,251 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
         className="lpb-student-feed-shell"
         style={{
           display: "grid",
-          gridTemplateColumns: "220px 1fr",
-          minHeight: 320,
+          gridTemplateColumns: "64px 1fr 280px",
+          minHeight: 460,
+          textAlign: "left",
         }}
       >
-        {/* Sidebar */}
+        {/* Left Sidebar (Icon only) */}
         <div
           className="lpb-student-feed-sidebar"
           style={{
             borderRight: `1px solid ${border}`,
-            padding: "16px 12px",
+            padding: "20px 0",
             display: "flex",
             flexDirection: "column",
-            gap: 4,
+            alignItems: "center",
+            gap: 16,
+            background: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)",
           }}
         >
+          <div style={{ width: 28, height: 28, background: "linear-gradient(135deg,#1f766e,#0f5c55)", borderRadius: 6, marginBottom: 12 }}></div>
           {[
-            { icon: "📚", label: "Feed", active: true },
-            { icon: "💬", label: "My Channels" },
-            { icon: "🏆", label: "Leaderboard" },
-            { icon: "🧠", label: "Quiz" },
-            { icon: "📖", label: "Courses" },
-            { icon: "👛", label: "Wallet" },
-          ].map(({ icon, label, active }) => (
+            { icon: "⌂", active: true },
+            { icon: "💬" },
+            { icon: "🏆" },
+            { icon: "🧠" },
+            { icon: "📖" },
+            { icon: "👛" },
+          ].map(({ icon, active }, i) => (
             <div
-              key={label}
+              key={i}
               style={{
+                width: 36,
+                height: 36,
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                padding: "7px 10px",
+                justifyContent: "center",
                 borderRadius: 8,
                 background: active ? "rgba(31,118,110,0.2)" : "transparent",
-                cursor: "default",
+                color: active ? "#2ab5ab" : textMuted,
+                fontSize: 18,
               }}
             >
-              <span style={{ fontSize: 13 }}>{icon}</span>
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: active ? 700 : 400,
-                  color: active ? "#1f766e" : textMuted,
-                }}
-              >
-                {label}
-              </span>
+              {icon}
             </div>
           ))}
         </div>
 
-        {/* Feed */}
-        <div
-          style={{
-            padding: 16,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: textMuted,
-              letterSpacing: "0.08em",
-              marginBottom: 4,
-            }}
-          >
-            OPEN QUESTIONS
-          </p>
-          {[
-            {
-              q: "How do I solve this quadratic inequality?",
-              tier: "Text",
-              subject: "Math",
-              time: "2m ago",
-              replies: 0,
-            },
-            {
-              q: "Explain Newton's third law with diagrams",
-              tier: "Photo",
-              subject: "Physics",
-              time: "8m ago",
-              replies: 1,
-            },
-            {
-              q: "Can you walk me through this proof?",
-              tier: "Video",
-              subject: "Math",
-              time: "14m ago",
-              replies: 0,
-            },
-          ].map(({ q, tier, subject, time, replies }) => {
-            const tColor =
-              tier === "Text"
-                ? "#1f766e"
-                : tier === "Photo"
-                  ? "#2176ae"
-                  : "#7c3aed";
-            return (
+        {/* Center Feed */}
+        <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 16, borderRight: `1px solid ${cardBorder}` }}>
+          {/* Header & Filters */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+            {[
+              { label: "All", active: true },
+              { label: "Waiting" },
+              { label: "Solved" },
+              { label: "Media" },
+              { label: "Discussion" },
+            ].map(({ label, active }) => (
               <div
-                key={q}
+                key={label}
                 style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${border}`,
-                  background: card,
-                  cursor: "default",
+                  padding: "5px 14px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: active ? textMain : card,
+                  color: active ? (isDark ? "#0a2e2a" : "#fff") : textMuted,
+                  border: `1px solid ${active ? textMain : cardBorder}`,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginBottom: 6,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: tColor,
-                      background: `${tColor}18`,
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                    }}
-                  >
-                    {tier}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: textMuted,
-                      background: isDark
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(0,0,0,0.06)",
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                    }}
-                  >
-                    {subject}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: textMuted,
-                      marginLeft: "auto",
-                    }}
-                  >
-                    {time}
-                  </span>
-                </div>
-                <p
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    color: isDark ? "#c8e6e2" : "#1a4a45",
-                    margin: 0,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {q}
-                </p>
-                {replies > 0 && (
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: "#1f766e",
-                      margin: "4px 0 0",
-                      fontWeight: 600,
-                    }}
-                  >
-                    ✓ {replies} answer
-                  </p>
-                )}
+                {label}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Question 1 */}
+          <div
+            style={{
+              padding: "16px",
+              borderRadius: 14,
+              border: `1px solid ${cardBorder}`,
+              background: card,
+              display: "flex",
+              gap: 16,
+            }}
+          >
+            {/* Voting */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ color: textMuted, fontSize: 10 }}>▲</div>
+              <div style={{ fontSize: 13, fontWeight: "bold", color: textMain }}>0</div>
+            </div>
+            {/* Question Details */}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1f766e", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:10 }}>P</div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: textMain }}>Physics <span style={{color: textMuted, fontWeight: "normal"}}>5 days ago</span></span>
+                </div>
+                <div style={{ padding: "2px 8px", borderRadius: 4, background: "rgba(33,118,174,0.15)", color: "#2ea1f0", fontSize: 11, fontWeight: "bold" }}>In progress</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                 <span style={{ fontSize: 11, color: textMuted }}>Asked by</span>
+                 <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#ccc", display:"flex", alignItems:"center", justifyContent:"center", color:"#000", fontSize:8, fontWeight:"bold" }}>J</div>
+                 <span style={{ fontSize: 11, fontWeight: 600, color: textMain }}>jiwan mijhar</span>
+                 <span style={{ fontSize: 11, color: textMuted }}>@jiwan_mijhar</span>
+              </div>
+              <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: "bold", color: textMain }}>what is black hole</h4>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: textMuted, lineHeight: 1.4 }}>explain about black hole and it's effect in nature and what it's happen in nature and what it is</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <span style={{ padding: "2px 10px", borderRadius: 12, background: isDark ? "#2a2d2c" : "#e0e0e0", fontSize: 10, color: textMuted, fontWeight: "bold" }}>Any</span>
+                <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(34,197,94,0.15)", color: "#22c55e", fontSize: 10, fontWeight: "bold" }}>Public</span>
+              </div>
+              <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(33,118,174,0.1)" : "rgba(33,118,174,0.05)", border: `1px solid rgba(33,118,174,0.2)` }}>
+                <p style={{ margin: 0, fontSize: 12, color: "#2ea1f0", fontWeight: "bold" }}>bibek rana is already working on this question.</p>
+                <div style={{ fontSize: 10, color: textMuted, marginTop: 4 }}>Accepted 5 days ago</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Question 2 */}
+          <div
+            style={{
+              padding: "16px",
+              borderRadius: 14,
+              border: `1px solid ${cardBorder}`,
+              background: card,
+              display: "flex",
+              gap: 16,
+            }}
+          >
+            {/* Voting */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ color: textMuted, fontSize: 10 }}>▲</div>
+              <div style={{ fontSize: 13, fontWeight: "bold", color: textMain }}>1</div>
+            </div>
+            {/* Question Details */}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:10 }}>M</div>
+                     <span style={{ fontSize: 12, fontWeight: 600, color: textMain }}>Mathematics <span style={{color: textMuted, fontWeight: "normal"}}>5 days ago</span></span>
+                </div>
+                <div style={{ padding: "2px 8px", borderRadius: 4, background: "rgba(34,197,94,0.15)", color: "#22c55e", fontSize: 11, fontWeight: "bold" }}>Solved</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                 <span style={{ fontSize: 11, color: textMuted }}>Asked by</span>
+                 <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#ccc", display: "flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#000", fontWeight:"bold" }}>S</div>
+                 <span style={{ fontSize: 11, fontWeight: 600, color: textMain }}>sam singh</span>
+                 <span style={{ fontSize: 11, color: textMuted }}>@sam_singh</span>
+              </div>
+              <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: "bold", color: textMain }}>what is math?</h4>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: textMuted, lineHeight: 1.4 }}>i am 12 class student and i am interested to learn mathematics...</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(124,58,237,0.15)", color: "#9f7aea", fontSize: 10, fontWeight: "bold" }}>Video</span>
+                <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(34,197,94,0.15)", color: "#22c55e", fontSize: 10, fontWeight: "bold" }}>Public</span>
+              </div>
+              <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(34,197,94,0.1)", border: `1px solid rgba(34,197,94,0.2)` }}>
+                <p style={{ margin: 0, fontSize: 12, color: "#22c55e", fontWeight: "bold" }}>✓ Accepted answer</p>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: textMuted }}>Sidd solved this question.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar (Highlights & Top Teachers) */}
+        <div className="lpb-student-feed-sidebar" style={{ padding: "24px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
+          
+          {/* Courses Highlight */}
+          <div>
+            <div style={{ fontSize: 11, color: textMuted, fontWeight: "bold", marginBottom: 6 }}>Courses</div>
+            <div style={{ fontSize: 14, fontWeight: "bold", color: textMain, marginBottom: 12 }}>Course highlights</div>
+            
+            <div style={{ borderRadius: 12, border: `1px solid ${cardBorder}`, background: card, overflow: "hidden" }}>
+              <div style={{ height: 90, background: "linear-gradient(135deg, #1e293b, #0f172a)", position: "relative", padding: 12, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "auto" }}>
+                  <span style={{ fontSize: 9, background: "rgba(255,255,255,0.2)", padding: "2px 6px", borderRadius: 4, color: "#fff", fontWeight: "bold" }}>IT</span>
+                  <span style={{ fontSize: 9, background: "rgba(255,255,255,0.9)", padding: "2px 6px", borderRadius: 4, color: "#000", fontWeight: "bold" }}>Subscription</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: "bold", color: "#fff" }}>Backend Development</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Master</div>
+                </div>
+              </div>
+              <div style={{ padding: 12 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: textMuted }}>Hey This is backend Course</p>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: textMuted }}>
+                  <span>6 lessons</span>
+                  <span>1 learners</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Hall of Fame */}
+          <div style={{ borderRadius: 12, border: `1px solid ${cardBorder}`, background: isDark ? "rgba(18,18,18,0.9)" : "rgba(255,255,255,0.9)", overflow: "hidden", position: "relative" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6)" }}></div>
+            
+            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${cardBorder}`, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 26, height: 26, background: "linear-gradient(135deg, #f59e0b, #ea580c)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, boxShadow: "inset 0 0 8px rgba(0,0,0,0.2)" }}>🏆</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: "bold", color: textMain }}>Hall of Fame</div>
+                <div style={{ fontSize: 9, color: textMuted }}>Top rated teachers this week</div>
+              </div>
+            </div>
+            
+            <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Gold Teacher */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: isDark ? "#141414" : "#f4f4f4", borderRadius: 10, border: `1px solid ${cardBorder}` }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(245,158,11,0.1)", color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: "bold" }}>🥇</div>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1f766e", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #f59e0b", color: "#fff", fontSize: 10, fontWeight: "bold" }}>S</div>
+                  <div style={{ position: "absolute", bottom: -2, right: -2, background: "#22c55e", width: 10, height: 10, borderRadius: "50%", border: "2px solid", borderColor: isDark ? "#141414" : "#f4f4f4" }}></div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 4, alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: "bold", color: textMain, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>StudySanjal</span>
+                    <span style={{ flexShrink: 0, fontSize: 9, color: "#1f766e", background: "rgba(31,118,110,0.1)", padding: "2px 6px", borderRadius: 10, fontWeight: "bold" }}>13 ans</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@studysanjal</span>
+                    <span style={{ flexShrink: 0, fontSize: 10, fontWeight: "bold", color: textMain }}>⭐ 1.3</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Silver Teacher */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: isDark ? "#141414" : "#f4f4f4", borderRadius: 10, border: `1px solid ${cardBorder}` }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(156,163,175,0.1)", color: "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: "bold" }}>🥈</div>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #9ca3af", color: "#fff", fontSize: 10, fontWeight: "bold" }}>T</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 4, alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: "bold", color: textMain, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Teacher yadav</span>
+                    <span style={{ flexShrink: 0, fontSize: 9, color: "#1f766e", background: "rgba(31,118,110,0.1)", padding: "2px 6px", borderRadius: 10, fontWeight: "bold" }}>2 ans</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@teacher_yadav</span>
+                    <span style={{ flexShrink: 0, fontSize: 10, fontWeight: "bold", color: textMain }}>⭐ 1.1</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          
         </div>
       </div>
     </div>
@@ -1656,7 +1726,7 @@ function TeacherMockup({ isDark }: { isDark: boolean }) {
             letterSpacing: "-0.04em",
           }}
         >
-          रू 1,840
+          NPR 1,840
         </p>
         <div style={{ display: "flex", gap: 8 }}>
           <div
@@ -1671,7 +1741,7 @@ function TeacherMockup({ isDark }: { isDark: boolean }) {
               color: textMuted,
             }}
           >
-            <p style={{ margin: 0, fontWeight: 700 }}>रू 240</p>
+            <p style={{ margin: 0, fontWeight: 700 }}>NPR 240</p>
             <p style={{ margin: 0 }}>This week</p>
           </div>
           <div
@@ -1709,21 +1779,21 @@ function TeacherMockup({ isDark }: { isDark: boolean }) {
           {
             q: "Quadratic inequalities",
             tier: "Text",
-            amount: "रू 85",
+            amount: "NPR 85",
             rating: 5,
             time: "2h ago",
           },
           {
             q: "Newton's laws diagram",
             tier: "Photo",
-            amount: "रू 140",
+            amount: "NPR 140",
             rating: 4,
             time: "Yesterday",
           },
           {
             q: "Integration by parts",
             tier: "Video",
-            amount: "रू 210",
+            amount: "NPR 210",
             rating: 5,
             time: "2 days ago",
           },
@@ -1919,7 +1989,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
       uploader: "Aarav · Teacher",
       color: "#1f766e",
       pricing: "PAID",
-      price: "रू 499",
+      price: "NPR 499",
       videos: 24,
       duration: "6h 30m",
       liveSessions: true,

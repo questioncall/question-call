@@ -7,12 +7,18 @@ import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
 import { ANSWER_SUBMITTED_EVENT, getChannelPusherName } from "@/lib/pusher/events";
+import {
+  buildAnswerFormatFromSelection,
+  getAnswerFormatLabel,
+  getAnswerFormatRequirements,
+} from "@/lib/question-types";
 import Answer from "@/models/Answer";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 import { getPlatformConfig } from "@/models/PlatformConfig";
+import type { AnswerFormat, BaseAnswerFormat } from "@/types/question";
 
 export async function POST(req: Request) {
   try {
@@ -112,48 +118,51 @@ export async function POST(req: Request) {
 
     const question = channel.questionId as {
       _id: Types.ObjectId;
-      answerFormat?: "TEXT" | "PHOTO" | "VIDEO" | "ANY";
+      answerFormat?: AnswerFormat;
       answerVisibility?: "PUBLIC" | "PRIVATE";
     };
     const requiredFormat = question.answerFormat ?? "ANY";
+    const requiredFormats = getAnswerFormatRequirements(requiredFormat);
 
     // Analyze what the teacher actually marked
     const hasText = messages.some((m) => m.content && m.content.trim().length > 0);
     const hasImage = messages.some((m) => m.mediaType === "IMAGE");
     const hasVideo = messages.some((m) => m.mediaType === "VIDEO");
 
-    // ─── Strict format validation ────────────────────────────
-    if (requiredFormat === "TEXT") {
-      if (!hasText) {
-        return NextResponse.json(
-          { error: "This question requires a text answer. Please mark at least one text message as the answer." },
-          { status: 400 },
-        );
-      }
-    } else if (requiredFormat === "PHOTO") {
-      if (!hasImage) {
-        return NextResponse.json(
-          { error: "This question requires a photo answer. Please mark at least one image message as part of the answer." },
-          { status: 400 },
-        );
-      }
-    } else if (requiredFormat === "VIDEO") {
-      if (!hasVideo) {
-        return NextResponse.json(
-          { error: "This question requires a video answer. Please mark at least one video message as part of the answer." },
-          { status: 400 },
-        );
-      }
-    }
-    // ANY → no constraint, teacher can answer in any format
+    const actualFormats: BaseAnswerFormat[] = [];
+    if (hasText) actualFormats.push("TEXT");
+    if (hasImage) actualFormats.push("PHOTO");
+    if (hasVideo) actualFormats.push("VIDEO");
 
-    // Determine the actual format used (stored on the Answer for display)
-    let resolvedFormat = requiredFormat;
-    if (requiredFormat === "ANY") {
-      if (hasVideo) resolvedFormat = "VIDEO";
-      else if (hasImage) resolvedFormat = "PHOTO";
-      else resolvedFormat = "TEXT";
+    const missingFormats = requiredFormats.filter((format) => {
+      switch (format) {
+        case "TEXT":
+          return !hasText;
+        case "PHOTO":
+          return !hasImage;
+        case "VIDEO":
+          return !hasVideo;
+      }
+    });
+
+    if (missingFormats.length > 0) {
+      const missingLabels = missingFormats.map((format) =>
+        getAnswerFormatLabel(format),
+      );
+      return NextResponse.json(
+        {
+          error:
+            missingFormats.length === 1
+              ? `This question requires ${missingLabels[0]}. Please mark at least one matching message as part of the answer.`
+              : `This question requires all selected formats. Missing: ${missingLabels.join(", ")}.`,
+        },
+        { status: 400 },
+      );
     }
+
+    const detectedAnswerFormat = buildAnswerFormatFromSelection(actualFormats);
+    const resolvedFormat =
+      detectedAnswerFormat === "ANY" ? "TEXT" : detectedAnswerFormat;
 
     const content = messages.map((m) => m.content).filter(Boolean).join("\n\n");
     const mediaUrls = messages.map((m) => m.mediaUrl).filter(Boolean);

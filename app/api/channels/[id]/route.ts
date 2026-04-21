@@ -13,6 +13,7 @@ import Message from "@/models/Message";
 import Answer from "@/models/Answer";
 import Notification from "@/models/Notification";
 import type { ChannelDetail, ChatMessage } from "@/types/channel";
+import type { AnswerFormat } from "@/types/question";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -72,7 +73,7 @@ export async function GET(_request: Request, context: RouteParams) {
     const question = channel.questionId as unknown as {
       title?: string;
       body?: string;
-      answerFormat?: string;
+      answerFormat?: AnswerFormat;
       answerVisibility?: string;
     };
 

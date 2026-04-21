@@ -36,7 +36,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { FeedQuestion, AnswerFormat, AnswerVisibility, ReactionType } from "@/types/question";
+import {
+  getAnswerFormatLabel,
+  getAnswerFormatRequirements,
+  hasMediaAnswerFormat,
+} from "@/lib/question-types";
+import type {
+  BaseAnswerFormat,
+  FeedQuestion,
+  AnswerVisibility,
+  ReactionType,
+} from "@/types/question";
 import {
   QUESTION_CREATED_EVENT,
   QUESTION_FEED_CHANNEL,
@@ -106,15 +116,8 @@ type TopTeacherItem = {
   teacherModeVerified: boolean;
 };
 
-const formatLabelMap: Record<AnswerFormat, string> = {
-  ANY: "Any",
-  TEXT: "Text",
-  PHOTO: "Photo",
-  VIDEO: "Video",
-};
-
-const formatColorMap: Record<AnswerFormat, string> = {
-  ANY: "bg-muted text-muted-foreground",
+const anyFormatColor = "bg-muted text-muted-foreground";
+const formatColorMap: Record<BaseAnswerFormat, string> = {
   TEXT: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   PHOTO: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   VIDEO: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
@@ -563,8 +566,7 @@ export function WorkspaceHome({
         case "media":
           return (
             (item.images?.length ?? 0) > 0 ||
-            item.answerFormat === "PHOTO" ||
-            item.answerFormat === "VIDEO" ||
+            hasMediaAnswerFormat(item.answerFormat) ||
             (item.answer?.mediaUrls?.length ?? 0) > 0
           );
         case "discussion":
@@ -1178,14 +1180,34 @@ export function WorkspaceHome({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                          formatColorMap[item.answerFormat],
-                        )}
-                      >
-                        {formatLabelMap[item.answerFormat]}
-                      </span>
+                      {(() => {
+                        const requiredFormats = getAnswerFormatRequirements(item.answerFormat);
+
+                        if (requiredFormats.length === 0) {
+                          return (
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                                anyFormatColor,
+                              )}
+                            >
+                              {getAnswerFormatLabel(item.answerFormat)}
+                            </span>
+                          );
+                        }
+
+                        return requiredFormats.map((format) => (
+                          <span
+                            key={`${item.id}-${format}`}
+                            className={cn(
+                              "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                              formatColorMap[format],
+                            )}
+                          >
+                            {getAnswerFormatLabel(format)}
+                          </span>
+                        ));
+                      })()}
                       <span
                         className={cn(
                           "rounded-full px-2.5 py-1 text-[11px] font-medium",

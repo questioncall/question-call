@@ -12,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { uploadFileViaServer } from "@/lib/client-upload";
 import {
+  buildAnswerFormatFromSelection,
+  toggleSelectableAnswerFormat,
+} from "@/lib/question-types";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -20,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type {
-  AnswerFormat,
+  SelectableAnswerFormat,
   CreateQuestionPayload,
   FeedQuestion,
   AnswerVisibility,
@@ -28,7 +32,11 @@ import type {
 import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
 import { useAppDispatch } from "@/store/hooks";
 
-const FORMAT_OPTIONS: { value: AnswerFormat; label: string; desc: string }[] = [
+const FORMAT_OPTIONS: {
+  value: SelectableAnswerFormat;
+  label: string;
+  desc: string;
+}[] = [
   { value: "ANY", label: "Any Format", desc: "Let the answerer choose" },
   { value: "TEXT", label: "Text", desc: "Written explanation" },
   { value: "PHOTO", label: "Photo", desc: "Photo-based answer" },
@@ -63,7 +71,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [answerFormat, setAnswerFormat] = useState<AnswerFormat>("ANY");
+  const [selectedFormats, setSelectedFormats] = useState<SelectableAnswerFormat[]>(["ANY"]);
   const [visibility, setVisibility] = useState<AnswerVisibility>("PUBLIC");
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
@@ -83,6 +91,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
   const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
+  const answerFormat = buildAnswerFormatFromSelection(selectedFormats);
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
   const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
@@ -97,7 +106,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const resetForm = () => {
     setTitle("");
     setBody("");
-    setAnswerFormat("ANY");
+    setSelectedFormats(["ANY"]);
     setVisibility("PUBLIC");
     setSubject("");
     setStream("");
@@ -358,11 +367,15 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                   <button
                     key={opt.value}
                     className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
-                      answerFormat === opt.value
+                      selectedFormats.includes(opt.value)
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-background text-foreground hover:border-primary/40"
                     }`}
-                    onClick={() => setAnswerFormat(opt.value)}
+                    onClick={() =>
+                      setSelectedFormats((current) =>
+                        toggleSelectableAnswerFormat(current, opt.value),
+                      )
+                    }
                     type="button"
                   >
                     <span className="font-medium">{opt.label}</span>
@@ -372,6 +385,9 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Choose one or more required formats. If you select multiple, the final teacher answer must include all of them.
+              </p>
             </div>
 
             {/* Visibility */}

@@ -21,16 +21,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  buildAnswerFormatFromSelection,
+  getAnswerFormatLabel,
+  toggleSelectableAnswerFormat,
+} from "@/lib/question-types";
 import type {
   CreateQuestionPayload,
   FeedQuestion,
-  AnswerFormat,
+  SelectableAnswerFormat,
   AnswerVisibility,
 } from "@/types/question";
 import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
 import { useAppDispatch } from "@/store/hooks";
 
-const FORMAT_OPTIONS: { value: AnswerFormat; label: string; desc: string; color: string }[] = [
+const FORMAT_OPTIONS: {
+  value: SelectableAnswerFormat;
+  label: string;
+  desc: string;
+  color: string;
+}[] = [
   { value: "ANY", label: "Any", desc: "Let the answerer decide the format", color: "border-muted-foreground/30" },
   { value: "TEXT", label: "Text", desc: "Written explanation only", color: "border-blue-500" },
   { value: "PHOTO", label: "Photo", desc: "Photo-based answer with annotations", color: "border-amber-500" },
@@ -49,13 +59,6 @@ const SUBJECT_OPTIONS = [
 const STREAM_OPTIONS = ["Science", "Management"] as const;
 const LEVEL_OPTIONS = ["School level", "Plus 2", "Bachelor"] as const;
 
-const formatLabelMap: Record<AnswerFormat, string> = {
-  ANY: "Any format",
-  TEXT: "Text format",
-  PHOTO: "Photo format",
-  VIDEO: "Video format",
-};
-
 const visibilityLabelMap: Record<AnswerVisibility, string> = {
   PUBLIC: "Public",
   PRIVATE: "Private",
@@ -70,7 +73,7 @@ export default function AskQuestionPage() {
 
   const [title, setTitle] = useState(initialQuery);
   const [body, setBody] = useState("");
-  const [answerFormat, setAnswerFormat] = useState<AnswerFormat>("ANY");
+  const [selectedFormats, setSelectedFormats] = useState<SelectableAnswerFormat[]>(["ANY"]);
   const [visibility, setVisibility] = useState<AnswerVisibility>("PUBLIC");
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
@@ -87,6 +90,7 @@ export default function AskQuestionPage() {
 
   const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
+  const answerFormat = buildAnswerFormatFromSelection(selectedFormats);
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
   const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
@@ -192,11 +196,15 @@ export default function AskQuestionPage() {
                   <button
                     key={opt.value}
                     className={`rounded-xl border-2 px-4 py-3 text-left text-sm transition-all ${
-                      answerFormat === opt.value
+                      selectedFormats.includes(opt.value)
                         ? `${opt.color} bg-primary/5 ring-1 ring-primary/20`
                         : "border-border bg-background hover:border-primary/30"
                     }`}
-                    onClick={() => setAnswerFormat(opt.value)}
+                    onClick={() =>
+                      setSelectedFormats((current) =>
+                        toggleSelectableAnswerFormat(current, opt.value),
+                      )
+                    }
                     type="button"
                   >
                     <span className="font-medium">{opt.label}</span>
@@ -206,6 +214,9 @@ export default function AskQuestionPage() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Choose one or more required answer formats. If you select multiple, the teacher must include all of them in the final answer.
+              </p>
             </div>
 
             <div className="space-y-3">
@@ -322,9 +333,14 @@ export default function AskQuestionPage() {
                 {title.trim() || "Your question title will appear here..."}
               </p>
               <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  {formatLabelMap[answerFormat]}
-                </span>
+                {selectedFormats.map((format) => (
+                  <span
+                    key={format}
+                    className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                  >
+                    {getAnswerFormatLabel(format)}
+                  </span>
+                ))}
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
                   {visibilityLabelMap[visibility]}
                 </span>

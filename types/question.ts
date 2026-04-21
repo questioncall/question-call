@@ -2,8 +2,17 @@
 // Shared question types — single source of truth
 // ──────────────────────────────────────────────────────────
 
-/** Answer formats */
-export type AnswerFormat = "ANY" | "TEXT" | "PHOTO" | "VIDEO";
+/** Individual answer formats a student can toggle in the UI */
+export type BaseAnswerFormat = "TEXT" | "PHOTO" | "VIDEO";
+export type SelectableAnswerFormat = "ANY" | BaseAnswerFormat;
+
+/** Stored answer format value, including combined requirements */
+export type AnswerFormat =
+  | SelectableAnswerFormat
+  | "TEXT_PHOTO"
+  | "TEXT_VIDEO"
+  | "PHOTO_VIDEO"
+  | "TEXT_PHOTO_VIDEO";
 
 /** Who can see the answer */
 export type AnswerVisibility = "PUBLIC" | "PRIVATE";

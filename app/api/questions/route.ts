@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
+import { ANSWER_FORMATS } from "@/lib/question-types";
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { CreateQuestionPayload, FeedQuestion } from "@/types/question";
@@ -36,6 +37,20 @@ export async function POST(request: Request) {
     if (typeof body.body !== "string" || body.body.trim().length < 12 || body.body.trim().length > 5000) {
       return NextResponse.json(
         { error: "Body must be between 12 and 5000 characters" },
+        { status: 400 },
+      );
+    }
+
+    const requestedAnswerFormat =
+      typeof body.answerFormat === "string" ? body.answerFormat : "ANY";
+
+    if (
+      !ANSWER_FORMATS.includes(
+        requestedAnswerFormat as (typeof ANSWER_FORMATS)[number],
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Please choose a valid answer format selection." },
         { status: 400 },
       );
     }
@@ -105,7 +120,7 @@ export async function POST(request: Request) {
       title: body.title.trim(),
       body: body.body.trim(),
       images: Array.isArray(body.images) ? body.images : [],
-      answerFormat: body.answerFormat || "ANY",
+      answerFormat: requestedAnswerFormat,
       answerVisibility: body.answerVisibility || "PUBLIC",
       subject: body.subject?.trim() || undefined,
       stream: body.stream?.trim() || undefined,

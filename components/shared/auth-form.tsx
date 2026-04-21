@@ -88,8 +88,10 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
       if (!res.ok) throw new Error(data.error);
       setVerificationStep("pending_otp");
       setSuccess("Verification code sent! Please check your inbox.");
-    } catch (e: any) {
-      setFormError(e.message);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Failed to send verification code.",
+      );
       setVerificationStep("idle");
     }
   }
@@ -113,8 +115,10 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
       setVerificationStep("idle");
       setIsEmailVerified(true);
       setSuccess("Email verified successfully! You can now complete your registration.");
-    } catch (e: any) {
-      setFormError(e.message);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Failed to verify the email code.",
+      );
       setVerificationStep("pending_otp");
     }
   }
@@ -124,6 +128,7 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
     setFormError(null);
     setSuccess(null);
     dispatch(clearAuthState());
+    let keepSubmitting = false;
 
     if (isRegister && !termsAgreed) {
       setFormError("You must agree to the terms and policy to register.");
@@ -162,11 +167,13 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
         });
 
         if (signInResult?.error) {
+          keepSubmitting = true;
           router.replace(getSignInPath());
           router.refresh();
           return;
         }
 
+        keepSubmitting = true;
         router.replace(signInResult?.url ?? defaultPathByRole[role]);
         router.refresh();
         return;
@@ -185,6 +192,7 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
         throw new Error("Invalid email or password.");
       }
 
+      keepSubmitting = true;
       router.replace(signInResult?.url ?? "/");
       router.refresh();
     } catch (submitError) {
@@ -194,7 +202,9 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
           : "Something went wrong.";
       setFormError(message);
     } finally {
-      setIsSigningIn(false);
+      if (!keepSubmitting) {
+        setIsSigningIn(false);
+      }
     }
   }
 

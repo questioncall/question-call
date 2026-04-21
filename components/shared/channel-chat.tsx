@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import { getAnswerFormatLabel } from "@/lib/question-types";
 import { cn } from "@/lib/utils";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
@@ -835,7 +836,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               <span className="font-medium text-muted-foreground">{counterpartName}</span>
               <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:inline-block" />
               <span className="font-bold uppercase tracking-wider text-muted-foreground">
-                {channel.answerFormat} format
+                {getAnswerFormatLabel(channel.answerFormat)} required
               </span>
               {isActive && (
                 <>

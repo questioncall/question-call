@@ -1,4 +1,5 @@
 import type { PlatformConfigDocument } from "@/models/PlatformConfig";
+import { getPrimaryAnswerFormat } from "@/lib/question-types";
 
 export function roundPoints(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -22,7 +23,7 @@ export function calcBasePoints(
   answerFormat: string,
   config: PlatformConfigDocument,
 ): number {
-  switch (answerFormat) {
+  switch (getPrimaryAnswerFormat(answerFormat)) {
     case "TEXT":
       return config.pointsPerTextAnswer;
     case "PHOTO":

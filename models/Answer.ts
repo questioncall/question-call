@@ -1,5 +1,6 @@
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
 
+import { ANSWER_FORMATS } from "@/lib/question-types";
 
 const answerSchema = new Schema(
   {
@@ -23,7 +24,7 @@ const answerSchema = new Schema(
     },
     answerFormat: {
       type: String,
-      enum: ["TEXT", "PHOTO", "VIDEO", "ANY"],
+      enum: ANSWER_FORMATS,
       required: true,
     },
     content: {

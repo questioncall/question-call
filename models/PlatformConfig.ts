@@ -26,6 +26,7 @@ import {
   REFERRAL,
 } from "@/lib/config";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getPrimaryAnswerFormat } from "@/lib/question-types";
 
 const platformConfigSchema = new Schema(
   {
@@ -415,7 +416,7 @@ export function getFormatDurationMinutes(
   config: PlatformConfigDocument,
   answerFormat: string,
 ): number {
-  switch (answerFormat) {
+  switch (getPrimaryAnswerFormat(answerFormat)) {
     case "TEXT":
       return config.textFormatDuration;
     case "PHOTO":
@@ -436,7 +437,7 @@ export function getFormatPoints(
   config: PlatformConfigDocument,
   answerFormat: string,
 ): number {
-  switch (answerFormat) {
+  switch (getPrimaryAnswerFormat(answerFormat)) {
     case "TEXT":
       return config.pointsPerTextAnswer;
     case "PHOTO":

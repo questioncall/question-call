@@ -2,6 +2,8 @@
 // Shared channel & message types — single source of truth
 // ──────────────────────────────────────────────────────────
 
+import type { AnswerFormat } from "@/types/question";
+
 export type ChannelStatus = "ACTIVE" | "CLOSED" | "EXPIRED";
 export type MessageMediaType = "TEXT" | "IMAGE" | "VIDEO" | "AUDIO";
 
@@ -29,7 +31,7 @@ export type ChannelRecord = {
 export type ChannelDetail = ChannelRecord & {
   questionTitle: string;
   questionBody: string;
-  answerFormat: string;
+  answerFormat: AnswerFormat;
   answerVisibility: string;
   askerName: string;
   askerUsername?: string;
