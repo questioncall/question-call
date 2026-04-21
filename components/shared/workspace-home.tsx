@@ -21,6 +21,8 @@ import {
   SendIcon,
   SlidersHorizontalIcon,
   XIcon,
+  TrophyIcon,
+  MedalIcon,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -803,88 +805,134 @@ export function WorkspaceHome({
   );
 
   const renderTopTeachersPanel = () => (
-    <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-      <CardHeader className="border-b border-border/60 pb-4">
-        <CardDescription>Top rated teachers</CardDescription>
-        <CardTitle className="text-base">Trusted answerers</CardTitle>
+    <Card className="relative overflow-hidden border border-border/70 bg-background shadow-lg">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
+      <div className="absolute -right-10 -top-10 size-40 rounded-full bg-primary/5 blur-3xl" />
+      
+      <CardHeader className="relative border-b border-border/60 pb-5">
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 font-bold text-white shadow-inner">
+            <TrophyIcon className="size-4" />
+          </div>
+          <div>
+            <CardTitle className="text-base tracking-tight">Hall of Fame</CardTitle>
+            <CardDescription className="text-xs">Top rated teachers this week</CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3 pt-4">
+
+      <CardContent className="relative space-y-3 pt-5">
         {isTopTeachersLoading ? (
           [1, 2, 3].map((item) => (
-            <div key={item} className="rounded-xl border border-border/70 bg-muted/15 p-4">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="mt-3 h-3 w-20" />
-              <Skeleton className="mt-3 h-9 w-full" />
+            <div key={item} className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/10 p-3">
+              <Skeleton className="size-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-3 w-16" />
+              </div>
             </div>
           ))
         ) : topTeachers.length > 0 ? (
-          topTeachers.map((teacher, index) => (
-            <Link
-              key={teacher.id}
-              href={getProfilePath({
-                id: teacher.id,
-                name: teacher.name,
-                username: teacher.username,
-              })}
-              className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/15 p-4 transition-colors hover:border-primary/30 hover:bg-muted/25"
-            >
-              <div className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                {index + 1}
-              </div>
+          topTeachers.map((teacher, index) => {
+            const isFirst = index === 0;
+            const isSecond = index === 1;
+            const isThird = index === 2;
 
-              {teacher.userImage ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={teacher.userImage}
-                  alt={teacher.name}
-                  className="size-10 rounded-full border border-border/60 object-cover shrink-0"
-                />
-              ) : (
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {teacher.name.charAt(0).toUpperCase()}
+            let rankColors = "bg-muted text-muted-foreground border-border/50";
+            let rankIcon = null;
+
+            if (isFirst) {
+              rankColors = "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400";
+              rankIcon = <MedalIcon className="size-3.5" />;
+            } else if (isSecond) {
+              rankColors = "bg-slate-300/20 text-slate-600 border-slate-400/30 dark:text-slate-300 dark:bg-slate-500/20";
+              rankIcon = <MedalIcon className="size-3.5" />;
+            } else if (isThird) {
+              rankColors = "bg-orange-600/10 text-orange-700 border-orange-600/20 dark:text-orange-400 dark:bg-orange-500/10";
+              rankIcon = <MedalIcon className="size-3.5" />;
+            }
+
+            return (
+              <Link
+                key={teacher.id}
+                href={getProfilePath({
+                  id: teacher.id,
+                  name: teacher.name,
+                  username: teacher.username,
+                })}
+                className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-border/50 bg-background p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/20 hover:shadow-md"
+              >
+                {/* Ranking Badge */}
+                <div
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold shadow-sm transition-colors duration-300",
+                    rankColors,
+                  )}
+                >
+                  {rankIcon || index + 1}
                 </div>
-              )}
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
-                    <p className="text-xs text-muted-foreground">@{teacher.username}</p>
-                  </div>
+                {/* Avatar with optional ring for top 3 */}
+                <div className="relative shrink-0">
+                  {teacher.userImage ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={teacher.userImage}
+                      alt={teacher.name}
+                      className={cn(
+                        "size-10 rounded-full object-cover shadow-sm transition-transform duration-300 group-hover:scale-105",
+                        isFirst ? "ring-2 ring-amber-500 ring-offset-1 ring-offset-background" : 
+                        isSecond ? "ring-2 ring-slate-400 ring-offset-1 ring-offset-background" :
+                        isThird ? "ring-2 ring-orange-500 ring-offset-1 ring-offset-background" :
+                        "border border-border/60"
+                      )}
+                    />
+                  ) : (
+                    <div
+                      className={cn(
+                        "flex size-10 items-center justify-center rounded-full text-sm font-semibold shadow-sm transition-transform duration-300 group-hover:scale-105",
+                        isFirst ? "bg-amber-500/15 text-amber-600 ring-2 ring-amber-500 ring-offset-1 ring-offset-background" : 
+                        isSecond ? "bg-slate-500/15 text-slate-700 ring-2 ring-slate-400 ring-offset-1 ring-offset-background" :
+                        isThird ? "bg-orange-500/15 text-orange-700 ring-2 ring-orange-500 ring-offset-1 ring-offset-background" :
+                        "bg-primary/10 text-primary border border-border/60"
+                      )}
+                    >
+                      {teacher.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   {teacher.teacherModeVerified && (
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-                      Verified
-                    </span>
+                    <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-emerald-500 p-0.5">
+                      <CheckCircle2Icon className="size-2.5 text-white" strokeWidth={4} />
+                    </div>
                   )}
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <StarIcon
-                        key={star}
-                        className={cn(
-                          "size-3.5",
-                          star <= Math.round(teacher.overallScore)
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/30",
-                        )}
-                      />
-                    ))}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-bold text-foreground transition-colors group-hover:text-primary">
+                      {teacher.name}
+                    </p>
+                    <div className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      {teacher.totalAnswered} <span className="hidden sm:inline">answers</span>
+                    </div>
                   </div>
-                  <span className="text-xs font-medium text-foreground">
-                    {teacher.overallScore.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {teacher.totalAnswered} answers
-                  </span>
+                  
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <p className="truncate text-muted-foreground">@{teacher.username}</p>
+                    <div className="flex items-center gap-1 font-semibold text-foreground">
+                      <StarIcon className="size-3.5 fill-amber-400 text-amber-400" />
+                      {teacher.overallScore.toFixed(1)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         ) : (
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-            Top rated teachers will appear here as soon as ratings start coming in.
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+            <TrophyIcon className="mb-3 size-8 text-muted-foreground/30" />
+            <p className="font-medium text-foreground">No top teachers yet</p>
+            <p className="mt-1 max-w-[200px] text-xs">Ratings are calculated periodically. Help out to climb the ranks!</p>
           </div>
         )}
       </CardContent>
@@ -1085,10 +1133,10 @@ export function WorkspaceHome({
                                 <img
                                   src={item.askerImage}
                                   alt={item.askerName}
-                                  className="size-5 rounded-full border border-border/60 object-cover"
+                                  className="w-[20px] h-[20px] min-w-[20px] min-h-[20px] aspect-square shrink-0 rounded-full border border-border/60 object-cover"
                                 />
                               ) : (
-                                <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                                   {item.askerName.charAt(0).toUpperCase()}
                                 </span>
                               )}
@@ -1618,92 +1666,7 @@ export function WorkspaceHome({
               </CardContent>
             </Card>
 
-            <Card id="top-teachers-desktop" className="overflow-hidden border border-border/70 bg-background shadow-sm">
-              <CardHeader className="border-b border-border/60 pb-4">
-                <CardDescription>Top rated teachers</CardDescription>
-                <CardTitle className="text-base">Trusted answerers</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-4">
-                {isTopTeachersLoading ? (
-                  [1, 2, 3].map((item) => (
-                    <div key={item} className="rounded-xl border border-border/70 bg-muted/15 p-4">
-                      <Skeleton className="h-4 w-28" />
-                      <Skeleton className="mt-3 h-3 w-20" />
-                      <Skeleton className="mt-3 h-9 w-full" />
-                    </div>
-                  ))
-                ) : topTeachers.length > 0 ? (
-                  topTeachers.map((teacher, index) => (
-                    <Link
-                      key={teacher.id}
-                      href={getProfilePath({
-                        id: teacher.id,
-                        name: teacher.name,
-                        username: teacher.username,
-                      })}
-                      className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/15 p-4 transition-colors hover:border-primary/30 hover:bg-muted/25"
-                    >
-                      <div className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {index + 1}
-                      </div>
-
-                      {teacher.userImage ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={teacher.userImage}
-                          alt={teacher.name}
-                          className="size-10 rounded-full border border-border/60 object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                          {teacher.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
-                            <p className="text-xs text-muted-foreground">@{teacher.username}</p>
-                          </div>
-                          {teacher.teacherModeVerified && (
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
-                              Verified
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-2">
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <StarIcon
-                                key={star}
-                                className={cn(
-                                  "size-3.5",
-                                  star <= Math.round(teacher.overallScore)
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-muted-foreground/30",
-                                )}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-xs font-medium text-foreground">
-                            {teacher.overallScore.toFixed(1)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {teacher.totalAnswered} answers
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-                    Top rated teachers will appear here as soon as ratings start coming in.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {renderTopTeachersPanel()}
           </div>
         </div>
       </div>

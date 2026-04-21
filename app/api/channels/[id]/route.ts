@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import "@/models/User";
@@ -28,7 +29,7 @@ export async function GET(_request: Request, context: RouteParams) {
 
     await connectToDatabase();
 
-    const channel = await Channel.findById(id)
+    let channel = await Channel.findById(id)
       .populate("questionId", "title body answerFormat answerVisibility")
       .populate("askerId", "name username userImage")
       .populate("acceptorId", "name username userImage")
@@ -47,6 +48,25 @@ export async function GET(_request: Request, context: RouteParams) {
         { error: "You are not a participant of this channel" },
         { status: 403 },
       );
+    }
+
+    if (channel.status === "ACTIVE") {
+      const timerDeadlineMs = new Date(channel.timerDeadline).getTime();
+      if (timerDeadlineMs <= Date.now()) {
+        await processExpiredChannels({ channelId: id });
+        channel = await Channel.findById(id)
+          .populate("questionId", "title body answerFormat answerVisibility")
+          .populate("askerId", "name username userImage")
+          .populate("acceptorId", "name username userImage")
+          .lean();
+
+        if (!channel) {
+          return NextResponse.json(
+            { error: "Channel not found" },
+            { status: 404 },
+          );
+        }
+      }
     }
 
     const question = channel.questionId as unknown as {

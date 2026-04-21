@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { validateCronRequest } from "@/lib/cron-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
@@ -13,19 +14,17 @@ import User from "@/models/User";
  * to teachers who maintain a high overall rating (≥ 4 stars average).
  *
  * Endpoint: POST /api/cron/monthly-rewards
- * Auth: x-cron-secret or authorization header must match CRON_SECRET env var.
+ * Auth: Accepts `?key=...`, `x-cron-secret`, or `Authorization: Bearer ...`
+ * using the CRON_SECRET environment variable.
  */
 export async function POST(request: Request) {
   try {
-    const cronSecret =
-      request.headers.get("x-cron-secret") ||
-      request.headers.get("authorization");
-
-    if (
-      cronSecret !== process.env.CRON_SECRET &&
-      cronSecret !== `Bearer ${process.env.CRON_SECRET}`
-    ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = validateCronRequest(request);
+    if (!authResult.ok) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status },
+      );
     }
 
     await connectToDatabase();
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
         { monthlyBonusClaimedAt: { $lt: startOfMonth } },
       ],
     }).select(
-      "_id name overallRatingSum overallRatingCount pointBalance monthlyBonusClaimedAt"
+      "_id name overallRatingSum overallRatingCount pointBalance monthlyBonusClaimedAt",
     );
 
     let rewardedCount = 0;
@@ -117,7 +116,7 @@ export async function POST(request: Request) {
     console.error("[POST /api/cron/monthly-rewards]", error);
     return NextResponse.json(
       { error: "Failed to process monthly rewards" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

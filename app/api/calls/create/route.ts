@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import Channel from "@/models/Channel";
 import CallSession from "@/models/CallSession";
@@ -25,9 +26,32 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
-    const channel = await Channel.findById(channelId).select("status timerDeadline askerId acceptorId").lean();
+    let channel = await Channel.findById(channelId)
+      .select("status timerDeadline askerId acceptorId")
+      .lean();
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+    }
+
+    const askerId = channel.askerId.toString();
+    const acceptorId = channel.acceptorId.toString();
+
+    if (userId !== askerId && userId !== acceptorId) {
+      return NextResponse.json({ error: "You are not a participant of this channel." }, { status: 403 });
+    }
+
+    if (channel.status === "ACTIVE") {
+      const timerDeadlineMs = new Date(channel.timerDeadline).getTime();
+      if (timerDeadlineMs <= Date.now()) {
+        await processExpiredChannels({ channelId });
+        channel = await Channel.findById(channelId)
+          .select("status timerDeadline askerId acceptorId")
+          .lean();
+
+        if (!channel) {
+          return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+        }
+      }
     }
 
     if (channel.status !== "ACTIVE") {
@@ -36,13 +60,6 @@ export async function POST(request: Request) {
 
     if (new Date(channel.timerDeadline).getTime() < Date.now()) {
       return NextResponse.json({ error: "Channel time has expired." }, { status: 403 });
-    }
-
-    const askerId = channel.askerId.toString();
-    const acceptorId = channel.acceptorId.toString();
-
-    if (userId !== askerId && userId !== acceptorId) {
-      return NextResponse.json({ error: "You are not a participant of this channel." }, { status: 403 });
     }
 
     // acceptorId is considered the teacher, askerId is the student

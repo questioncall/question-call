@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
+import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
 import { ANSWER_SUBMITTED_EVENT, getChannelPusherName } from "@/lib/pusher/events";
@@ -30,20 +31,32 @@ export async function POST(req: Request) {
     await connectToDatabase();
 
     // Verify channel and access
-    const channel = await Channel.findById(channelId).populate("questionId");
+    let channel = await Channel.findById(channelId).populate("questionId");
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
-    }
-
-    if (channel.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Channel is not active" }, { status: 400 });
     }
 
     if (channel.acceptorId.toString() !== session.user.id) {
       return NextResponse.json(
         { error: "Only the acceptor (teacher) can submit an answer" },
-        { status: 403 }
+        { status: 403 },
       );
+    }
+
+    if (channel.status === "ACTIVE") {
+      const timerDeadlineMs = new Date(channel.timerDeadline).getTime();
+      if (timerDeadlineMs <= Date.now()) {
+        await processExpiredChannels({ channelId });
+        channel = await Channel.findById(channelId).populate("questionId");
+
+        if (!channel) {
+          return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+        }
+      }
+    }
+
+    if (channel.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Channel is not active" }, { status: 400 });
     }
 
     // Check if answer already submitted
@@ -72,7 +85,7 @@ export async function POST(req: Request) {
       if (messages.length !== selectedMessageIds.length) {
         return NextResponse.json(
           { error: "Some selected messages could not be matched to this channel." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -114,21 +127,21 @@ export async function POST(req: Request) {
       if (!hasText) {
         return NextResponse.json(
           { error: "This question requires a text answer. Please mark at least one text message as the answer." },
-          { status: 400 }
+          { status: 400 },
         );
       }
     } else if (requiredFormat === "PHOTO") {
       if (!hasImage) {
         return NextResponse.json(
           { error: "This question requires a photo answer. Please mark at least one image message as part of the answer." },
-          { status: 400 }
+          { status: 400 },
         );
       }
     } else if (requiredFormat === "VIDEO") {
       if (!hasVideo) {
         return NextResponse.json(
           { error: "This question requires a video answer. Please mark at least one video message as part of the answer." },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -217,7 +230,7 @@ export async function POST(req: Request) {
     console.error("[POST /api/answers]", error);
     return NextResponse.json(
       { error: "Failed to submit answer" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitChannelMessage, pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
 import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
@@ -27,7 +28,7 @@ export async function POST(request: Request, context: RouteParams) {
     await connectToDatabase();
 
     // Verify channel exists and user is a participant
-    const channel = await Channel.findById(channelId).lean();
+    let channel = await Channel.findById(channelId).lean();
     
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
@@ -41,6 +42,18 @@ export async function POST(request: Request, context: RouteParams) {
         { error: "You are not a participant of this channel" },
         { status: 403 },
       );
+    }
+
+    if (channel.status === "ACTIVE") {
+      const timerDeadlineMs = new Date(channel.timerDeadline).getTime();
+      if (timerDeadlineMs <= Date.now()) {
+        await processExpiredChannels({ channelId });
+        channel = await Channel.findById(channelId).lean();
+
+        if (!channel) {
+          return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+        }
+      }
     }
 
     // Channel must be ACTIVE to send messages

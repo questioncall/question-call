@@ -255,9 +255,15 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       dispatch(addMessage({ ...payload.message, isOwn: false }));
     };
 
-    const handleStatus = (payload: { status?: ChannelStatus }) => {
+    const handleStatus = (payload: {
+      status?: ChannelStatus;
+      ratingGiven?: number;
+    }) => {
       if (payload.status) {
         dispatch(setChannelStatus(payload.status));
+      }
+      if (payload.ratingGiven) {
+        dispatch(setChannelRating(payload.ratingGiven));
       }
     };
 

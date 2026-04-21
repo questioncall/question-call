@@ -1,27 +1,94 @@
-# Cron Job Configuration Guide
+# Cron Setup Guide
 
-To automate your scheduled tasks using a service like [cron-job.org](https://cron-job.org/), you can simply pass your secret key directly in the URL!
+This project uses the `CRON_SECRET` environment variable to authorize cron requests.
+No real cron secret should be hardcoded in route files, docs, or committed config.
 
-**You DO NOT need to add any username or password in the Advanced tab.** The URLs below already include your `CRON_SECRET` using the `?key=` parameter, which our API supports.
+Both cron endpoints accept any one of these auth formats:
 
-Just copy and paste these exact URLs and make sure to change the HTTP method to **POST**.
+- Query param: `?key=YOUR_CRON_SECRET`
+- Header: `x-cron-secret: YOUR_CRON_SECRET`
+- Header: `Authorization: Bearer YOUR_CRON_SECRET`
 
----
+For `cron-job.org`, the easiest setup is usually the query param version.
 
-## 1. Expire Channels
+## Required Environment Variable
 
-This job checks for questions where the timer has run out. If a teacher submitted an answer but the student never rated it, it auto-closes the channel and gives the teacher an automatic 3-star rating. If the teacher never submitted an answer, it expires the channel, penalizes the teacher, and resets the question for other teachers to answer.
+Set this in the environment for the app you are calling:
 
-- **URL:** `https://listeners-rnae.vercel.app/api/cron/expire-channels?key=jbciweb8128138dcsd76fs7f8s9fs7dfdscbcasd8cy7sdt6cdacsdc8s97dc`
-- **Method:** `POST`
-- **Recommended Schedule:** Every 5 to 10 minutes.
+```env
+CRON_SECRET=replace-with-a-long-random-secret
+```
 
----
+Keep the real secret out of committed docs and source control.
 
-## 2. Monthly Rewards
+## Cron Endpoints
 
-This job runs at the beginning of every month. It looks for monetized teachers who have maintained a high overall rating (≥ 4.0 stars) and awards them with the configured monthly bonus points directly to their wallet.
+### 1. Expire Channels
 
-- **URL:** `https://listeners-rnae.vercel.app/api/cron/monthly-rewards?key=jbciweb8128138dcsd76fs7f8s9fs7dfdscbcasd8cy7sdt6cdacsdc8s97dc`
-- **Method:** `POST`
-- **Recommended Schedule:** Once a month on the 1st day of the month at 00:00 (Midnight).
+`POST /api/cron/expire-channels`
+
+What it does:
+
+- Expires channels whose timer is over and no answer was submitted.
+- Deducts the configured teacher penalty.
+- Resets the question back to the feed when allowed.
+- Auto-closes answered but unrated channels after the grace window.
+- Applies the automatic `3/5` fallback rating on those auto-closed channels.
+
+Recommended schedule:
+
+- Every 5 minutes
+
+Example URL:
+
+```text
+https://your-domain.com/api/cron/expire-channels?key=YOUR_CRON_SECRET
+```
+
+### 2. Monthly Rewards
+
+`POST /api/cron/monthly-rewards`
+
+What it does:
+
+- Awards the configured monthly bonus to eligible high-rated teachers.
+
+Recommended schedule:
+
+- Once per month on day 1 at 00:00
+
+Example URL:
+
+```text
+https://your-domain.com/api/cron/monthly-rewards?key=YOUR_CRON_SECRET
+```
+
+## cron-job.org Settings
+
+Use these settings for each job:
+
+- Method: `POST`
+- URL: the full cron endpoint URL including `?key=YOUR_CRON_SECRET`
+- No username/password needed
+- No request body needed
+
+## Why You Might See `Unauthorized`
+
+If cron-job.org returns `Unauthorized`, check these first:
+
+1. The deployed app has `CRON_SECRET` set in its environment.
+2. The secret in cron-job.org exactly matches the deployed `CRON_SECRET`.
+3. You are calling the correct deployed domain.
+4. You are using `POST`, not `GET`.
+5. You updated old saved jobs that still use an outdated hardcoded secret.
+
+## Fallback Behavior
+
+Cron is still the primary mechanism for cleanup.
+
+As a safety net, participant-facing channel APIs now also re-check overdue channels when a user opens the channel, sends a message, starts a call, or submits an answer. That means:
+
+- unanswered expired channels are forced into the expire/reset path
+- answered but unrated channels are auto-closed and auto-rated once the grace period has passed
+
+This fallback is there to prevent channels from staying incorrectly active if a cron run is delayed or missed.
