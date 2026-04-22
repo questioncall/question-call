@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSafeServerSession } from "@/lib/auth";
 import { getMyCoursesPageData } from "@/lib/course-page-data";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { MyCoursesClient } from "./my-courses-client";
 
-export const metadata = {
-  title: "My Courses — Question Call",
+export const metadata = createNoIndexMetadata({
+  title: "My Courses",
   description: "Track your enrolled courses and continue learning.",
-};
+});
 
 export default async function MyCoursesPage() {
   const session = await getSafeServerSession();

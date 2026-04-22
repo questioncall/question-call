@@ -1,7 +1,13 @@
 import { getSafeServerSession } from "@/lib/auth";
 import { getManageCoursePageData } from "@/lib/course-page-data";
 import { redirect } from "next/navigation";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { ManageCourseClient } from "./manage-course-client";
+
+export const metadata = createNoIndexMetadata({
+  title: "Manage Course",
+  description: "Private instructor course management workspace.",
+});
 
 export default async function ManageCoursePage({
   params,

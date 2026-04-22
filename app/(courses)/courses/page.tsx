@@ -1,12 +1,20 @@
 import { getSafeServerSession } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
+import { createPageMetadata } from "@/lib/seo";
 import { CoursesBrowseClient } from "./courses-browse";
 
-export const metadata = {
-  title: "Courses — Question Call",
+export const metadata = createPageMetadata({
+  title: "Courses",
   description:
     "Browse free, subscription-included, and paid courses. Learn from structured lessons, recordings, and live classes.",
-};
+  path: "/courses",
+  keywords: [
+    "online courses Nepal",
+    "Question Call courses",
+    "live classes Nepal",
+    "guided courses",
+  ],
+});
 
 export default async function CoursesPage() {
   const session = await getSafeServerSession();

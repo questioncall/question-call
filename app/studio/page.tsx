@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import CourseVideo from "@/models/CourseVideo";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { CourseStudioClient } from "./studio-client";
 
-export const metadata = {
-  title: "Course Studio — Question Call",
-  description: "Create and manage your courses",
-};
+export const metadata = createNoIndexMetadata({
+  title: "Course Studio",
+  description: "Create and manage your courses.",
+});
 
 export default async function CourseStudioPage() {
   const session = await getSafeServerSession();

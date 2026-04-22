@@ -12,9 +12,24 @@ import {
   getPlatformConfig,
   getPlatformSocialLinks,
 } from "@/models/PlatformConfig";
+import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+export const metadata = createPageMetadata({
+  title: "Learn Smarter With Expert Teachers",
+  description:
+    "Question Call helps students learn through expert answers, guided courses, live sessions, and interactive quizzes in one platform.",
+  path: "/",
+  keywords: [
+    "Question Call",
+    "Question Call Nepal",
+    "online learning Nepal",
+    "student help Nepal",
+    "ask expert teachers online",
+  ],
+});
 
 export default async function HomePage() {
   const session = await getSafeServerSession();

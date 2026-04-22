@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
@@ -33,6 +35,7 @@ import {
   getSignInPath,
   getUserHandle,
 } from "@/lib/user-paths";
+import { createNoIndexMetadata, createPageMetadata } from "@/lib/seo";
 
 
 function formatJoinedDate(value?: Date | string) {
@@ -73,6 +76,43 @@ function maskEmail(email: string) {
 
   const visibleLocal = localPart.slice(0, 2);
   return `${visibleLocal}${"*".repeat(Math.max(localPart.length - 2, 2))}@${domain}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}): Promise<Metadata> {
+  const { username } = await params;
+
+  if (!/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
+    return createNoIndexMetadata({
+      title: "Profile",
+      description: "Invalid public profile.",
+    });
+  }
+
+  const profile = await getPublicUserByUsername(username);
+
+  if (!profile) {
+    return createNoIndexMetadata({
+      title: "Profile not found",
+      description: "The requested public profile could not be found.",
+    });
+  }
+
+  const fallbackDescription =
+    profile.role === "STUDENT"
+      ? `${profile.name} is learning with ${APP_NAME} through questions, courses, and quizzes.`
+      : `${profile.name} helps students learn on ${APP_NAME} through answers, teaching, and guided support.`;
+
+  return createPageMetadata({
+    title: `${profile.name} (@${profile.username})`,
+    description: profile.bio?.trim() || fallbackDescription,
+    path: `/${profile.username}`,
+    image: profile.userImage,
+    keywords: [profile.username, profile.name, APP_NAME].filter(Boolean),
+  });
 }
 
 export default async function PublicProfilePage({

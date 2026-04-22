@@ -1,8 +1,16 @@
 import { LegalContent } from "@/components/shared/legal-content";
 import { getLegalContent, getPlatformConfig } from "@/models/PlatformConfig";
+import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+export const metadata = createPageMetadata({
+  title: "Terms, Privacy, and Policies",
+  description:
+    "Read the latest Question Call terms, privacy information, and platform policies before using the service.",
+  path: "/legal",
+});
 
 export default async function LegalPage() {
   let legalContent;

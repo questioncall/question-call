@@ -6,10 +6,16 @@ import { AdminHeaderClient } from "@/components/admin/admin-header-client";
 import { AdminSearchClient } from "@/components/admin/admin-search-client";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { connectToDatabase } from "@/lib/mongodb";
+import { createNoIndexMetadata } from "@/lib/seo";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
 import Notification from "@/models/Notification";
+
+export const metadata = createNoIndexMetadata({
+  title: "Admin",
+  description: "Private administrative routes for Question Call staff.",
+});
 
 async function getAdminCounts(adminUserId: string) {
   await connectToDatabase();

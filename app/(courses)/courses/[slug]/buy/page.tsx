@@ -1,6 +1,12 @@
 import { getSafeServerSession } from "@/lib/auth";
 import { getCourseDetailPageData } from "@/lib/course-page-data";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { CourseBuyClient } from "./course-buy-client";
+
+export const metadata = createNoIndexMetadata({
+  title: "Course Checkout",
+  description: "Private course purchase flow.",
+});
 
 export default async function CourseBuyPage({
   params,

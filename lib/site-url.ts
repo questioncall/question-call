@@ -7,7 +7,8 @@ function normalizeSiteUrl(value: string) {
 }
 
 export function getSiteUrl() {
-  const configuredUrl = process.env.NEXTAUTH_URL?.trim();
+  // Keep the canonical/public site URL independent from auth callback config.
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
   if (configuredUrl) {
     return normalizeSiteUrl(configuredUrl);

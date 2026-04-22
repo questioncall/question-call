@@ -12,6 +12,7 @@ import { Inter, DM_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { SITE_URL } from "@/lib/site-url";
+import { absoluteUrl } from "@/lib/seo";
 
 const dmSansHeading = DM_Sans({subsets:['latin'],variable:'--font-heading'});
 
@@ -32,7 +33,18 @@ export const metadata: Metadata = {
     shortcut: [{ url: "/icon.png", type: "image/png" }],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
-  keywords: ["education", "Q&A", "courses", "learning platform", "student help"],
+  keywords: [
+    "Question Call",
+    "Question Call Nepal",
+    "online learning Nepal",
+    "student help Nepal",
+    "ask expert teachers online",
+    "live doubt solving",
+    "online courses Nepal",
+    "quiz learning platform",
+    "class 11 and 12 learning",
+    "entrance preparation Nepal",
+  ],
   authors: [{ name: APP_NAME }],
   creator: APP_NAME,
   openGraph: {
@@ -70,6 +82,17 @@ export const metadata: Metadata = {
   },
 };
 
+const organizationStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  name: APP_NAME,
+  url: SITE_URL,
+  description: APP_DESCRIPTION,
+  logo: absoluteUrl("/logo.png"),
+  image: absoluteUrl("/logo.png"),
+  sameAs: [],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -95,6 +118,13 @@ export default function RootLayout({
         <Script
           src="https://widget.cloudinary.com/v2.0/global/all.js"
           strategy="afterInteractive"
+        />
+        <Script
+          id="organization-structured-data"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationStructuredData),
+          }}
         />
       </body>
     </html>

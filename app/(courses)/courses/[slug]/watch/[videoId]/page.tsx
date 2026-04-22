@@ -7,6 +7,12 @@ import { VideoPlayer } from "@/components/course/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { getSafeServerSession } from "@/lib/auth";
 import { getCourseWatchPageData } from "@/lib/course-page-data";
+import { createNoIndexMetadata } from "@/lib/seo";
+
+export const metadata = createNoIndexMetadata({
+  title: "Watch Lesson",
+  description: "Private lesson playback and progress tracking.",
+});
 
 export default async function CourseWatchPage({
   params,
