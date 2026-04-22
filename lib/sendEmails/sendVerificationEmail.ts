@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { VerificationEmail } from "@/emails/VerificationEmail";
 
 export async function sendVerificationEmail(
@@ -8,7 +9,7 @@ export async function sendVerificationEmail(
 ){
   try {
     const { data, error } = await resend.emails.send({
-      from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: email,
       subject: `Email Verification`,
       react: VerificationEmail({ fullName, verificationCode }),

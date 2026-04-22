@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { APP_NAME } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -73,7 +74,7 @@ export async function sendAdminNotificationEmail({
     `;
 
     const { data, error } = await resend.emails.send({
-      from: `${appName} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: email,
       subject,
       html: htmlContent,

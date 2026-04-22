@@ -117,6 +117,12 @@ function LandingStyles() {
           flex-wrap: wrap !important;
           gap: 14px 18px !important;
         }
+        .lpb-two-by-two {
+          grid-template-columns: 1fr !important;
+        }
+      }
+      .lpb-two-by-two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     `}</style>
   );
@@ -199,7 +205,7 @@ const PLATFORM: PlatformData = {
     {
       icon: VideoIcon,
       title: "Stay connected while it is being solved",
-      desc: "Once a teacher accepts, the question becomes a live channel where both sides can chat, share files, and switch to audio or video calls.",
+      desc: "Once a teacher accepts, a live answer screen opens where both sides can chat, share files, and switch to audio or video calls.",
     },
     {
       icon: BrainCircuitIcon,
@@ -226,12 +232,12 @@ const PLATFORM: PlatformData = {
     {
       icon: ZapIcon,
       title: "Accept questions live",
-      desc: "Pick questions from the live workspace feed and lock them into your queue before another teacher takes them.",
+      desc: "Pick questions from the live question feed and lock them before another teacher takes them.",
     },
     {
       icon: VideoIcon,
-      title: "Teach inside one channel",
-      desc: "Read uploads, send clarifications, share files, and move into audio or video calls without leaving the question workspace.",
+      title: "Teach on one screen",
+      desc: "Read uploads, reply fast, share files, and move into audio or video calls without leaving the answer screen.",
     },
     {
       icon: StarIcon,
@@ -246,7 +252,7 @@ const PLATFORM: PlatformData = {
     {
       icon: ClockIcon,
       title: "Work against a fast timer",
-      desc: "Accepted questions run on a live 15-minute response window by default, keeping support fast for students and fair for teachers.",
+      desc: "Accepted questions come with a 15-minute answer timer, so help stays fast for students and fair for teachers.",
     },
     {
       icon: WalletIcon,
@@ -259,23 +265,23 @@ const PLATFORM: PlatformData = {
 const HOW_IT_WORKS = [
   {
     step: "01",
-    title: "Student asks",
-    desc: "Post a tough academic question, attach a screenshot or file if needed, choose the answer format, and decide whether it stays public or private.",
+    title: "Ask your question",
+    desc: "Post your question, add a screenshot or file if needed, and choose public or private.",
   },
   {
     step: "02",
-    title: "Teacher accepts",
-    desc: "A teacher claims the question from the live feed, and the platform opens a dedicated answer channel with the response timer already running.",
+    title: "Teacher picks it",
+    desc: "A teacher picks your question, and your answer screen opens right away with the timer already on.",
   },
   {
     step: "03",
-    title: "Solve together in-channel",
-    desc: "While the timer is live, student and teacher can chat, upload files, and jump into audio or video calls for faster explanation.",
+    title: "Solve it together",
+    desc: "Chat, share files, or jump on audio or video if you want a faster explanation.",
   },
   {
     step: "04",
-    title: "Answer delivered",
-    desc: "The teacher submits the final solution, the student reviews it, leaves a rating, and the channel closes cleanly.",
+    title: "Get your answer",
+    desc: "See the final answer, review it, and rate the help in the same place.",
   },
 ];
 
@@ -597,7 +603,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           }}
         >
           Students post academic questions, teachers accept them live, and a
-          private answer channel opens right away.
+          private answer screen opens right away.
           <br />
           Get help within 15 minutes using chat, audio or video calls, and
           file sharing while the answer is being solved.
@@ -731,7 +737,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
         overflow: "hidden",
       }}
     >
-      {/* Window chrome */}
+      {/* Screen chrome */}
       <div
         style={{
           display: "flex",
@@ -888,7 +894,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
                 <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(71,85,105,0.16)", color: isDark ? "#cbd5e1" : "#475569", fontSize: 10, fontWeight: "bold" }}>Private</span>
               </div>
               <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: isDark ? "rgba(33,118,174,0.1)" : "rgba(33,118,174,0.05)", border: `1px solid rgba(33,118,174,0.2)` }}>
-                <p style={{ margin: 0, fontSize: 12, color: "#2ea1f0", fontWeight: "bold" }}>R. Adhikari accepted this question. Private channel is open with chat, file sharing, and audio/video calls.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#2ea1f0", fontWeight: "bold" }}>R. Adhikari accepted this question. A private answer screen is open with chat, file sharing, and audio/video calls.</p>
                 <div style={{ fontSize: 10, color: textMuted, marginTop: 4 }}>Accepted 2 min ago</div>
               </div>
             </div>
@@ -933,7 +939,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
               </div>
               <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(34,197,94,0.1)", border: `1px solid rgba(34,197,94,0.2)` }}>
                 <p style={{ margin: 0, fontSize: 12, color: "#22c55e", fontWeight: "bold" }}>✓ Solved with a step-by-step answer</p>
-                <p style={{ margin: "2px 0 0", fontSize: 11, color: textMuted }}>The teacher also shared a short worksheet inside the thread.</p>
+                <p style={{ margin: "2px 0 0", fontSize: 11, color: textMuted }}>The teacher also shared a short worksheet on the same answer screen.</p>
               </div>
             </div>
           </div>
@@ -945,7 +951,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
           {/* Live help highlight */}
           <div>
             <div style={{ fontSize: 11, color: textMuted, fontWeight: "bold", marginBottom: 6 }}>Highlights</div>
-            <div style={{ fontSize: 14, fontWeight: "bold", color: textMain, marginBottom: 12 }}>Inside the 15-minute solve window</div>
+            <div style={{ fontSize: 14, fontWeight: "bold", color: textMain, marginBottom: 12 }}>Inside the live answer screen</div>
             
             <div style={{ borderRadius: 12, border: `1px solid ${cardBorder}`, background: card, overflow: "hidden" }}>
               <div style={{ height: 90, background: "linear-gradient(135deg, #0f5c55, #0b2d2a)", position: "relative", padding: 12, display: "flex", flexDirection: "column" }}>
@@ -955,12 +961,12 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
                   <span style={{ fontSize: 9, background: "rgba(255,255,255,0.9)", padding: "2px 6px", borderRadius: 4, color: "#000", fontWeight: "bold" }}>Files</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: "bold", color: "#fff" }}>Teacher and student stay in one channel</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Private help tools stay attached to the question</div>
+                  <div style={{ fontSize: 13, fontWeight: "bold", color: "#fff" }}>Teacher and student stay on one screen</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Chat, calls, and files stay with the same question</div>
                 </div>
               </div>
               <div style={{ padding: 12 }}>
-                <p style={{ margin: "0 0 8px", fontSize: 11, color: textMuted }}>Chat live, upload screenshots or PDFs, and move into a call without losing the answer context.</p>
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: textMuted }}>Chat live, share screenshots or PDFs, and jump into a call without leaving the answer screen.</p>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: textMuted }}>
                   <span>15 min default timer</span>
                   <span>Private by choice</span>
@@ -1031,7 +1037,7 @@ function HeroMockup({ isDark }: { isDark: boolean }) {
 /* ─────────────────────── STATS BAR ─────────────────────── */
 function StatsBar({ isDark }: { isDark: boolean }) {
   const stats = [
-    { value: "15 min", label: "Default answer window" },
+    { value: "15 min", label: "Answer timer" },
     { value: "3 formats", label: "Text, photo, video" },
     { value: "Audio + video", label: "Call support" },
     { value: "Files", label: "Share screenshots and docs" },
@@ -1097,16 +1103,15 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
       style={{ padding: "6rem 1.5rem", maxWidth: 1100, margin: "0 auto" }}
     >
       <SectionLabel label="How it works" />
-      <h2 style={headingStyle(isDark)}>Four steps from question to solution</h2>
+      <h2 style={headingStyle(isDark)}>Get your best possible answer in only 4 simple steps</h2>
       <p style={subStyle(isDark)}>
-        A focused workflow that keeps the answer fast without sending students
-        across multiple tools.
+        Everything stays clear, fast, and on one screen from start to finish.
       </p>
 
-<div
+      <div
+        className="lpb-two-by-two"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))",
           gap: 20,
           marginTop: "3rem",
           padding: "0 1rem",
@@ -1289,7 +1294,7 @@ function ForStudents({
         <p style={subStyle(isDark)}>
           Start with a {trialDays}-day free trial, get fast teacher
           help, and keep building with quizzes and courses in the same student
-          workspace.
+          space.
         </p>
 
         <div
@@ -1605,7 +1610,7 @@ function ForTeachers({ isDark }: { isDark: boolean }) {
       <SectionLabel label="For Teachers" />
       <h2 style={headingStyle(isDark)}>Teach live and earn from what you know</h2>
       <p style={subStyle(isDark)}>
-        Accept questions, help students inside one live channel, and build
+        Accept questions, help students on one live answer screen, and build
         wallet value as your answers are completed and rated.
       </p>
 
@@ -2075,9 +2080,9 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
       </p>
 
       <div
+        className="lpb-two-by-two"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,260px),1fr))",
           gap: 20,
           marginTop: "3rem",
         }}
@@ -2320,10 +2325,10 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
 function Comparison({ isDark }: { isDark: boolean }) {
   const { ref, visible } = useScrollReveal();
   const rows = [
-    { feature: "15-minute default response windows", us: true, other: false },
+    { feature: "15-minute answer timer", us: true, other: false },
     { feature: "Teacher acceptance workflow", us: true, other: false },
     { feature: "Audio + video calls inside questions", us: true, other: false },
-    { feature: "File sharing inside answer channels", us: true, other: false },
+    { feature: "File sharing on the answer screen", us: true, other: false },
     { feature: "Teacher wallet and earnings tracking", us: true, other: false },
     { feature: "AI quiz practice with points", us: true, other: false },
     { feature: "Video courses and live sessions", us: true, other: false },

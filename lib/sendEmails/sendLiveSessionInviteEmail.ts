@@ -1,6 +1,6 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { LiveSessionInviteEmail } from "@/emails/LiveSessionInviteEmail";
-import { APP_NAME } from "@/lib/constants";
 
 type SendLiveSessionInviteEmailInput = {
   email: string;
@@ -25,7 +25,7 @@ export async function sendLiveSessionInviteEmail({
 }: SendLiveSessionInviteEmailInput) {
   try {
     const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: email,
       subject: `Live Class: ${sessionTitle} — ${scheduledLabel}`,
       react: LiveSessionInviteEmail({

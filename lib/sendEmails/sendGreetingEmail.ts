@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { GreetingEmail } from "@/emails/GreetingEmail";
 
 export async function sendGreetingEmail(
@@ -10,7 +11,7 @@ export async function sendGreetingEmail(
 ){
   try {
     const { data, error } = await resend.emails.send({
-      from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: email,
       subject: `Greeting from ${process.env.NEXT_PUBLIC_APP_NAME}`,
       react: GreetingEmail({ fullName, message, link, content }),

@@ -341,10 +341,10 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
                 id="auth-terms"
                 checked={termsAgreed}
                 onCheckedChange={(checked) => setTermsAgreed(checked === true)}
-                className="mt-0.5"
+                className="mt-0.5 h-5 w-5 rounded-[5px] border-slate-800 bg-white shadow-sm dark:border-white dark:bg-slate-950/60 data-[state=checked]:border-primary"
               />
               <div className="space-y-1">
-                <Label className="text-xs leading-5 text-muted-foreground" htmlFor="auth-terms">
+                <Label className="cursor-pointer text-xs leading-5 text-muted-foreground" htmlFor="auth-terms">
                   I agree to the legal terms required for using this platform.
                 </Label>
                 <LegalDialog

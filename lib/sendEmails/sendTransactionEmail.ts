@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { TransactionAlertEmail } from "@/emails/TransactionAlertEmail";
 
 export async function sendTransactionEmail(
@@ -17,7 +18,7 @@ export async function sendTransactionEmail(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `${process.env.NEXT_PUBLIC_APP_NAME} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: recipients,
       subject: title,
       react: TransactionAlertEmail({ title, message, transactionId, amount, userEmail }),

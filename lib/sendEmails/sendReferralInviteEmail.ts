@@ -1,4 +1,5 @@
 import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
 import { ReferralInviteEmail } from "@/emails/ReferralInviteEmail";
 import { APP_NAME } from "@/lib/constants";
 
@@ -19,7 +20,7 @@ export async function sendReferralInviteEmail({
     const appName = APP_NAME;
 
     const { data, error } = await resend.emails.send({
-      from: `${appName} <no-reply@siddhantyadav.com.np>`,
+      from: getResendFrom(),
       to: email,
       subject: `${referrerName} invited you to join ${appName}!`,
       react: ReferralInviteEmail({
