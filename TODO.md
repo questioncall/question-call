@@ -1,3 +1,4 @@
 - [x] Notice popups now follow FIFO order, so the oldest active unseen notice is shown to users first.
 - [x] The admin notices page now uses a sorted list view and includes a `Seen by` button so admins can check who has dismissed each notice.
 - [x] The question feed status pill and three-dot details menu now stay underneath the sticky header while scrolling.
+--
