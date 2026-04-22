@@ -11,8 +11,13 @@ import {
 } from "@/components/ui/card";
 import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { createNoIndexMetadata } from "@/lib/seo";
 import User, { UserRecord } from "@/models/User";
 export const dynamic = "force-dynamic";
+export const metadata = createNoIndexMetadata({
+  title: "Edit Profile",
+  description: "Update your public Question Call profile details.",
+});
 
 export default async function SettingsProfilePage() {
   const session = await getSafeServerSession();

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -12,12 +14,13 @@ import {
   getPlatformConfig,
   getPlatformSocialLinks,
 } from "@/models/PlatformConfig";
+import { APP_NAME } from "@/lib/constants";
 import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata = createPageMetadata({
+const publicHomeMetadata = createPageMetadata({
   title: "Learn Smarter With Expert Teachers",
   description:
     "Question Call helps students learn through expert answers, guided courses, live sessions, and interactive quizzes in one platform.",
@@ -30,6 +33,27 @@ export const metadata = createPageMetadata({
     "ask expert teachers online",
   ],
 });
+
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await getSafeServerSession();
+
+  if (session?.user) {
+    return {
+      ...createPageMetadata({
+        title: "Home",
+        description: "Your Question Call home.",
+        path: "/",
+        index: false,
+        follow: false,
+      }),
+      title: {
+        absolute: APP_NAME,
+      },
+    };
+  }
+
+  return publicHomeMetadata;
+}
 
 export default async function HomePage() {
   const session = await getSafeServerSession();

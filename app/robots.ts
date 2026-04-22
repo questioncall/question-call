@@ -9,10 +9,8 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         "/api/",
         "/admin/",
-        "/auth/",
         "/payment/",
         "/subscription/",
-        "/quiz/",
         "/search/",
         "/settings/",
         "/wallet/",

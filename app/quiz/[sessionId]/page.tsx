@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 
 import { QuizPlayerClient } from "@/components/quiz/quiz-player-client";
 import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { createNoIndexMetadata } from "@/lib/seo";
+
+export const metadata = createNoIndexMetadata({
+  title: "Quiz Session",
+  description: "Private quiz session in Question Call.",
+});
 
 export default async function QuizSessionPage({
   params,

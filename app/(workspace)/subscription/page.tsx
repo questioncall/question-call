@@ -4,11 +4,16 @@ import { SubscriptionClient } from "./subscription-client";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import { connectToDatabase } from "@/lib/mongodb";
+import { createNoIndexMetadata } from "@/lib/seo";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const metadata = createNoIndexMetadata({
+  title: "Subscription",
+  description: "Manage your Question Call subscription and question limits.",
+});
 
 export default async function SubscriptionPage() {
   const session = await getSafeServerSession();

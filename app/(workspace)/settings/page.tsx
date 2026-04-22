@@ -1,5 +1,4 @@
 import { BellRingIcon, LockIcon, ShieldCheckIcon } from "lucide-react";
-import { Suspense } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { createNoIndexMetadata } from "@/lib/seo";
 
 const settingSections = [
   {
@@ -31,6 +31,10 @@ const settingSections = [
 ] as const;
 
 export const dynamic = "force-dynamic";
+export const metadata = createNoIndexMetadata({
+  title: "Settings",
+  description: "Manage your Question Call workspace settings and preferences.",
+});
 
 export default function SettingsPage() {
   return (

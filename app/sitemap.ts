@@ -9,12 +9,44 @@ type SitemapCourse = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes = ["", "/courses", "/legal"].map((route) => ({
-    url: `${SITE_URL}${route}`,
-    lastModified: new Date(),
-    changeFrequency: route === "" ? ("daily" as const) : ("weekly" as const),
-    priority: route === "" ? 1 : route === "/courses" ? 0.9 : 0.4,
-  }));
+  const staticRoutes: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 1,
+    },
+    {
+      url: `${SITE_URL}/courses`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/quiz`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/auth/signup/student`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/auth/signup/teacher`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
+    {
+      url: `${SITE_URL}/legal`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
+  ];
 
   let courseRoutes: MetadataRoute.Sitemap = [];
   try {

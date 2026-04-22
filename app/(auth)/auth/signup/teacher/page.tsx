@@ -3,6 +3,19 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/shared/auth-form";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Teacher Sign Up",
+  description:
+    "Create your free Question Call teacher account and start answering, teaching, and earning online.",
+  path: "/auth/signup/teacher",
+  keywords: [
+    "teacher signup",
+    "teach online Nepal",
+    "Question Call teacher account",
+  ],
+});
 
 export default async function TeacherSignUpPage() {
   const session = await getSafeServerSession();

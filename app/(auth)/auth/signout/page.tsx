@@ -3,7 +3,13 @@ import { redirect } from "next/navigation";
 import { AutoSignOut } from "@/components/shared/auto-signout";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { getSafeServerSession } from "@/lib/auth";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { getSignInPath } from "@/lib/user-paths";
+
+export const metadata = createNoIndexMetadata({
+  title: "Sign Out",
+  description: "Sign out of your Question Call session.",
+});
 
 export default async function SignOutPage() {
   const session = await getSafeServerSession();

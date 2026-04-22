@@ -3,6 +3,19 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/shared/auth-form";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Student Sign Up",
+  description:
+    "Start your free Question Call student account and learn with expert answers, quizzes, and courses.",
+  path: "/auth/signup/student",
+  keywords: [
+    "student signup",
+    "Question Call free trial",
+    "online learning Nepal",
+  ],
+});
 
 export default async function StudentSignUpPage() {
   const session = await getSafeServerSession();

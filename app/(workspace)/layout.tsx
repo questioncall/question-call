@@ -1,17 +1,27 @@
+import type { Metadata } from "next";
+
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
-import { createNoIndexMetadata } from "@/lib/seo";
 import { getSignInPath } from "@/lib/user-paths";
 import { getPlatformConfig, getPlatformSocialLinks } from "@/models/PlatformConfig";
 
-export const metadata = createNoIndexMetadata({
-  title: "Workspace",
-  description: "Private learning workspace for signed-in Question Call members.",
-});
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      "max-video-preview": 0,
+      "max-image-preview": "none",
+      "max-snippet": 0,
+    },
+  },
+};
 
 export default async function WorkspaceLayout({
   children,

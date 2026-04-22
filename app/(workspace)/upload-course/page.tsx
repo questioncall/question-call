@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 
 import { getSafeServerSession } from "@/lib/auth";
-import { getPlatformConfig } from "@/models/PlatformConfig";
-import Course from "@/models/Course";
-import { connectToDatabase } from "@/lib/mongodb";
+import { createNoIndexMetadata } from "@/lib/seo";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const metadata = createNoIndexMetadata({
+  title: "Upload Course",
+  description: "Create and upload new courses for Question Call learners.",
+});
 
 export default async function UploadCoursePage() {
   const session = await getSafeServerSession();
@@ -18,14 +20,6 @@ export default async function UploadCoursePage() {
   if (session.user.role === "STUDENT") {
     redirect("/courses");
   }
-
-  await connectToDatabase();
-
-  const [existingSubjects, existingLevels, config] = await Promise.all([
-    Course.distinct("subject").lean(),
-    Course.distinct("level").lean(),
-    getPlatformConfig(),
-  ]);
 
   return (
     <div className="p-8">

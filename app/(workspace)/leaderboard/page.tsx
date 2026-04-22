@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
 
 import { getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
+import { createNoIndexMetadata } from "@/lib/seo";
 import { getLeaderboardPath } from "@/lib/user-paths";
+
+export const metadata = createNoIndexMetadata({
+  title: "Leaderboard",
+  description: "See rankings and leaderboard activity on Question Call.",
+});
 
 export default async function LeaderboardPage() {
   const session = await getSafeServerSession();

@@ -3,12 +3,18 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/shared/auth-form";
 import { AuthShell } from "@/components/shared/auth-shell";
 import { getDefaultPath, getSafeServerSession } from "@/lib/auth";
+import { createNoIndexMetadata } from "@/lib/seo";
 
 type LoginPageProps = {
   searchParams: Promise<{
     callbackUrl?: string;
   }>;
 };
+
+export const metadata = createNoIndexMetadata({
+  title: "Sign In",
+  description: "Sign in to your Question Call account.",
+});
 
 export default async function SignInPage({ searchParams }: LoginPageProps) {
   const session = await getSafeServerSession();
