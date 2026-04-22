@@ -4,6 +4,7 @@ import Notice from "@/models/Notice";
 import User from "@/models/User";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import type { NoticeRecord } from "@/models/Notice";
 
 export async function GET() {
   try {
@@ -26,7 +27,8 @@ export async function GET() {
     const seenNotices = user.seenNotices || [];
 
     // Base query: isActive, not expired
-    const query: any = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query: Record<string, any> = {
       isActive: true,
       _id: { $nin: seenNotices },
       $or: [
@@ -49,7 +51,7 @@ export async function GET() {
       }
     ];
 
-    const notices = await Notice.find(query).sort({ createdAt: -1 });
+    const notices = await Notice.find(query).sort({ createdAt: 1 });
 
     console.log("[GET /api/notices] Query:", JSON.stringify(query), "Found:", notices.length);
     

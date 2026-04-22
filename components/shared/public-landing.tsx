@@ -240,7 +240,7 @@ const HOW_IT_WORKS = [
   },
 ];
 
-/* ─────────────────────── SHARED HOOKS ─────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SHARED HOOKS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function useScrollReveal(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -262,7 +262,7 @@ function useScrollReveal(threshold = 0.15) {
   return { ref, visible };
 }
 
-/* ─────────────────────── NAV ─────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Nav() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -424,7 +424,7 @@ function Nav() {
               textDecoration: "none",
             }}
           >
-            Get started
+            Start Free Trial
           </Link>
         </nav>
       </div>

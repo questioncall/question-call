@@ -48,8 +48,8 @@ const noticeSchema = new Schema(
   }
 );
 
-// Optimize query for fetching active notices
-noticeSchema.index({ isActive: 1, targetAudience: 1, createdAt: -1 });
+// Optimize query for fetching active notices in FIFO order
+noticeSchema.index({ isActive: 1, targetAudience: 1, createdAt: 1 });
 
 export type NoticeRecord = InferSchemaType<typeof noticeSchema>;
 export type NoticeDocument = HydratedDocument<NoticeRecord>;

@@ -10,7 +10,8 @@ import { PageLoadingBar } from "@/components/shared/page-loading-bar";
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { APP_NAME, APP_DESCRIPTION, SITE_URL } from "@/lib/constants";
+import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
+import { SITE_URL } from "@/lib/site-url";
 
 const dmSansHeading = DM_Sans({subsets:['latin'],variable:'--font-heading'});
 

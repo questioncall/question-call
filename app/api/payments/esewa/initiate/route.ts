@@ -5,6 +5,7 @@ import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function POST(req: NextRequest) {
   await connectToDatabase();
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
   });
 
-  const nextPublicUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+  const siteUrl = getSiteUrl();
 
   // 7. Return all params the client needs for the form POST
   return NextResponse.json({
@@ -78,8 +79,8 @@ export async function POST(req: NextRequest) {
     total_amount: totalAmount,
     transaction_uuid: transactionUuid,
     product_code: productCode,
-    success_url: `${nextPublicUrl}/payment/esewa/success`,
-    failure_url: `${nextPublicUrl}/payment/esewa/failure`,
+    success_url: `${siteUrl}/payment/esewa/success`,
+    failure_url: `${siteUrl}/payment/esewa/failure`,
     signed_field_names: SIGNED_FIELDS,
     signature,
   });

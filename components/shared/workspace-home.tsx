@@ -1259,7 +1259,7 @@ export function WorkspaceHome({
                           </div>
                         </div>
 
-                        <div className="z-20 flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                           <span
                             className={cn(
                               "rounded-full border border-border/20 px-2.5 py-1 text-[11px] font-semibold shadow-sm",
@@ -1278,7 +1278,7 @@ export function WorkspaceHome({
                               <MoreHorizontalIcon className="size-5" />
                             </button>
 
-                            <div className="invisible absolute right-0 top-full mt-2 w-[280px] origin-top-right scale-95 rounded-2xl border border-border/60 bg-background/98 p-4 opacity-0 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-200 group-hover/dots:visible group-hover/dots:scale-100 group-hover/dots:opacity-100 dark:shadow-black/20">
+                            <div className="invisible absolute right-0 top-full z-10 mt-2 w-[280px] origin-top-right scale-95 rounded-2xl border border-border/60 bg-background/98 p-4 opacity-0 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-200 group-hover/dots:visible group-hover/dots:scale-100 group-hover/dots:opacity-100 dark:shadow-black/20">
                               <div className="space-y-4">
                                 {item.resetCount > 0 && (
                                   <>

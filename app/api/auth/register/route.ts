@@ -12,7 +12,7 @@ import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
-import { APP_NAME } from "@/lib/constants";
+import { getSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,7 @@ function isAllowedRole(value: string): value is "STUDENT" | "TEACHER" {
 
 export async function POST(request: Request) {
   try {
+    const siteUrl = getSiteUrl();
     const payload = await request.json();
 
     const name = payload?.name?.trim();
@@ -139,7 +140,7 @@ if (referrerUser) {
         referrerUser.email,
         referrerUser.name,
         "You Earned Bonus Questions! 🎉",
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/subscription`,
+        `${siteUrl}/subscription`,
         `Someone just joined {APP_NAME} using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
       ).catch(console.error);
     }
@@ -177,7 +178,7 @@ if (referrerUser) {
         email,
         name,
         "Welcome to {APP_NAME}! (+ Bonus Questions 🎉)",
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        siteUrl,
         `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${refereeBonus} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
       ).catch(console.error);
     } else {
@@ -185,7 +186,7 @@ if (referrerUser) {
         email,
         name,
         "Welcome to {APP_NAME}! Your account has been created successfully.",
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        siteUrl,
         "We're excited to have you on board! Explore courses, ask questions, and start your learning journey today."
       ).catch(console.error);
     }

@@ -1,2 +1,3 @@
-1. In Notice section the notice which was created first should be showed first to all users . not the notice which cretae dlast should be showed to user. follow first in first out. 
-2. Also shw the noticies in the admin panel in the lsit sort view and also add the button where the amdin can clcik and see who who have seen this notices yet. 
+- [x] Notice popups now follow FIFO order, so the oldest active unseen notice is shown to users first.
+- [x] The admin notices page now uses a sorted list view and includes a `Seen by` button so admins can check who has dismissed each notice.
+- [x] The question feed status pill and three-dot details menu now stay underneath the sticky header while scrolling.

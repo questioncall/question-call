@@ -1,7 +1,12 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/mongodb";
 import Course from "@/models/Course";
+import { SITE_URL } from "@/lib/site-url";
+
+type SitemapCourse = {
+  slug: string;
+  updatedAt?: Date;
+};
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 1. Static Routes
@@ -26,9 +31,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     await connectToDatabase();
     
     // Fetch only active/public courses for the sitemap
-    const activeCourses = await Course.find({ status: "ACTIVE" }, "slug updatedAt").lean();
+    const activeCourses = await Course.find({ status: "ACTIVE" }, "slug updatedAt")
+      .lean<SitemapCourse[]>();
     
-    courseRoutes = activeCourses.map((course: any) => ({
+    courseRoutes = activeCourses.map((course) => ({
       url: `${SITE_URL}/courses/${course.slug}`,
       lastModified: course.updatedAt || new Date(),
       changeFrequency: "weekly" as const,

@@ -1,5 +1,6 @@
 import resend from "@/lib/resend/resend";
 import { APP_NAME } from "@/lib/constants";
+import { getSiteUrl } from "@/lib/site-url";
 
 interface SendAdminNotificationEmailParams {
   email: string;
@@ -11,13 +12,13 @@ interface SendAdminNotificationEmailParams {
 
 export async function sendAdminNotificationEmail({
   email,
-  fullName,
   role,
   action,
   promotedBy,
 }: SendAdminNotificationEmailParams) {
   try {
     const appName = APP_NAME;
+    const siteUrl = getSiteUrl();
     const isPromotion = action === "promoted";
     
     const subject = isPromotion
@@ -58,7 +59,7 @@ export async function sendAdminNotificationEmail({
             </p>
             
             <div style="text-align: center;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://questionhub.com.np"}/admin" style="display: inline-block; background: linear-gradient(135deg, #1f766e, #0f5c55); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+              <a href="${siteUrl}/admin" style="display: inline-block; background: linear-gradient(135deg, #1f766e, #0f5c55); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 Go to Admin Panel
               </a>
             </div>

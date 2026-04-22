@@ -190,7 +190,7 @@ export function AuthenticatedHeader({
     <>
       <header
         className={cn(
-          "sticky top-0 z-20 transition-all duration-200",
+          "sticky top-0 z-30 transition-all duration-200",
           isScrolled
             ? "border-b border-border/70 bg-background/80 backdrop-blur-md shadow-sm"
             : "border-transparent bg-background"

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSafeNavigationTarget } from "@/lib/navigation";
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import {
   clearAuthState,
@@ -174,7 +175,9 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
         }
 
         keepSubmitting = true;
-        router.replace(signInResult?.url ?? defaultPathByRole[role]);
+        router.replace(
+          getSafeNavigationTarget(signInResult?.url, defaultPathByRole[role]),
+        );
         router.refresh();
         return;
       }
@@ -193,7 +196,9 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
       }
 
       keepSubmitting = true;
-      router.replace(signInResult?.url ?? "/");
+      router.replace(
+        getSafeNavigationTarget(signInResult?.url, callbackUrl || "/"),
+      );
       router.refresh();
     } catch (submitError) {
       const message =
