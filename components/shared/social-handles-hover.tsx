@@ -8,15 +8,20 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { SOCIAL_HANDLE_META } from "@/lib/constants";
+import {
+  getSocialHandleMeta,
+  getSocialLinkHref,
+  type PlatformSocialLink,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import type { PlatformSocialHandles } from "@/models/PlatformConfig";
 
 export function SocialHandlesHover({
-  handles,
+  links,
 }: {
-  handles: PlatformSocialHandles;
+  links: PlatformSocialLink[];
 }) {
+  const activeLinks = links.filter((item) => item.url.trim().length > 0);
+
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
@@ -44,31 +49,49 @@ export function SocialHandlesHover({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
-          {SOCIAL_HANDLE_META.map((item) => (
-            <div
-              key={item.label}
-              className="group min-w-0 rounded-2xl border border-border/70 bg-background px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/[0.06]"
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <span
-                  className={cn(
-                    "inline-flex size-9 items-center justify-center rounded-full text-[11px] font-semibold shadow-sm transition-transform duration-200 group-hover:scale-105",
-                    item.badgeClassName,
-                  )}
+        {activeLinks.length === 0 ? (
+          <div className="p-4 text-sm text-muted-foreground">
+            No social links have been added yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
+            {activeLinks.map((item) => {
+              const meta = getSocialHandleMeta(item.platform);
+              if (!meta) {
+                return null;
+              }
+
+              const href = getSocialLinkHref(item.platform, item.url);
+
+              return (
+                <a
+                  key={item.platform}
+                  href={href ?? undefined}
+                  target={href ? "_blank" : undefined}
+                  rel={href ? "noreferrer" : undefined}
+                  className="group min-w-0 rounded-2xl border border-border/70 bg-background px-3 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/[0.06]"
                 >
-                  {item.badge}
-                </span>
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-xs font-semibold text-foreground">{item.label}</p>
-                  <p className="text-[10px] leading-3 text-muted-foreground [overflow-wrap:anywhere]">
-                    {handles[item.key]}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <span
+                      className={cn(
+                        "inline-flex size-9 items-center justify-center rounded-full text-[11px] font-semibold shadow-sm transition-transform duration-200 group-hover:scale-105",
+                        meta.badgeClassName,
+                      )}
+                    >
+                      {meta.badge}
+                    </span>
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-xs font-semibold text-foreground">{meta.label}</p>
+                      <p className="text-[10px] leading-3 text-muted-foreground [overflow-wrap:anywhere]">
+                        {item.url}
+                      </p>
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </HoverCardContent>
     </HoverCard>
   );

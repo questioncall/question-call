@@ -29,6 +29,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getPrimaryAnswerFormat } from "@/lib/question-types";
 import {
   DEFAULT_PLATFORM_SOCIAL_HANDLES,
+  getDefaultPlatformSocialLinks,
+  normalizePlatformSocialLinks,
+  type PlatformSocialLink,
   type SocialHandleKey,
 } from "@/lib/constants";
 
@@ -162,6 +165,26 @@ const platformConfigSchema = new Schema(
       type: String,
       default: DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
       trim: true,
+    },
+    socialLinks: {
+      type: [
+        new Schema(
+          {
+            platform: {
+              type: String,
+              required: true,
+              enum: Object.keys(DEFAULT_PLATFORM_SOCIAL_HANDLES),
+            },
+            url: {
+              type: String,
+              default: "",
+              trim: true,
+            },
+          },
+          { _id: false },
+        ),
+      ],
+      default: getDefaultPlatformSocialLinks,
     },
 
     // Subscription Plan Pricing
@@ -554,26 +577,75 @@ export function getLegalContent(config: Partial<PlatformConfigRecord> | null | u
 }
 
 export type PlatformSocialHandles = Record<SocialHandleKey, string>;
+export type PlatformSocialLinks = PlatformSocialLink[];
+
+export function getPlatformSocialLinks(
+  config: Partial<PlatformConfigRecord> | null | undefined,
+): PlatformSocialLinks {
+  if (config && "socialLinks" in config && Array.isArray(config.socialLinks)) {
+    return normalizePlatformSocialLinks(config.socialLinks);
+  }
+
+  return normalizePlatformSocialLinks(
+    [
+      {
+        platform: "facebook",
+        url: config?.socialFacebookHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.facebook,
+      },
+      {
+        platform: "instagram",
+        url:
+          config?.socialInstagramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.instagram,
+      },
+      {
+        platform: "whatsapp",
+        url: config?.socialWhatsappHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.whatsapp,
+      },
+      {
+        platform: "youtube",
+        url: config?.socialYoutubeHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.youtube,
+      },
+      {
+        platform: "twitter",
+        url: config?.socialTwitterHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.twitter,
+      },
+      {
+        platform: "linkedin",
+        url: config?.socialLinkedinHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.linkedin,
+      },
+      {
+        platform: "telegram",
+        url: config?.socialTelegramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
+      },
+      {
+        platform: "tiktok",
+        url: DEFAULT_PLATFORM_SOCIAL_HANDLES.tiktok,
+      },
+      {
+        platform: "discord",
+        url: DEFAULT_PLATFORM_SOCIAL_HANDLES.discord,
+      },
+      {
+        platform: "website",
+        url: DEFAULT_PLATFORM_SOCIAL_HANDLES.website,
+      },
+    ],
+    { fallbackToDefault: true },
+  );
+}
 
 export function getPlatformSocialHandles(
   config: Partial<PlatformConfigRecord> | null | undefined,
 ): PlatformSocialHandles {
-  return {
-    facebook:
-      config?.socialFacebookHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.facebook,
-    instagram:
-      config?.socialInstagramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.instagram,
-    whatsapp:
-      config?.socialWhatsappHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.whatsapp,
-    youtube:
-      config?.socialYoutubeHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.youtube,
-    twitter:
-      config?.socialTwitterHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.twitter,
-    linkedin:
-      config?.socialLinkedinHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.linkedin,
-    telegram:
-      config?.socialTelegramHandle?.trim() || DEFAULT_PLATFORM_SOCIAL_HANDLES.telegram,
-  };
+  const normalizedLinks = getPlatformSocialLinks(config);
+
+  return Object.fromEntries(
+    Object.keys(DEFAULT_PLATFORM_SOCIAL_HANDLES).map((platform) => [
+      platform,
+      normalizedLinks.find((link) => link.platform === platform)?.url ??
+        DEFAULT_PLATFORM_SOCIAL_HANDLES[platform as SocialHandleKey],
+    ]),
+  ) as PlatformSocialHandles;
 }
 
 export default PlatformConfig;

@@ -22,7 +22,7 @@ export default async function SubscriptionPage() {
   }
 
   if (session.user.role === "ADMIN") {
-    redirect("/admin/pricing");
+    redirect("/admin/settings");
   }
 
   await connectToDatabase();

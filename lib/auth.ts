@@ -10,7 +10,7 @@ import User, { type UserRecord, type UserRole } from "@/models/User";
 const defaultPathByRole: Record<UserRole, string> = {
   STUDENT: "/",
   TEACHER: "/",
-  ADMIN: "/admin/pricing",
+  ADMIN: "/admin/settings",
 };
 
 export function getDefaultPath(role?: UserRole) {

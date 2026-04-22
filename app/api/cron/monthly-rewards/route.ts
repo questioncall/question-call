@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { validateCronRequest } from "@/lib/cron-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification } from "@/lib/pusher/pusherServer";
+import { recordWalletHistoryEvent } from "@/lib/wallet-history";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
@@ -91,6 +92,21 @@ export async function POST(request: Request) {
       );
 
       if (!rewardedTeacher) continue;
+
+      await recordWalletHistoryEvent({
+        userId: teacher._id,
+        type: "MONTHLY_BONUS",
+        title: "Monthly high-rating bonus",
+        description: `Rewarded for maintaining a ${avgRating.toFixed(1)}★ average rating this month.`,
+        pointsDelta: bonusPoints,
+        occurredAt: now,
+        metadata: {
+          averageRating: Number(avgRating.toFixed(2)),
+          bonusPoints,
+        },
+      }).catch((error) => {
+        console.error("[wallet-history] Failed to record monthly bonus", error);
+      });
 
       // Notify teacher
       const notif = await Notification.create({

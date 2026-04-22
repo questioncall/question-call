@@ -7,7 +7,7 @@ import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
-import { getPlatformConfig, getPlatformSocialHandles } from "@/models/PlatformConfig";
+import { getPlatformConfig, getPlatformSocialLinks } from "@/models/PlatformConfig";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -26,7 +26,7 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const workspaceUser = await getWorkspaceUser(session.user);
-  const socialHandles = getPlatformSocialHandles(await getPlatformConfig());
+  const socialLinks = getPlatformSocialLinks(await getPlatformConfig());
   const coursePageData = await getCourseBrowsePageData({
     userId: workspaceUser.id,
     role: workspaceUser.role as "STUDENT" | "TEACHER" | "ADMIN",
@@ -55,7 +55,7 @@ export default async function HomePage() {
   return (
     <>
       <GlobalNoticeModal />
-      <WorkspaceShell user={workspaceUser} socialHandles={socialHandles} defaultOpen={defaultOpen}>
+      <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} defaultOpen={defaultOpen}>
         <WorkspaceHome
           role={workspaceUser.role as "STUDENT" | "TEACHER"}
           userId={workspaceUser.id}

@@ -44,6 +44,12 @@ export const ADMIN_WITHDRAWAL_EVENT = "admin:withdrawal-requested";
 export const CONFIG_UPDATED_EVENT = "admin:config-updated";
 
 // ──────────────────────────────────────────────────────────
+// Public platform config events
+// ──────────────────────────────────────────────────────────
+export const PLATFORM_UPDATES_CHANNEL = "platform-updates";
+export const PLATFORM_SOCIAL_LINKS_UPDATED_EVENT = "platform:social-links-updated";
+
+// ──────────────────────────────────────────────────────────
 // Course events
 // ──────────────────────────────────────────────────────────
 export const COURSE_UPDATES_CHANNEL = "courses-updates";

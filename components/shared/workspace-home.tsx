@@ -23,6 +23,7 @@ import {
   XIcon,
   TrophyIcon,
   MedalIcon,
+  MoreHorizontalIcon,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -148,7 +149,11 @@ const statusColorMap = {
   RESET: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 } as const;
 
-const REACTION_CONFIG: { type: ReactionType; icon: typeof ThumbsUpIcon; label: string }[] = [
+const REACTION_CONFIG: {
+  type: ReactionType;
+  icon: typeof ThumbsUpIcon;
+  label: string;
+}[] = [
   { type: "like", icon: ThumbsUpIcon, label: "Like" },
   { type: "insightful", icon: LightbulbIcon, label: "Insightful" },
   { type: "same_doubt", icon: HelpCircleIcon, label: "Same doubt" },
@@ -219,7 +224,9 @@ function formatCoursePrice(course: WorkspaceCourseHighlight) {
 }
 
 function getQuestionChips(question: FeedQuestion) {
-  return [question.level, question.stream, question.subject].filter(Boolean) as string[];
+  return [question.level, question.stream, question.subject].filter(
+    Boolean,
+  ) as string[];
 }
 
 function dedupeComments(comments: PeerCommentItem[]) {
@@ -232,8 +239,7 @@ function dedupeComments(comments: PeerCommentItem[]) {
   }
 
   return Array.from(unique.values()).sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
@@ -244,17 +250,30 @@ export function WorkspaceHome({
 }: WorkspaceHomeProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { filters: activeFilters, clearFilters: clearWorkspaceFilters } = useWorkspaceFilters();
-  const { items: feedItems, isHydrated } = useAppSelector((state) => state.feed);
+  const { filters: activeFilters, clearFilters: clearWorkspaceFilters } =
+    useWorkspaceFilters();
+  const { items: feedItems, isHydrated } = useAppSelector(
+    (state) => state.feed,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
-  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
-  const [commentsMap, setCommentsMap] = useState<Record<string, PeerCommentItem[]>>({});
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(
+    new Set(),
+  );
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [commentsMap, setCommentsMap] = useState<
+    Record<string, PeerCommentItem[]>
+  >({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
-  const [isSubmittingComment, setIsSubmittingComment] = useState<string | null>(null);
+  const [isSubmittingComment, setIsSubmittingComment] = useState<string | null>(
+    null,
+  );
   const [activeView, setActiveView] = useState<FeedView>("all");
-  const [activeSort, setActiveSort] = useState<FeedSort>(role === "STUDENT" ? "hot" : "new");
+  const [activeSort, setActiveSort] = useState<FeedSort>(
+    role === "STUDENT" ? "hot" : "new",
+  );
   const [activeCourseIndex, setActiveCourseIndex] = useState(0);
   const [topTeachers, setTopTeachers] = useState<TopTeacherItem[]>([]);
   const [isTopTeachersLoading, setIsTopTeachersLoading] = useState(false);
@@ -273,7 +292,10 @@ export function WorkspaceHome({
       const res = await fetch(`/api/questions/${questionId}/comments`);
       if (res.ok) {
         const data = (await res.json()) as PeerCommentItem[];
-        setCommentsMap(prev => ({ ...prev, [questionId]: dedupeComments(data) }));
+        setCommentsMap((prev) => ({
+          ...prev,
+          [questionId]: dedupeComments(data),
+        }));
       }
     } catch (err) {
       console.error(err);
@@ -307,29 +329,35 @@ export function WorkspaceHome({
         body: JSON.stringify({ content: text }),
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         const incomingComment = data.comment as PeerCommentItem;
         const alreadyExists = (commentsMap[questionId] || []).some(
           (comment) => comment._id === incomingComment._id,
         );
 
-        setCommentsMap(prev => {
+        setCommentsMap((prev) => {
           const existing = prev[questionId] || [];
           const nextComments = dedupeComments([incomingComment, ...existing]);
           return { ...prev, [questionId]: nextComments };
         });
-        setCommentInput(prev => ({ ...prev, [questionId]: "" }));
-        
+        setCommentInput((prev) => ({ ...prev, [questionId]: "" }));
+
         // Optimistically update the comment count on the question feed item
-        const qIndex = feedItems.findIndex(q => q.id === questionId);
+        const qIndex = feedItems.findIndex((q) => q.id === questionId);
         if (!alreadyExists && qIndex >= 0) {
-          const updatedQ = { ...feedItems[qIndex], commentCount: (feedItems[qIndex].commentCount || 0) + 1 };
+          const updatedQ = {
+            ...feedItems[qIndex],
+            commentCount: (feedItems[qIndex].commentCount || 0) + 1,
+          };
           dispatch(upsertFeedQuestion(updatedQ));
         }
 
         if (data.milestoneReached) {
-          toast.success(data.milestoneMessage || `Milestone! You earned ${data.pointsAwarded} points.`);
+          toast.success(
+            data.milestoneMessage ||
+              `Milestone! You earned ${data.pointsAwarded} points.`,
+          );
         }
       } else {
         toast.error(data.error || "Failed to post comment");
@@ -369,7 +397,9 @@ export function WorkspaceHome({
     }
 
     const timer = window.setInterval(() => {
-      setActiveCourseIndex((current) => (current + 1) % courseHighlights.length);
+      setActiveCourseIndex(
+        (current) => (current + 1) % courseHighlights.length,
+      );
     }, 4500);
 
     return () => window.clearInterval(timer);
@@ -492,12 +522,14 @@ export function WorkspaceHome({
   // Handle reaction toggle
   const handleReact = async (questionId: string, type: ReactionType) => {
     if (!userId) return;
-    
-    const targetQuestion = feedItems.find(item => item.id === questionId);
+
+    const targetQuestion = feedItems.find((item) => item.id === questionId);
     if (!targetQuestion) return;
 
     // Optimistically calculate new reactions
-    const userReactionIndex = targetQuestion.reactions.findIndex(r => r.userId === userId);
+    const userReactionIndex = targetQuestion.reactions.findIndex(
+      (r) => r.userId === userId,
+    );
     const newReactions = [...targetQuestion.reactions];
 
     if (userReactionIndex >= 0) {
@@ -506,7 +538,10 @@ export function WorkspaceHome({
         newReactions.splice(userReactionIndex, 1);
       } else {
         // Different reaction clicked, switch to the new one
-        newReactions[userReactionIndex] = { ...newReactions[userReactionIndex], type };
+        newReactions[userReactionIndex] = {
+          ...newReactions[userReactionIndex],
+          type,
+        };
       }
     } else {
       // No prior reaction, add it
@@ -549,10 +584,16 @@ export function WorkspaceHome({
   const visibleFeedItems = [...feedItems]
     .filter((item) => {
       if (activeHeaderFilters.length > 0) {
-        const matchesSubject = searchSubjects.length === 0 || (item.subject && searchSubjects.includes(item.subject));
-        const matchesStream = searchStreams.length === 0 || (item.stream && searchStreams.includes(item.stream));
-        const matchesLevel = searchLevels.length === 0 || (item.level && searchLevels.includes(item.level));
-        
+        const matchesSubject =
+          searchSubjects.length === 0 ||
+          (item.subject && searchSubjects.includes(item.subject));
+        const matchesStream =
+          searchStreams.length === 0 ||
+          (item.stream && searchStreams.includes(item.stream));
+        const matchesLevel =
+          searchLevels.length === 0 ||
+          (item.level && searchLevels.includes(item.level));
+
         if (!(matchesSubject && matchesStream && matchesLevel)) {
           return false;
         }
@@ -576,14 +617,19 @@ export function WorkspaceHome({
       }
     })
     .sort((a, b) => {
-      const createdAtDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const createdAtDiff =
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 
       if (activeSort === "new") {
         return createdAtDiff;
       }
 
       if (activeSort === "discussed") {
-        return b.commentCount - a.commentCount || b.reactions.length - a.reactions.length || createdAtDiff;
+        return (
+          b.commentCount - a.commentCount ||
+          b.reactions.length - a.reactions.length ||
+          createdAtDiff
+        );
       }
 
       const getHotScore = (item: FeedQuestion) =>
@@ -623,7 +669,9 @@ export function WorkspaceHome({
               <div
                 className={cn(
                   "relative h-full w-full bg-gradient-to-br",
-                  COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                  COURSE_FALLBACK_GRADIENTS[
+                    index % COURSE_FALLBACK_GRADIENTS.length
+                  ],
                 )}
               >
                 {course.thumbnailUrl ? (
@@ -676,7 +724,9 @@ export function WorkspaceHome({
             <div className="overflow-hidden rounded-2xl">
               <div
                 className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
+                style={{
+                  transform: `translateX(-${activeCourseIndex * 100}%)`,
+                }}
               >
                 {courseHighlights.map((course, index) => (
                   <div key={course.id} className="min-w-full">
@@ -687,7 +737,9 @@ export function WorkspaceHome({
                       <div
                         className={cn(
                           "relative h-40 bg-gradient-to-br",
-                          COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                          COURSE_FALLBACK_GRADIENTS[
+                            index % COURSE_FALLBACK_GRADIENTS.length
+                          ],
                         )}
                       >
                         {course.thumbnailUrl ? (
@@ -710,14 +762,19 @@ export function WorkspaceHome({
                           {formatCoursePrice(course)}
                         </div>
                         <div className="absolute inset-x-4 bottom-4">
-                          <p className="text-lg font-semibold text-white">{course.title}</p>
-                          <p className="mt-1 text-sm text-white/85">{course.level}</p>
+                          <p className="text-lg font-semibold text-white">
+                            {course.title}
+                          </p>
+                          <p className="mt-1 text-sm text-white/85">
+                            {course.level}
+                          </p>
                         </div>
                       </div>
 
                       <div className="space-y-3 p-4">
                         <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
-                          {course.description || "Structured lessons and guided practice from the course library."}
+                          {course.description ||
+                            "Structured lessons and guided practice from the course library."}
                         </p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>{course.lessonsCount} lessons</span>
@@ -770,7 +827,9 @@ export function WorkspaceHome({
                 <button
                   type="button"
                   onClick={() =>
-                    setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
+                    setActiveCourseIndex(
+                      (current) => (current + 1) % courseHighlights.length,
+                    )
                   }
                   className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Next course"
@@ -783,9 +842,12 @@ export function WorkspaceHome({
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
-            <p className="text-sm font-medium text-foreground">No active courses yet</p>
+            <p className="text-sm font-medium text-foreground">
+              No active courses yet
+            </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              As soon as courses are published, they will appear here automatically.
+              As soon as courses are published, they will appear here
+              automatically.
             </p>
             <Button asChild size="sm" className="mt-4">
               <Link href="/courses">Browse courses</Link>
@@ -800,15 +862,19 @@ export function WorkspaceHome({
     <Card className="relative overflow-hidden border border-border/70 bg-background shadow-lg">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
       <div className="absolute -right-10 -top-10 size-40 rounded-full bg-primary/5 blur-3xl" />
-      
+
       <CardHeader className="relative border-b border-border/60 pb-5">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 font-bold text-white shadow-inner">
             <TrophyIcon className="size-4" />
           </div>
           <div>
-            <CardTitle className="text-base tracking-tight">Hall of Fame</CardTitle>
-            <CardDescription className="text-xs">Top rated teachers this week</CardDescription>
+            <CardTitle className="text-base tracking-tight">
+              Hall of Fame
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Top rated teachers this week
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -816,7 +882,10 @@ export function WorkspaceHome({
       <CardContent className="relative space-y-3 pt-5">
         {isTopTeachersLoading ? (
           [1, 2, 3].map((item) => (
-            <div key={item} className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/10 p-3">
+            <div
+              key={item}
+              className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/10 p-3"
+            >
               <Skeleton className="size-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-3 w-28" />
@@ -834,13 +903,16 @@ export function WorkspaceHome({
             let rankIcon = null;
 
             if (isFirst) {
-              rankColors = "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400";
+              rankColors =
+                "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400";
               rankIcon = <MedalIcon className="size-3.5" />;
             } else if (isSecond) {
-              rankColors = "bg-slate-300/20 text-slate-600 border-slate-400/30 dark:text-slate-300 dark:bg-slate-500/20";
+              rankColors =
+                "bg-slate-300/20 text-slate-600 border-slate-400/30 dark:text-slate-300 dark:bg-slate-500/20";
               rankIcon = <MedalIcon className="size-3.5" />;
             } else if (isThird) {
-              rankColors = "bg-orange-600/10 text-orange-700 border-orange-600/20 dark:text-orange-400 dark:bg-orange-500/10";
+              rankColors =
+                "bg-orange-600/10 text-orange-700 border-orange-600/20 dark:text-orange-400 dark:bg-orange-500/10";
               rankIcon = <MedalIcon className="size-3.5" />;
             }
 
@@ -873,20 +945,26 @@ export function WorkspaceHome({
                       alt={teacher.name}
                       className={cn(
                         "size-10 rounded-full object-cover shadow-sm transition-transform duration-300 group-hover:scale-105",
-                        isFirst ? "ring-2 ring-amber-500 ring-offset-1 ring-offset-background" : 
-                        isSecond ? "ring-2 ring-slate-400 ring-offset-1 ring-offset-background" :
-                        isThird ? "ring-2 ring-orange-500 ring-offset-1 ring-offset-background" :
-                        "border border-border/60"
+                        isFirst
+                          ? "ring-2 ring-amber-500 ring-offset-1 ring-offset-background"
+                          : isSecond
+                            ? "ring-2 ring-slate-400 ring-offset-1 ring-offset-background"
+                            : isThird
+                              ? "ring-2 ring-orange-500 ring-offset-1 ring-offset-background"
+                              : "border border-border/60",
                       )}
                     />
                   ) : (
                     <div
                       className={cn(
                         "flex size-10 items-center justify-center rounded-full text-sm font-semibold shadow-sm transition-transform duration-300 group-hover:scale-105",
-                        isFirst ? "bg-amber-500/15 text-amber-600 ring-2 ring-amber-500 ring-offset-1 ring-offset-background" : 
-                        isSecond ? "bg-slate-500/15 text-slate-700 ring-2 ring-slate-400 ring-offset-1 ring-offset-background" :
-                        isThird ? "bg-orange-500/15 text-orange-700 ring-2 ring-orange-500 ring-offset-1 ring-offset-background" :
-                        "bg-primary/10 text-primary border border-border/60"
+                        isFirst
+                          ? "bg-amber-500/15 text-amber-600 ring-2 ring-amber-500 ring-offset-1 ring-offset-background"
+                          : isSecond
+                            ? "bg-slate-500/15 text-slate-700 ring-2 ring-slate-400 ring-offset-1 ring-offset-background"
+                            : isThird
+                              ? "bg-orange-500/15 text-orange-700 ring-2 ring-orange-500 ring-offset-1 ring-offset-background"
+                              : "bg-primary/10 text-primary border border-border/60",
                       )}
                     >
                       {teacher.name.charAt(0).toUpperCase()}
@@ -894,7 +972,10 @@ export function WorkspaceHome({
                   )}
                   {teacher.teacherModeVerified && (
                     <div className="absolute -bottom-1 -right-1 rounded-full border-2 border-background bg-emerald-500 p-0.5">
-                      <CheckCircle2Icon className="size-2.5 text-white" strokeWidth={4} />
+                      <CheckCircle2Icon
+                        className="size-2.5 text-white"
+                        strokeWidth={4}
+                      />
                     </div>
                   )}
                 </div>
@@ -905,12 +986,15 @@ export function WorkspaceHome({
                       {teacher.name}
                     </p>
                     <div className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
-                      {teacher.totalAnswered} <span className="hidden sm:inline">answers</span>
+                      {teacher.totalAnswered}{" "}
+                      <span className="hidden sm:inline">answers</span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-1 flex items-center justify-between text-xs">
-                    <p className="truncate text-muted-foreground">@{teacher.username}</p>
+                    <p className="truncate text-muted-foreground">
+                      @{teacher.username}
+                    </p>
                     <div className="flex items-center gap-1 font-semibold text-foreground">
                       <StarIcon className="size-3.5 fill-amber-400 text-amber-400" />
                       {teacher.overallScore.toFixed(1)}
@@ -924,7 +1008,9 @@ export function WorkspaceHome({
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
             <TrophyIcon className="mb-3 size-8 text-muted-foreground/30" />
             <p className="font-medium text-foreground">No top teachers yet</p>
-            <p className="mt-1 max-w-[200px] text-xs">Ratings are calculated periodically. Help out to climb the ranks!</p>
+            <p className="mt-1 max-w-[200px] text-xs">
+              Ratings are calculated periodically. Help out to climb the ranks!
+            </p>
           </div>
         )}
       </CardContent>
@@ -935,610 +1021,711 @@ export function WorkspaceHome({
     <div className="space-y-6">
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
-        {mobileCourseRail}
-        <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-          <CardContent className="overflow-x-auto px-3 py-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center gap-2">
-              {FEED_VIEW_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setActiveView(option.value)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
-                    activeView === option.value
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-
-              <div className="mx-1 h-5 w-px bg-border/80" />
-              <span className="text-[11px] font-medium text-muted-foreground">Sort</span>
-
-              {FEED_SORT_OPTIONS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setActiveSort(value)}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
-                    activeSort === value
-                      ? "border-primary/45 bg-primary/14 text-primary shadow-sm dark:bg-primary/18"
-                      : "border-border/80 bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground",
-                  )}
-                >
-                  <Icon className="size-3" />
-                  {label}
-                </button>
-              ))}
-
-              <div className="mx-1 h-5 w-px bg-border/80" />
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-                <SlidersHorizontalIcon className="size-3" />
-                Filters
-              </span>
-
-              {activeHeaderFilters.length > 0 ? (
-                <>
-                  {activeHeaderFilters.map((filterValue) => (
-                    <span
-                      key={filterValue}
-                      className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground whitespace-nowrap"
-                    >
-                      {filterValue}
-                    </span>
-                  ))}
+          {mobileCourseRail}
+          <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
+            <CardContent className="overflow-x-auto px-3 py-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex min-w-max items-center gap-2">
+                {FEED_VIEW_OPTIONS.map((option) => (
                   <button
+                    key={option.value}
                     type="button"
-                    onClick={clearWorkspaceFilters}
-                    className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 px-1.5 py-1 text-red-600 transition-colors hover:bg-red-500/20"
-                    title="Clear filters"
+                    onClick={() => setActiveView(option.value)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
+                      activeView === option.value
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground",
+                    )}
                   >
-                    <XIcon className="size-3" />
+                    {option.label}
                   </button>
-                </>
-              ) : (
-                <span className="rounded-full border border-dashed border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground whitespace-nowrap">
-                  None
+                ))}
+
+                <div className="mx-1 h-5 w-px bg-border/80" />
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Sort
                 </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Loading skeleton */}
-        {isLoading && !isHydrated && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="border border-border/70 shadow-sm">
-                <CardHeader>
-                  <Skeleton className="h-3 w-48" />
-                  <Skeleton className="h-5 w-72 mt-2" />
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                {FEED_SORT_OPTIONS.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setActiveSort(value)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
+                      activeSort === value
+                        ? "border-primary/45 bg-primary/14 text-primary shadow-sm dark:bg-primary/18"
+                        : "border-border/80 bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-3" />
+                    {label}
+                  </button>
+                ))}
 
-        {/* Empty state */}
-        {isHydrated && visibleFeedItems.length === 0 && (
-          <Card className="border border-dashed border-border/70 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <MessageSquareIcon className="size-12 text-muted-foreground/40 mb-4" />
-              <p className="text-lg font-medium text-foreground">
-                {feedItems.length === 0 ? "No questions yet" : "No posts match this view"}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-                {feedItems.length === 0
-                  ? "Be the first to post a question! Click \"Post Question\" in the header to get started."
-                  : "Try a different filter or sort to bring more questions back into the stream."}
-              </p>
+                <div className="mx-1 h-5 w-px bg-border/80" />
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                  <SlidersHorizontalIcon className="size-3" />
+                  Filters
+                </span>
+
+                {activeHeaderFilters.length > 0 ? (
+                  <>
+                    {activeHeaderFilters.map((filterValue) => (
+                      <span
+                        key={filterValue}
+                        className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-foreground whitespace-nowrap"
+                      >
+                        {filterValue}
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={clearWorkspaceFilters}
+                      className="ml-1 inline-flex items-center justify-center rounded-full bg-red-500/10 px-1.5 py-1 text-red-600 transition-colors hover:bg-red-500/20"
+                      title="Clear filters"
+                    >
+                      <XIcon className="size-3" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="rounded-full border border-dashed border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground whitespace-nowrap">
+                    None
+                  </span>
+                )}
+              </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Feed cards */}
-        {visibleFeedItems.map((item) => {
-          const isAccepted = item.status === "ACCEPTED";
-          const isSolved = item.status === "SOLVED";
-          const isOwnQuestion = userId === item.askerId;
-          const canAccept = !isOwnQuestion && (item.status === "OPEN" || item.status === "RESET") && role === "TEACHER";
-          const canOpenThread = isOwnQuestion && Boolean(item.channelId);
-          const canComment = !isOwnQuestion;
-          const isExpandedComments = expandedComments.has(item.id);
-          const comments = dedupeComments(commentsMap[item.id] || []);
-          const isAcceptLoading = acceptingId === item.id;
-          const totalReactions = item.reactions.length;
-          const askerProfileHref = getProfilePath({
-            id: item.askerId,
-            name: item.askerName,
-            username: item.askerUsername,
-          });
+          {/* Loading skeleton */}
+          {isLoading && !isHydrated && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border border-border/70 shadow-sm">
+                  <CardHeader>
+                    <Skeleton className="h-3 w-48" />
+                    <Skeleton className="h-5 w-72 mt-2" />
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          // Determine which reaction the current user has (if any)
-          const userReaction = userId
-            ? item.reactions.find((r) => r.userId === userId)
-            : undefined;
+          {/* Empty state */}
+          {isHydrated && visibleFeedItems.length === 0 && (
+            <Card className="border border-dashed border-border/70 shadow-sm">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <MessageSquareIcon className="size-12 text-muted-foreground/40 mb-4" />
+                <p className="text-lg font-medium text-foreground">
+                  {feedItems.length === 0
+                    ? "No questions yet"
+                    : "No posts match this view"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+                  {feedItems.length === 0
+                    ? 'Be the first to post a question! Click "Post Question" in the header to get started.'
+                    : "Try a different filter or sort to bring more questions back into the stream."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-          return (
-            <article
-              key={item.id}
-              className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
-            >
-              <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
-                  {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
-                    const count = item.reactions.filter((reaction) => reaction.type === type).length;
-                    const isActive = userReaction?.type === type;
+          {/* Feed cards */}
+          {visibleFeedItems.map((item) => {
+            const isAccepted = item.status === "ACCEPTED";
+            const isSolved = item.status === "SOLVED";
+            const isOwnQuestion = userId === item.askerId;
+            const canAccept =
+              !isOwnQuestion &&
+              (item.status === "OPEN" || item.status === "RESET") &&
+              role === "TEACHER";
+            const canOpenThread = isOwnQuestion && Boolean(item.channelId);
+            const canComment = !isOwnQuestion;
+            const isExpandedComments = expandedComments.has(item.id);
+            const comments = dedupeComments(commentsMap[item.id] || []);
+            const isAcceptLoading = acceptingId === item.id;
+            const totalReactions = item.reactions.length;
+            const askerProfileHref = getProfilePath({
+              id: item.askerId,
+              name: item.askerName,
+              username: item.askerUsername,
+            });
 
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        title={label}
-                        onClick={() => handleReact(item.id, type)}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors md:min-w-[44px] md:flex-col md:rounded-2xl md:px-2 md:py-2",
-                          isActive
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-border bg-background text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <Icon className="size-3.5" />
-                        <span>{count}</span>
-                      </button>
-                    );
-                  })}
+            // Determine which reaction the current user has (if any)
+            const userReaction = userId
+              ? item.reactions.find((r) => r.userId === userId)
+              : undefined;
+            const requiredAnswerFormats = getAnswerFormatRequirements(
+              item.answerFormat,
+            );
+            const questionChips = getQuestionChips(item);
 
-                  <div className="hidden text-center text-[10px] text-muted-foreground md:block">
-                    <div className="font-semibold text-foreground">{totalReactions}</div>
-                    <div>reacts</div>
+            return (
+              <article
+                key={item.id}
+                className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
+              >
+                <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
+                  <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
+                    {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
+                      const count = item.reactions.filter(
+                        (reaction) => reaction.type === type,
+                      ).length;
+                      const isActive = userReaction?.type === type;
+
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          title={label}
+                          onClick={() => handleReact(item.id, type)}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors md:min-w-[44px] md:flex-col md:rounded-2xl md:px-2 md:py-2",
+                            isActive
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="size-3.5" />
+                          <span>{count}</span>
+                        </button>
+                      );
+                    })}
+
+                    <div className="hidden text-center text-[10px] text-muted-foreground md:block">
+                      <div className="font-semibold text-foreground">
+                        {totalReactions}
+                      </div>
+                      <div>reacts</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="min-w-0">
-                  <div className="space-y-4 px-4 py-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 space-y-3">
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-foreground">
-                              {item.subject || item.stream || item.level || "General"}
-                            </span>
-                            <span>{formatTimeAgo(item.createdAt)}</span>
-                          </div>
-                          <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span>Asked by</span>
-                            <Link
-                              href={askerProfileHref}
-                              className="inline-flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-hidden rounded-full bg-muted/30 px-2.5 py-1 font-medium text-foreground whitespace-nowrap transition-colors hover:text-primary sm:max-w-56"
-                            >
-                              {item.askerImage ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                  src={item.askerImage}
-                                  alt={item.askerName}
-                                  className="w-[20px] h-[20px] min-w-[20px] min-h-[20px] aspect-square shrink-0 rounded-full border border-border/60 object-cover"
-                                />
-                              ) : (
-                                <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                                  {item.askerName.charAt(0).toUpperCase()}
+                  <div className="min-w-0">
+                    <div className="space-y-4 px-4 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={askerProfileHref}
+                            className="group/avatar relative z-10 flex shrink-0 items-center justify-center"
+                          >
+                            {item.askerImage ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={item.askerImage}
+                                alt={item.askerName}
+                                className="h-7 w-7 shrink-0 aspect-square rounded-full border border-border/80 object-cover shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md"
+                              />
+                            ) : (
+                              <div className="flex h-9 w-9 shrink-0 aspect-square items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-bold text-primary shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md">
+                                {item.askerName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </Link>
+
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <Link
+                                href={askerProfileHref}
+                                className="text-[15px] font-bold tracking-tight text-foreground transition-colors hover:text-primary hover:underline"
+                              >
+                                {item.askerName}
+                              </Link>
+                              {item.askerUsername && (
+                                <span className="hidden text-[13px] font-medium text-muted-foreground/60 sm:inline-block">
+                                  @{item.askerUsername}
                                 </span>
                               )}
-                              <span className="truncate">{item.askerName}</span>
-                            </Link>
-                            {item.askerUsername && (
-                              <span className="max-w-full truncate text-muted-foreground/80 sm:max-w-40">
-                                @{item.askerUsername}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+                              <span>{formatTimeAgo(item.createdAt)}</span>
+                              <span className="size-1 rounded-full bg-muted-foreground/50" />
+                              <span className="text-foreground/80">
+                                {item.subject ||
+                                  item.stream ||
+                                  item.level ||
+                                  "General"}
                               </span>
-                            )}
+                              <span className="hidden size-1 rounded-full bg-muted-foreground/50 sm:block" />
+                              <span className="hidden text-[9px] font-bold uppercase tracking-wider opacity-80 sm:inline-block">
+                                {item.answerVisibility === "PUBLIC"
+                                  ? "Public"
+                                  : "Private"}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <h2 className="text-lg font-semibold leading-7 text-foreground [overflow-wrap:anywhere] sm:text-xl">
-                            {item.title}
-                          </h2>
-                          <p className="text-sm leading-7 text-muted-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
-                            {item.body}
-                          </p>
+                        <div className="z-20 flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full border border-border/20 px-2.5 py-1 text-[11px] font-semibold shadow-sm",
+                              statusColorMap[item.status],
+                            )}
+                          >
+                            {statusLabelMap[item.status]}
+                          </span>
+
+                          <div className="group/dots relative">
+                            <button
+                              type="button"
+                              aria-label="View question details"
+                              className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-all duration-200 hover:bg-muted/80 hover:text-foreground hover:shadow-sm"
+                            >
+                              <MoreHorizontalIcon className="size-5" />
+                            </button>
+
+                            <div className="invisible absolute right-0 top-full mt-2 w-[280px] origin-top-right scale-95 rounded-2xl border border-border/60 bg-background/98 p-4 opacity-0 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-200 group-hover/dots:visible group-hover/dots:scale-100 group-hover/dots:opacity-100 dark:shadow-black/20">
+                              <div className="space-y-4">
+                                {item.resetCount > 0 && (
+                                  <>
+                                    <div>
+                                      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                        Question Status
+                                      </p>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                                          Reset {item.resetCount} times
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="h-px w-full bg-border/50" />
+                                  </>
+                                )}
+
+                                <div>
+                                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                    Details & Formats
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {requiredAnswerFormats.length === 0 ? (
+                                      <span
+                                        className={cn(
+                                          "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                          anyFormatColor,
+                                        )}
+                                      >
+                                        {getAnswerFormatLabel(
+                                          item.answerFormat,
+                                        )}
+                                      </span>
+                                    ) : (
+                                      requiredAnswerFormats.map((format) => (
+                                        <span
+                                          key={`${item.id}-${format}`}
+                                          className={cn(
+                                            "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                            formatColorMap[format],
+                                          )}
+                                        >
+                                          {getAnswerFormatLabel(format)}
+                                        </span>
+                                      ))
+                                    )}
+
+                                    <span
+                                      className={cn(
+                                        "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                        visibilityColorMap[
+                                          item.answerVisibility
+                                        ],
+                                      )}
+                                    >
+                                      {
+                                        visibilityLabelMap[
+                                          item.answerVisibility
+                                        ]
+                                      }
+                                    </span>
+
+                                    {questionChips.map((chip) => (
+                                      <span
+                                        key={`${item.id}-${chip}`}
+                                        className="rounded-md border border-border/80 bg-background px-2 py-1 text-[10px] text-muted-foreground shadow-sm"
+                                      >
+                                        {chip}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <span
-                          className={cn(
-                            "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                            statusColorMap[item.status],
-                          )}
-                        >
-                          {statusLabelMap[item.status]}
-                        </span>
-                        {item.resetCount > 0 && (
-                          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                            Reset {item.resetCount}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const requiredFormats = getAnswerFormatRequirements(item.answerFormat);
-
-                        if (requiredFormats.length === 0) {
-                          return (
-                            <span
-                              className={cn(
-                                "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                                anyFormatColor,
-                              )}
-                            >
-                              {getAnswerFormatLabel(item.answerFormat)}
-                            </span>
-                          );
-                        }
-
-                        return requiredFormats.map((format) => (
-                          <span
-                            key={`${item.id}-${format}`}
-                            className={cn(
-                              "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                              formatColorMap[format],
-                            )}
-                          >
-                            {getAnswerFormatLabel(format)}
-                          </span>
-                        ));
-                      })()}
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                          visibilityColorMap[item.answerVisibility],
-                        )}
-                      >
-                        {visibilityLabelMap[item.answerVisibility]}
-                      </span>
-                      {getQuestionChips(item).map((chip) => (
-                        <span
-                          key={`${item.id}-${chip}`}
-                          className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground"
-                        >
-                          {chip}
-                        </span>
-                      ))}
-                    </div>
-
-                    {item.images && item.images.length > 0 && (
-                      <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
-                        {item.images.map((imgUrl, index) => (
-                          <a
-                            key={index}
-                            href={imgUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={imgUrl}
-                              alt={`Question media ${index + 1}`}
-                              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-
-                    {isAccepted && (
-                      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
-                        <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
-                          {item.acceptedByName
-                            ? `${item.acceptedByName} is already working on this question.`
-                            : "This question is currently being answered."}
+                      <div className="space-y-2.5 pt-1">
+                        <h2 className="text-[1.125rem] font-bold leading-snug text-foreground [overflow-wrap:anywhere] sm:text-[1.25rem]">
+                          {item.title}
+                        </h2>
+                        <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                          {item.body}
                         </p>
-                        {item.acceptedAt && (
-                          <p className="mt-1 text-xs text-sky-700/70 dark:text-sky-300/70">
-                            Accepted {formatTimeAgo(item.acceptedAt)}
-                          </p>
-                        )}
                       </div>
-                    )}
 
-                    {isSolved && (
-                      <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05]">
+                      {item.images && item.images.length > 0 && (
+                        <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
+                          {item.images.map((imgUrl, index) => (
+                            <a
+                              key={index}
+                              href={imgUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgUrl}
+                                alt={`Question media ${index + 1}`}
+                                className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
+                      {isAccepted && (
+                        <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
+                          <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                            {item.acceptedByName
+                              ? `${item.acceptedByName} is already working on this question.`
+                              : "This question is currently being answered."}
+                          </p>
+                          {item.acceptedAt && (
+                            <p className="mt-1 text-xs text-sky-700/70 dark:text-sky-300/70">
+                              Accepted {formatTimeAgo(item.acceptedAt)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {isSolved && (
+                        <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05]">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-500/[0.08]"
+                            onClick={() => item.answer && toggleAnswer(item.id)}
+                          >
+                            <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                Accepted answer
+                              </p>
+                              <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
+                                {item.answer?.acceptorName ||
+                                  item.acceptedByName ||
+                                  "Teacher"}{" "}
+                                solved this question.
+                              </p>
+                            </div>
+                            {item.answer ? (
+                              <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                <span>
+                                  {expandedAnswers.has(item.id)
+                                    ? "Hide"
+                                    : "View"}
+                                </span>
+                                <ChevronDownIcon
+                                  className={cn(
+                                    "size-4 transition-transform duration-200",
+                                    expandedAnswers.has(item.id) &&
+                                      "rotate-180",
+                                  )}
+                                />
+                              </div>
+                            ) : null}
+                          </button>
+
+                          {item.answer &&
+                            expandedAnswers.has(item.id) &&
+                            (() => {
+                              const answer = item.answer;
+
+                              return (
+                                <div className="space-y-4 border-t border-emerald-500/15 bg-background/95 px-4 py-4">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                      <p className="text-sm font-semibold text-foreground">
+                                        {answer.acceptorName || "Teacher"}
+                                      </p>
+                                      {answer.submittedAt && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Posted{" "}
+                                          {formatTimeAgo(answer.submittedAt)}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {answer.rating != null && (
+                                      <div className="flex items-center gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <StarIcon
+                                            key={star}
+                                            className={cn(
+                                              "size-3.5",
+                                              star <=
+                                                Math.round(answer.rating ?? 0)
+                                                ? "fill-amber-400 text-amber-400"
+                                                : "text-muted-foreground/30",
+                                            )}
+                                          />
+                                        ))}
+                                        <span className="ml-1 text-xs text-muted-foreground">
+                                          {Number(answer.rating).toFixed(1)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {answer.content && (
+                                    <p className="text-sm leading-7 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
+                                      {answer.content}
+                                    </p>
+                                  )}
+
+                                  {answer.mediaUrls &&
+                                    answer.mediaUrls.length > 0 && (
+                                      <div
+                                        className={cn(
+                                          "grid gap-2 overflow-hidden rounded-2xl",
+                                          answer.mediaUrls.length === 1
+                                            ? "grid-cols-1"
+                                            : "grid-cols-1 sm:grid-cols-2",
+                                        )}
+                                      >
+                                        {answer.mediaUrls.map((url, index) => {
+                                          const isVideo =
+                                            url.includes("/video/") ||
+                                            url.endsWith(".mp4") ||
+                                            url.endsWith(".webm");
+
+                                          return isVideo ? (
+                                            <video
+                                              key={index}
+                                              src={url}
+                                              controls
+                                              className="h-full max-h-80 w-full rounded-xl border border-border bg-muted/30"
+                                            />
+                                          ) : (
+                                            <a
+                                              key={index}
+                                              href={url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="group block overflow-hidden rounded-xl border border-border/70 bg-muted/10"
+                                            >
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img
+                                                src={url}
+                                                alt={`Answer media ${index + 1}`}
+                                                className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-48"
+                                              />
+                                            </a>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                </div>
+                              );
+                            })()}
+                        </div>
+                      )}
+
+                      {!isAccepted && !isSolved && (
+                        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            Answer lane
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
+                            {item.previewAuthor || "No public answer yet"}
+                          </p>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+                            {item.previewText ||
+                              "Accept this question and be the first to help with a clear answer."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/[0.18] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-500/[0.08]"
-                          onClick={() => item.answer && toggleAnswer(item.id)}
+                          onClick={() => toggleComments(item.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                            isExpandedComments
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:text-foreground",
+                          )}
                         >
-                          <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                              Accepted answer
-                            </p>
-                            <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
-                              {item.answer?.acceptorName || item.acceptedByName || "Teacher"} solved this question.
-                            </p>
-                          </div>
-                          {item.answer ? (
-                            <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                              <span>{expandedAnswers.has(item.id) ? "Hide" : "View"}</span>
-                              <ChevronDownIcon
-                                className={cn(
-                                  "size-4 transition-transform duration-200",
-                                  expandedAnswers.has(item.id) && "rotate-180",
-                                )}
-                              />
-                            </div>
-                          ) : null}
+                          <MessageSquareIcon className="size-3.5" />
+                          {item.commentCount} comments
                         </button>
 
-                        {item.answer && expandedAnswers.has(item.id) && (
-                          (() => {
-                            const answer = item.answer;
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                          <CheckCircle2Icon className="size-3.5" />
+                          {item.answerCount} answers
+                        </span>
 
-                            return (
-                              <div className="space-y-4 border-t border-emerald-500/15 bg-background/95 px-4 py-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground">
-                                  {answer.acceptorName || "Teacher"}
-                                </p>
-                                {answer.submittedAt && (
-                                  <p className="text-xs text-muted-foreground">
-                                    Posted {formatTimeAgo(answer.submittedAt)}
-                                  </p>
-                                )}
-                              </div>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                          <ThumbsUpIcon className="size-3.5" />
+                          {totalReactions} reacts
+                        </span>
+                      </div>
 
-                              {answer.rating != null && (
-                                <div className="flex items-center gap-0.5">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <StarIcon
-                                      key={star}
-                                      className={cn(
-                                        "size-3.5",
-                                        star <= Math.round(answer.rating ?? 0)
-                                          ? "fill-amber-400 text-amber-400"
-                                          : "text-muted-foreground/30",
-                                      )}
-                                    />
-                                  ))}
-                                  <span className="ml-1 text-xs text-muted-foreground">
-                                    {Number(answer.rating).toFixed(1)}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
+                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        {canComment && (
+                          <Button
+                            onClick={() => toggleComments(item.id)}
+                            size="sm"
+                            variant={
+                              isExpandedComments ? "secondary" : "outline"
+                            }
+                            className="w-full sm:w-auto"
+                          >
+                            <MessageSquareIcon className="mr-1 size-3.5" />
+                            Comment
+                          </Button>
+                        )}
 
-                            {answer.content && (
-                              <p className="text-sm leading-7 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
-                                {answer.content}
-                              </p>
+                        {canAccept && (
+                          <Button
+                            disabled={isAcceptLoading}
+                            onClick={() => handleAccept(item.id)}
+                            size="sm"
+                            className="w-full sm:w-auto"
+                          >
+                            {isAcceptLoading ? (
+                              <Loader2Icon className="mr-1 size-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle2Icon className="mr-1 size-3.5" />
                             )}
+                            Accept
+                          </Button>
+                        )}
 
-                            {answer.mediaUrls && answer.mediaUrls.length > 0 && (
-                              <div
-                                className={cn(
-                                  "grid gap-2 overflow-hidden rounded-2xl",
-                                  answer.mediaUrls.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
-                                )}
-                              >
-                                {answer.mediaUrls.map((url, index) => {
-                                  const isVideo =
-                                    url.includes("/video/") ||
-                                    url.endsWith(".mp4") ||
-                                    url.endsWith(".webm");
-
-                                  return isVideo ? (
-                                    <video
-                                      key={index}
-                                      src={url}
-                                      controls
-                                      className="h-full max-h-80 w-full rounded-xl border border-border bg-muted/30"
+                        {canOpenThread && (
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="ghost"
+                            className="w-full justify-between sm:w-auto sm:justify-center"
+                          >
+                            <Link href={getChannelPath(item.channelId)}>
+                              Open thread
+                              <ArrowUpRightIcon />
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {isExpandedComments && (
+                      <div className="border-t border-border/60 bg-background px-4 py-4">
+                        <div className="space-y-4">
+                          <div className="max-h-[320px] space-y-4 overflow-y-auto pr-1">
+                            {comments.length === 0 ? (
+                              <p className="py-2 text-sm text-muted-foreground">
+                                No comments yet. The first reply will appear
+                                here.
+                              </p>
+                            ) : (
+                              comments.map((comment) => (
+                                <div
+                                  key={comment._id}
+                                  className="flex min-w-0 gap-3"
+                                >
+                                  {comment.studentId?.userImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={comment.studentId.userImage}
+                                      alt={comment.studentId.name || "User"}
+                                      className="size-8 rounded-full border border-border/60 object-cover shrink-0"
                                     />
                                   ) : (
-                                    <a
-                                      key={index}
-                                      href={url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="group block overflow-hidden rounded-xl border border-border/70 bg-muted/10"
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={url}
-                                        alt={`Answer media ${index + 1}`}
-                                        className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-48"
-                                      />
-                                    </a>
-                                  );
-                                })}
-                              </div>
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                      {(comment.studentId?.name || "U")
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                    </div>
+                                  )}
+
+                                  <div className="min-w-0 flex-1 border-l-2 border-border/60 pl-3">
+                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                      <span className="font-semibold text-foreground">
+                                        {comment.studentId?.name || "Anonymous"}
+                                      </span>
+                                      {comment.studentId?.username && (
+                                        <span>
+                                          @{comment.studentId.username}
+                                        </span>
+                                      )}
+                                      <span>•</span>
+                                      <span>
+                                        {formatTimeAgo(comment.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                                      {comment.content}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
                             )}
                           </div>
-                            );
-                          })()
-                        )}
-                      </div>
-                    )}
 
-                    {!isAccepted && !isSolved && (
-                      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Answer lane
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-foreground">
-                          {item.previewAuthor || "No public answer yet"}
-                        </p>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
-                          {item.previewText || "Accept this question and be the first to help with a clear answer."}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/[0.18] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleComments(item.id)}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                          isExpandedComments
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-border bg-background text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <MessageSquareIcon className="size-3.5" />
-                        {item.commentCount} comments
-                      </button>
-
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
-                        <CheckCircle2Icon className="size-3.5" />
-                        {item.answerCount} answers
-                      </span>
-
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
-                        <ThumbsUpIcon className="size-3.5" />
-                        {totalReactions} reacts
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                      {canComment && (
-                        <Button
-                          onClick={() => toggleComments(item.id)}
-                          size="sm"
-                          variant={isExpandedComments ? "secondary" : "outline"}
-                          className="w-full sm:w-auto"
-                        >
-                          <MessageSquareIcon className="mr-1 size-3.5" />
-                          Comment
-                        </Button>
-                      )}
-
-                      {canAccept && (
-                        <Button
-                          disabled={isAcceptLoading}
-                          onClick={() => handleAccept(item.id)}
-                          size="sm"
-                          className="w-full sm:w-auto"
-                        >
-                          {isAcceptLoading ? (
-                            <Loader2Icon className="mr-1 size-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle2Icon className="mr-1 size-3.5" />
-                          )}
-                          Accept
-                        </Button>
-                      )}
-
-                      {canOpenThread && (
-                        <Button asChild size="sm" variant="ghost" className="w-full justify-between sm:w-auto sm:justify-center">
-                          <Link href={getChannelPath(item.channelId)}>
-                            Open thread
-                            <ArrowUpRightIcon />
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {isExpandedComments && (
-                    <div className="border-t border-border/60 bg-background px-4 py-4">
-                      <div className="space-y-4">
-                        <div className="max-h-[320px] space-y-4 overflow-y-auto pr-1">
-                          {comments.length === 0 ? (
-                            <p className="py-2 text-sm text-muted-foreground">
-                              No comments yet. The first reply will appear here.
-                            </p>
-                          ) : (
-                            comments.map((comment) => (
-                              <div key={comment._id} className="flex min-w-0 gap-3">
-                                {comment.studentId?.userImage ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    src={comment.studentId.userImage}
-                                    alt={comment.studentId.name || "User"}
-                                    className="size-8 rounded-full border border-border/60 object-cover shrink-0"
-                                  />
-                                ) : (
-                                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                                    {(comment.studentId?.name || "U").charAt(0).toUpperCase()}
-                                  </div>
-                                )}
-
-                                <div className="min-w-0 flex-1 border-l-2 border-border/60 pl-3">
-                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                    <span className="font-semibold text-foreground">
-                                      {comment.studentId?.name || "Anonymous"}
-                                    </span>
-                                    {comment.studentId?.username && (
-                                      <span>@{comment.studentId.username}</span>
-                                    )}
-                                    <span>•</span>
-                                    <span>{formatTimeAgo(comment.createdAt)}</span>
-                                  </div>
-                                  <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
-                                    {comment.content}
-                                  </p>
-                                </div>
+                          {canComment && (
+                            <div className="rounded-2xl border border-border/70 bg-muted/10 p-3">
+                              <div className="relative">
+                                <textarea
+                                  placeholder="Add a comment to this question..."
+                                  className="min-h-[48px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                  rows={1}
+                                  value={commentInput[item.id] || ""}
+                                  onChange={(e) => {
+                                    setCommentInput((prev) => ({
+                                      ...prev,
+                                      [item.id]: e.target.value,
+                                    }));
+                                    e.target.style.height = "auto";
+                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      submitComment(item.id);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute right-3 top-3 p-1 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                                  disabled={
+                                    isSubmittingComment === item.id ||
+                                    !commentInput[item.id]?.trim()
+                                  }
+                                  onClick={() => submitComment(item.id)}
+                                >
+                                  {isSubmittingComment === item.id ? (
+                                    <Loader2Icon className="size-4 animate-spin" />
+                                  ) : (
+                                    <SendIcon className="size-4" />
+                                  )}
+                                </button>
                               </div>
-                            ))
+                            </div>
                           )}
                         </div>
-
-                        {canComment && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/10 p-3">
-                            <div className="relative">
-                              <textarea
-                                placeholder="Add a comment to this question..."
-                                className="min-h-[48px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                rows={1}
-                                value={commentInput[item.id] || ""}
-                                onChange={(e) => {
-                                  setCommentInput((prev) => ({ ...prev, [item.id]: e.target.value }));
-                                  e.target.style.height = "auto";
-                                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    submitComment(item.id);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                className="absolute right-3 top-3 p-1 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
-                                disabled={isSubmittingComment === item.id || !commentInput[item.id]?.trim()}
-                                onClick={() => submitComment(item.id)}
-                              >
-                                {isSubmittingComment === item.id ? (
-                                  <Loader2Icon className="size-4 animate-spin" />
-                                ) : (
-                                  <SendIcon className="size-4" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })}
         </div>
 
         <div className="hidden space-y-6 md:block xl:hidden">
@@ -1559,7 +1746,9 @@ export function WorkspaceHome({
                     <div className="overflow-hidden rounded-2xl">
                       <div
                         className="flex transition-transform duration-500 ease-out"
-                        style={{ transform: `translateX(-${activeCourseIndex * 100}%)` }}
+                        style={{
+                          transform: `translateX(-${activeCourseIndex * 100}%)`,
+                        }}
                       >
                         {courseHighlights.map((course, index) => (
                           <div key={course.id} className="min-w-full">
@@ -1570,7 +1759,9 @@ export function WorkspaceHome({
                               <div
                                 className={cn(
                                   "relative h-40 bg-gradient-to-br",
-                                  COURSE_FALLBACK_GRADIENTS[index % COURSE_FALLBACK_GRADIENTS.length],
+                                  COURSE_FALLBACK_GRADIENTS[
+                                    index % COURSE_FALLBACK_GRADIENTS.length
+                                  ],
                                 )}
                               >
                                 {course.thumbnailUrl ? (
@@ -1593,14 +1784,19 @@ export function WorkspaceHome({
                                   {formatCoursePrice(course)}
                                 </div>
                                 <div className="absolute inset-x-4 bottom-4">
-                                  <p className="text-lg font-semibold text-white">{course.title}</p>
-                                  <p className="mt-1 text-sm text-white/85">{course.level}</p>
+                                  <p className="text-lg font-semibold text-white">
+                                    {course.title}
+                                  </p>
+                                  <p className="mt-1 text-sm text-white/85">
+                                    {course.level}
+                                  </p>
                                 </div>
                               </div>
 
                               <div className="space-y-3 p-4">
                                 <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
-                                  {course.description || "Structured lessons and guided practice from the course library."}
+                                  {course.description ||
+                                    "Structured lessons and guided practice from the course library."}
                                 </p>
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                   <span>{course.lessonsCount} lessons</span>
@@ -1629,7 +1825,9 @@ export function WorkspaceHome({
                             onClick={() => setActiveCourseIndex(index)}
                             className={cn(
                               "size-2.5 rounded-full transition-colors",
-                              index === activeCourseIndex ? "bg-primary" : "bg-border",
+                              index === activeCourseIndex
+                                ? "bg-primary"
+                                : "bg-border",
                             )}
                             aria-label={`Show course ${index + 1}`}
                           />
@@ -1641,7 +1839,9 @@ export function WorkspaceHome({
                           type="button"
                           onClick={() =>
                             setActiveCourseIndex((current) =>
-                              current === 0 ? courseHighlights.length - 1 : current - 1,
+                              current === 0
+                                ? courseHighlights.length - 1
+                                : current - 1,
                             )
                           }
                           className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
@@ -1653,7 +1853,10 @@ export function WorkspaceHome({
                         <button
                           type="button"
                           onClick={() =>
-                            setActiveCourseIndex((current) => (current + 1) % courseHighlights.length)
+                            setActiveCourseIndex(
+                              (current) =>
+                                (current + 1) % courseHighlights.length,
+                            )
                           }
                           className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                           aria-label="Next course"
@@ -1666,9 +1869,12 @@ export function WorkspaceHome({
                   </>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 p-5">
-                    <p className="text-sm font-medium text-foreground">No active courses yet</p>
+                    <p className="text-sm font-medium text-foreground">
+                      No active courses yet
+                    </p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      As soon as courses are published, they will appear here automatically.
+                      As soon as courses are published, they will appear here
+                      automatically.
                     </p>
                     <Button asChild size="sm" className="mt-4">
                       <Link href="/courses">Browse courses</Link>
@@ -1687,8 +1893,13 @@ export function WorkspaceHome({
         <Card className="hidden border border-border/70 bg-background shadow-sm xl:block">
           <CardContent className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-foreground">Want to compare with the best?</p>
-              <p className="text-sm text-muted-foreground">Jump to the top-rated teachers section and check the current top 5.</p>
+              <p className="text-sm font-semibold text-foreground">
+                Want to compare with the best?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Jump to the top-rated teachers section and check the current top
+                5.
+              </p>
             </div>
             <Button asChild className="w-full sm:w-auto">
               <Link href="#top-teachers">See Top 5 Teachers</Link>

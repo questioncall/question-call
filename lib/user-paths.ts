@@ -62,7 +62,7 @@ export function getProfilePath(user?: UserPathInput | null) {
   }
 
   if (user.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return `/${getUserHandle(user)}`;
@@ -70,7 +70,7 @@ export function getProfilePath(user?: UserPathInput | null) {
 
 export function getSettingsPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return "/settings/profile";
@@ -78,7 +78,7 @@ export function getSettingsPath(user?: UserPathInput | null) {
 
 export function getSubscriptionPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return "/subscription";
@@ -86,7 +86,7 @@ export function getSubscriptionPath(user?: UserPathInput | null) {
 
 export function getWalletPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return "/wallet";
@@ -94,7 +94,7 @@ export function getWalletPath(user?: UserPathInput | null) {
 
 export function getMessagesPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return "/message";
@@ -110,7 +110,7 @@ export function getChannelPath(channelId?: string | null) {
 
 export function getAskQuestionPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return "/ask";
@@ -118,7 +118,7 @@ export function getAskQuestionPath(user?: UserPathInput | null) {
 
 export function getLeaderboardPath(user?: UserPathInput | null) {
   if (user?.role === "ADMIN") {
-    return "/admin/pricing";
+    return "/admin/settings";
   }
 
   return `/leaderboard/${getUserHandle(user)}`;

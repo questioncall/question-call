@@ -45,6 +45,16 @@ type WithdrawalHistoryItem = {
   createdAt: string;
 };
 
+type WalletEarningHistoryItem = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  pointsDelta: number;
+  nprAmount: number | null;
+  occurredAt: string;
+};
+
 type WalletData = {
   role: string;
   userName?: string;
@@ -69,6 +79,7 @@ type WalletData = {
   pendingWithdrawal: number;
   totalPenaltyPoints: number;
   creditablePoints: number;
+  earningHistory: WalletEarningHistoryItem[];
 };
 
 function getErrorMessage(error: unknown): string {
@@ -77,6 +88,18 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong";
+}
+
+function formatWalletHistoryDate(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatSignedPoints(value: number) {
+  const prefix = value >= 0 ? "+" : "-";
+  return `${prefix}${formatPoints(Math.abs(value))} pts`;
 }
 
 export function WalletClient() {
@@ -354,6 +377,88 @@ export function WalletClient() {
                   : `Calculation: Earned (${formatPoints(wallet.totalPointsEarned)}) - Withdrawn (${formatPoints(wallet.totalPointsWithdrawn)}) - Penalties (${formatPoints(wallet.totalPenaltyPoints)}) = Balance (${formatPoints(wallet.creditablePoints)})`}
               </p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isTeacher && (
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUpIcon className="size-5 text-primary" />
+              Earning History
+            </CardTitle>
+            <CardDescription>
+              Detailed wallet activity for answer rewards, penalties, bonuses, and
+              course sale credits.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {wallet.earningHistory.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No wallet activity has been recorded yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {wallet.earningHistory.map((entry) => {
+                  const isPositive = entry.pointsDelta >= 0;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              isPositive
+                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                : "bg-red-500/10 text-red-700 dark:text-red-400"
+                            }`}
+                          >
+                            {isPositive ? "Credit" : "Penalty"}
+                          </span>
+                          {entry.type === "COURSE_SALE_CREDIT" ? (
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                              Course payout
+                            </span>
+                          ) : null}
+                          <span className="text-xs text-muted-foreground">
+                            {formatWalletHistoryDate(entry.occurredAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {entry.title}
+                        </p>
+                        {entry.description ? (
+                          <p className="text-sm text-muted-foreground">
+                            {entry.description}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-col items-start gap-1 sm:items-end">
+                        {entry.nprAmount !== null ? (
+                          <span className="text-xs text-muted-foreground">
+                            NPR {entry.nprAmount.toFixed(2)}
+                          </span>
+                        ) : null}
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-semibold ${
+                            isPositive
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              : "bg-red-500/10 text-red-700 dark:text-red-400"
+                          }`}
+                        >
+                          {formatSignedPoints(entry.pointsDelta)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -50,7 +50,7 @@ export function Logo({
   tagline,
 }: LogoProps) {
   return (
-    <Link href={href} prefetch={prefetch} className="inline-flex items-center gap-3">
+    <Link href={href} prefetch={prefetch} className="inline-flex items-center gap-1.5">
       <LogoMark size={36} className="rounded-2xl" />
       {!compact ? (
         <span className="flex flex-col">

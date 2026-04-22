@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import type { PlatformSocialHandles } from "@/models/PlatformConfig";
+import type { PlatformSocialLinks } from "@/models/PlatformConfig";
 
 type SearchResult = {
   questions: { id: string; title: string; body: string; subject?: string; level?: string }[];
@@ -50,7 +50,7 @@ type AuthenticatedHeaderProps = {
   showQuestionFilter?: boolean;
   useModalForPrimary?: boolean;
   userId?: string;
-  socialHandles: PlatformSocialHandles;
+  socialLinks: PlatformSocialLinks;
 };
 
 export function AuthenticatedHeader({
@@ -61,7 +61,7 @@ export function AuthenticatedHeader({
   showQuestionFilter = false,
   useModalForPrimary = false,
   userId,
-  socialHandles,
+  socialLinks,
 }: AuthenticatedHeaderProps) {
   const router = useRouter();
   const {
@@ -352,7 +352,7 @@ export function AuthenticatedHeader({
                 <span className="hidden sm:inline">Courses</span>
               </Link>
             </Button>
-            <SocialHandlesHover handles={socialHandles} />
+            <SocialHandlesHover links={socialLinks} />
             <ThemeToggle />
             {userId && <NotificationBell userId={userId} />}
           </div>

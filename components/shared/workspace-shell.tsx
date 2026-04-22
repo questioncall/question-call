@@ -53,7 +53,14 @@ import {
 import { setProfile, updateProfile } from "@/store/features/user/user-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
-import { getUserPusherName, CHANNEL_UPDATED_EVENT, NEW_CHANNEL_EVENT, SUBSCRIPTION_UPDATED_EVENT } from "@/lib/pusher/events";
+import {
+  getUserPusherName,
+  CHANNEL_UPDATED_EVENT,
+  NEW_CHANNEL_EVENT,
+  PLATFORM_SOCIAL_LINKS_UPDATED_EVENT,
+  PLATFORM_UPDATES_CHANNEL,
+  SUBSCRIPTION_UPDATED_EVENT,
+} from "@/lib/pusher/events";
 import {
   setChannelsLoading,
   setChannelsList,
@@ -64,7 +71,7 @@ import {
 } from "@/store/features/channels/channels-slice";
 import type { ChannelListItem } from "@/types/channel";
 import { APP_NAME } from "@/lib/constants";
-import type { PlatformSocialHandles } from "@/models/PlatformConfig";
+import type { PlatformSocialLinks } from "@/models/PlatformConfig";
 
 type WorkspaceRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -79,7 +86,7 @@ type WorkspaceUser = {
 
 type WorkspaceShellProps = {
   user: WorkspaceUser;
-  socialHandles: PlatformSocialHandles;
+  socialLinks: PlatformSocialLinks;
   defaultOpen?: boolean;
   children: ReactNode;
 };
@@ -140,7 +147,7 @@ function WorkspaceSidebarModeSkeleton() {
 
 export function WorkspaceShell({
   user,
-  socialHandles,
+  socialLinks,
   defaultOpen = true,
   children,
 }: WorkspaceShellProps) {
@@ -152,6 +159,7 @@ export function WorkspaceShell({
   } = useAppSelector((state) => state.channels);
   const [hasCompletedInitialSidebarLoad, setHasCompletedInitialSidebarLoad] =
     useState(channelsHydrated);
+  const [liveSocialLinks, setLiveSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
 
   const totalUnreadChannels = channels.reduce(
     (acc, ch) => acc + (ch.unreadCount > 0 ? 1 : 0),
@@ -185,6 +193,10 @@ export function WorkspaceShell({
       setHasCompletedInitialSidebarLoad(true);
     }
   }, [channelsHydrated]);
+
+  useEffect(() => {
+    setLiveSocialLinks(socialLinks);
+  }, [socialLinks]);
 
   // Subscribe to user-specific channel for real-time list updates (global)
   useEffect(() => {
@@ -250,6 +262,25 @@ channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
       pusherClient.unsubscribe(userChannel);
     };
   }, [user.id, dispatch]);
+
+  useEffect(() => {
+    const pusherClient = getPusherClient();
+    if (!pusherClient) return;
+
+    const channel = pusherClient.subscribe(PLATFORM_UPDATES_CHANNEL);
+    const handleSocialLinksUpdated = (data: { socialLinks?: PlatformSocialLinks }) => {
+      if (Array.isArray(data.socialLinks)) {
+        setLiveSocialLinks(data.socialLinks);
+      }
+    };
+
+    channel.bind(PLATFORM_SOCIAL_LINKS_UPDATED_EVENT, handleSocialLinksUpdated);
+
+    return () => {
+      channel.unbind(PLATFORM_SOCIAL_LINKS_UPDATED_EVENT, handleSocialLinksUpdated);
+      pusherClient.unsubscribe(PLATFORM_UPDATES_CHANNEL);
+    };
+  }, []);
 
 useEffect(() => {
     dispatch(setProfile({
@@ -524,7 +555,7 @@ collapseSidebarOnClick: true,
             showQuizLink={resolvedUser.role === "STUDENT"}
             showQuestionFilter={showQuestionFilter}
             useModalForPrimary={headerUseModal}
-            socialHandles={socialHandles}
+            socialLinks={liveSocialLinks}
             userId={resolvedUser.id}
           />
 

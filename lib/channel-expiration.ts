@@ -10,6 +10,7 @@ import Channel from "@/models/Channel";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
+import { recordWalletHistoryEvent } from "@/lib/wallet-history";
 import type { FeedQuestion } from "@/types/question";
 import "@/models/Question";
 
@@ -290,6 +291,26 @@ export async function processExpiredChannels(
           qualificationThreshold: config.qualificationThreshold,
         });
 
+        if (pointsEarned > 0) {
+          await recordWalletHistoryEvent({
+            userId: teacherId,
+            type: "AUTO_CLOSE_REWARD",
+            title: "Auto-close reward",
+            description: question?.title
+              ? `Auto-rated ${AUTO_CLOSE_RATING}/5 for "${question.title}" after the asker did not respond.`
+              : `Auto-rated ${AUTO_CLOSE_RATING}/5 after the asker did not respond.`,
+            pointsDelta: pointsEarned,
+            metadata: {
+              channelId,
+              questionId: question?._id?.toString() ?? null,
+              rating: AUTO_CLOSE_RATING,
+              answerFormat: existingAnswer.answerFormat,
+            },
+          }).catch((error) => {
+            console.error("[wallet-history] Failed to record auto-close reward", error);
+          });
+        }
+
         const teacherNotif = await Notification.create({
           userId: teacherId,
           type: "RATING_RECEIVED",
@@ -357,6 +378,24 @@ export async function processExpiredChannels(
     const question = channel.questionId as PopulatedQuestion | null;
     const askerId = getRefId(channel.askerId as RefLike);
     const askerSnapshot = getUserSnapshot(channel.askerId as RefLike);
+
+    if (teacherId) {
+      await recordWalletHistoryEvent({
+        userId: teacherId,
+        type: "TIMEOUT_PENALTY",
+        title: "Timeout penalty",
+        description: question?.title
+          ? `You did not answer "${question.title}" before the deadline.`
+          : "You did not submit an answer before the deadline.",
+        pointsDelta: -penalty,
+        metadata: {
+          channelId,
+          questionId: question?._id?.toString() ?? null,
+        },
+      }).catch((error) => {
+        console.error("[wallet-history] Failed to record timeout penalty", error);
+      });
+    }
 
     if (question) {
       const currentResetCount = question.resetCount || 0;

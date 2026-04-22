@@ -23,6 +23,14 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   keywords: ["education", "Q&A", "courses", "learning platform", "student help"],
   authors: [{ name: APP_NAME }],
   creator: APP_NAME,
@@ -35,9 +43,9 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     images: [
       {
-        url: "/apple-icon.png", // Fallback to icon; ideally a dedicated og-image.png in /public
-        width: 1200,
-        height: 630,
+        url: "/logo.png",
+        width: 676,
+        height: 369,
         alt: `${APP_NAME} Platform`,
       },
     ],
@@ -46,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/apple-icon.png"],
+    images: ["/logo.png"],
   },
   robots: {
     index: true,

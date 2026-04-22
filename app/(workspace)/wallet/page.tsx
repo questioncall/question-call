@@ -12,7 +12,7 @@ export default async function WalletPage() {
   }
 
   if (session.user.role === "ADMIN") {
-    redirect("/admin/pricing");
+    redirect("/admin/settings");
   }
 
   return <WalletClient />;

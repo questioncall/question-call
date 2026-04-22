@@ -8,7 +8,7 @@ type AppRole = "STUDENT" | "TEACHER" | "ADMIN";
 const defaultPathByRole: Record<AppRole, string> = {
   STUDENT: "/",
   TEACHER: "/",
-  ADMIN: "/admin/pricing",
+  ADMIN: "/admin/settings",
 };
 
 const sessionCookieNames = [

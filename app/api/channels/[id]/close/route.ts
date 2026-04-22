@@ -12,6 +12,7 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { calcTotalPointsEarned } from "@/lib/points";
+import { recordWalletHistoryEvent } from "@/lib/wallet-history";
 import type { FeedQuestion } from "@/types/question";
 
 const BAYESIAN_SEED_VOTES = 5;
@@ -193,6 +194,23 @@ export async function POST(
       const maxResets = config.maxQuestionResetCount || 3;
       const question = await Question.findById(channel.questionId) as PopulatedQuestion | null;
 
+      await recordWalletHistoryEvent({
+        userId: teacher._id,
+        type: "LOW_RATING_PENALTY",
+        title: "Low-rating penalty",
+        description: question?.title
+          ? `Student rated "${question.title}" with 1/5 stars.`
+          : "Student rated your solution with 1/5 stars.",
+        pointsDelta: -penalty,
+        metadata: {
+          channelId: channel._id.toString(),
+          questionId: channel.questionId.toString(),
+          rating,
+        },
+      }).catch((error) => {
+        console.error("[wallet-history] Failed to record low-rating penalty", error);
+      });
+
       if (question) {
         const currentResetCount = question.resetCount || 0;
 
@@ -318,6 +336,26 @@ export async function POST(
         }),
         UPDATE_PIPELINE_OPTIONS,
       );
+
+      if (pointsEarned > 0) {
+        await recordWalletHistoryEvent({
+          userId: teacher._id,
+          type: "ANSWER_REWARD",
+          title: "Answer reward",
+          description: question?.title
+            ? `Student rated "${question.title}" with ${rating}/5 stars.`
+            : `Student rated your solution ${rating}/5 stars.`,
+          pointsDelta: pointsEarned,
+          metadata: {
+            channelId: channel._id.toString(),
+            questionId: channel.questionId.toString(),
+            rating,
+            answerFormat: answer?.answerFormat ?? null,
+          },
+        }).catch((error) => {
+          console.error("[wallet-history] Failed to record answer reward", error);
+        });
+      }
 
       const notifMessage = teacher.isMonetized && answer
         ? `Student rated your solution ${rating}/5 stars. Points credited!`

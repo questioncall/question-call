@@ -7,10 +7,44 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { pointsToNpr, roundPoints } from "@/lib/points";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
+import Transaction from "@/models/Transaction";
 import User from "@/models/User";
+import WalletHistoryEvent from "@/models/WalletHistoryEvent";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 
 export const dynamic = "force-dynamic";
+
+type WalletEarningHistoryItem = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  pointsDelta: number;
+  nprAmount: number | null;
+  occurredAt: string;
+};
+
+type WalletHistoryEventRow = {
+  _id: { toString(): string };
+  type: string;
+  title: string;
+  description?: string | null;
+  pointsDelta: number;
+  occurredAt: Date;
+};
+
+type CourseSaleCreditMetadata = {
+  courseName?: string;
+  netAmount?: number;
+  pricingModel?: string;
+};
+
+type CourseSaleCreditRow = {
+  _id: { toString(): string };
+  amount: number;
+  createdAt: Date;
+  metadata?: CourseSaleCreditMetadata | null;
+};
 
 export async function GET() {
   try {
@@ -45,6 +79,7 @@ export async function GET() {
       session.user.role === "STUDENT"
         ? await getQuizSubscriptionSnapshot(session.user.id)
         : null;
+    const historyLimit = 50;
 
     const withdrawalHistory = await WithdrawalRequest.find({
       teacherId: session.user.id,
@@ -95,6 +130,69 @@ export async function GET() {
       questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
     }
 
+    let earningHistory: WalletEarningHistoryItem[] = [];
+
+    if (session.user.role === "TEACHER") {
+      const [walletHistoryEvents, courseSaleCredits] = await Promise.all([
+        WalletHistoryEvent.find({ userId: session.user.id })
+          .select("_id type title description pointsDelta occurredAt")
+          .sort({ occurredAt: -1 })
+          .limit(historyLimit)
+          .lean(),
+        Transaction.find({
+          userId: session.user.id,
+          type: "COURSE_SALE_CREDIT",
+          status: "COMPLETED",
+        })
+          .select("_id amount createdAt metadata")
+          .sort({ createdAt: -1 })
+          .limit(historyLimit)
+          .lean(),
+      ]);
+
+      const walletEventHistory = (walletHistoryEvents as WalletHistoryEventRow[]).map(
+        (event) => ({
+          id: event._id.toString(),
+          type: event.type,
+          title: event.title,
+          description: event.description ?? null,
+          pointsDelta: roundPoints(event.pointsDelta),
+          nprAmount: null,
+          occurredAt: new Date(event.occurredAt).toISOString(),
+        }),
+      );
+
+      const courseSaleHistory = (courseSaleCredits as CourseSaleCreditRow[]).map(
+        (transaction) => {
+          const metadata = transaction.metadata ?? null;
+          const courseName = metadata?.courseName?.trim();
+          const pricingModel = metadata?.pricingModel?.trim();
+
+          return {
+            id: transaction._id.toString(),
+            type: "COURSE_SALE_CREDIT",
+            title: "Course sale credit",
+            description: courseName
+              ? pricingModel
+                ? `${courseName} (${pricingModel})`
+                : courseName
+              : "Teacher payout from a course sale.",
+            pointsDelta: roundPoints(transaction.amount),
+            nprAmount: roundPoints(metadata?.netAmount ?? transaction.amount),
+            occurredAt: new Date(transaction.createdAt).toISOString(),
+          };
+        },
+      );
+
+      earningHistory = [...walletEventHistory, ...courseSaleHistory]
+        .sort(
+          (left, right) =>
+            new Date(right.occurredAt).getTime() -
+            new Date(left.occurredAt).getTime(),
+        )
+        .slice(0, historyLimit);
+    }
+
     return NextResponse.json({
       role: session.user.role,
       userName: user.name,
@@ -127,6 +225,7 @@ export async function GET() {
       pendingWithdrawal: roundPoints(pendingWithdrawal),
       totalPenaltyPoints,
       creditablePoints: roundPoints(pointBalance),
+      earningHistory,
     });
   } catch (error) {
     console.error("[GET /api/wallet]", error);

@@ -7,7 +7,7 @@ import User from "@/models/User";
 const profileSchema = z.object({
   name: z.string().min(2).max(80).optional(),
   bio: z.string().max(500).optional().nullable(),
-  userImage: z.string().url().optional().nullable(),
+  userImage: z.string().url().optional().nullable().or(z.literal("")),
   skills: z.array(z.string()).optional(),
   interests: z.array(z.string()).optional(),
 });

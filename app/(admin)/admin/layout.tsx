@@ -4,8 +4,10 @@ import { Logo } from "@/components/shared/logo";
 import { SignOutButton } from "@/components/shared/sign-out-button";
 import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 import { AdminHeaderClient } from "@/components/admin/admin-header-client";
+import { AdminSearchClient } from "@/components/admin/admin-search-client";
 import { AdminNav } from "./admin-nav";
 import { connectToDatabase } from "@/lib/mongodb";
+import { ADMIN_NAV_ITEMS } from "@/lib/admin-portal";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
@@ -30,24 +32,6 @@ async function getAdminCounts(adminUserId: string) {
   };
 }
 
-const adminNavItems = [
-  { href: "/admin/pricing", label: "Pricing" },
-  { href: "/admin/payment-config", label: "Payment config" },
-  { href: "/admin/format-config", label: "Format config" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/withdrawals", label: "Withdrawals" },
-  { href: "/admin/transactions", label: "Transactions" },
-  { href: "/admin/notifications", label: "Notifications" },
-  { href: "/admin/notices", label: "Notices" },
-  { href: "/admin/quiz-management", label: "Quiz management" },
-  { href: "/admin/ai-keys", label: "AI Keys" },
-  { href: "/admin/courses", label: "Courses" },
-  { href: "/admin/courses/coupons", label: "Coupons" },
-  { href: "/admin/live-sessions", label: "Live sessions" },
-  { href: "/admin/legal", label: "Legal" },
-  { href: "/admin/settings", label: "Settings" },
-] as const;
-
 export default async function AdminPortalLayout({
   children,
 }: Readonly<{
@@ -69,18 +53,21 @@ export default async function AdminPortalLayout({
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background">
         <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-<div>
-              <Logo href="/admin/pricing" prefetch={false} showTagline={false} />
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0 xl:w-[17rem]">
+              <Logo href="/admin/settings" prefetch={false} showTagline={false} />
               <p className="mt-1 text-sm text-muted-foreground">Admin portal</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-1 justify-center">
+              <AdminSearchClient />
+            </div>
+            <div className="flex items-center justify-end gap-4 xl:w-[23rem]">
               <AdminHeaderClient initialCounts={counts} />
               <SignOutButton />
             </div>
           </div>
 
-          <AdminNav items={[...adminNavItems]} />
+          <AdminNav items={[...ADMIN_NAV_ITEMS]} />
         </div>
       </header>
 
