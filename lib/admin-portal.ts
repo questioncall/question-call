@@ -195,13 +195,14 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
 ];
 
 export const ADMIN_NAV_ITEMS = [
+  { href: "/admin/transactions", label: "Transactions" },
+  { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/settings", label: "Settings" },
+  { href: "/admin/social", label: "Social Media" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/pricing", label: "Pricing" },
   { href: "/admin/payment-config", label: "Payment config" },
   { href: "/admin/format-config", label: "Format config" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/withdrawals", label: "Withdrawals" },
-  { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/notices", label: "Notices" },
   { href: "/admin/quiz-management", label: "Quiz management" },
