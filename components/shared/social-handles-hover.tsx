@@ -82,9 +82,9 @@ export function SocialHandlesHover({
                     </span>
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-xs font-semibold text-foreground">{meta.label}</p>
-                      <p className="text-[10px] leading-3 text-muted-foreground [overflow-wrap:anywhere]">
+                      {/* <p className="text-[10px] leading-3 text-muted-foreground [overflow-wrap:anywhere]">
                         {item.url}
-                      </p>
+                      </p> */}
                     </div>
                   </div>
                 </a>
