@@ -4,7 +4,6 @@ import Notice from "@/models/Notice";
 import User from "@/models/User";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import type { NoticeRecord } from "@/models/Notice";
 
 export async function GET() {
   try {
@@ -16,7 +15,7 @@ export async function GET() {
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id).select("seenNotices role email");
+    const user = await User.findById(session.user.id).select("seenNotices role email createdAt");
     if (!user) {
       console.log("[GET /api/notices] User not found in DB");
       return NextResponse.json([]);
@@ -25,6 +24,12 @@ export async function GET() {
     console.log("[GET /api/notices] User:", user.email, "Role:", user.role, "Seen:", user.seenNotices);
 
     const seenNotices = user.seenNotices || [];
+    const joinedAt =
+      user.createdAt instanceof Date
+        ? user.createdAt
+        : user.createdAt
+          ? new Date(user.createdAt)
+          : null;
 
     // Base query: isActive, not expired
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +41,10 @@ export async function GET() {
         { expiresAt: null },
       ]
     };
+
+    if (joinedAt && !Number.isNaN(joinedAt.getTime())) {
+      query.createdAt = { $gte: joinedAt };
+    }
 
     // Audience matching logic: "ALL", or User's exact role, or "SPECIFIC" with email match
     query.$and = [

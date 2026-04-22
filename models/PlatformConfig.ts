@@ -31,9 +31,86 @@ import {
   DEFAULT_PLATFORM_SOCIAL_HANDLES,
   getDefaultPlatformSocialLinks,
   normalizePlatformSocialLinks,
+  CONTACT_SERVICE_EMAIL,
+  MAX_CUSTOMER_SERVICE_CONTACTS,
   type PlatformSocialLink,
   type SocialHandleKey,
 } from "@/lib/constants";
+
+const DEFAULT_CUSTOMER_SERVICE_EMAILS = [CONTACT_SERVICE_EMAIL];
+
+function getFallbackCustomerServicePhoneNumbers(
+  config: Partial<PlatformConfigRecord> | null | undefined,
+) {
+  const fallbackPhoneNumber = config?.manualPaymentEsewaNumber?.trim();
+
+  return fallbackPhoneNumber ? [fallbackPhoneNumber] : [];
+}
+
+function collectCustomerServiceEntries(
+  rawEntries: unknown,
+  options?: { lowercase?: boolean },
+) {
+  if (!Array.isArray(rawEntries)) {
+    return [];
+  }
+
+  const normalizedEntries: string[] = [];
+  const seenEntries = new Set<string>();
+
+  for (const rawEntry of rawEntries) {
+    if (typeof rawEntry !== "string") {
+      continue;
+    }
+
+    const trimmedEntry = rawEntry.trim();
+    const normalizedEntry = options?.lowercase
+      ? trimmedEntry.toLowerCase()
+      : trimmedEntry;
+
+    if (!normalizedEntry) {
+      continue;
+    }
+
+    if (seenEntries.has(normalizedEntry)) {
+      continue;
+    }
+
+    seenEntries.add(normalizedEntry);
+    normalizedEntries.push(normalizedEntry);
+
+    if (normalizedEntries.length >= MAX_CUSTOMER_SERVICE_CONTACTS) {
+      break;
+    }
+  }
+
+  return normalizedEntries;
+}
+
+function areStringArraysEqual(
+  left: readonly string[],
+  right: readonly string[],
+) {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+export function normalizeCustomerServiceEntries(
+  rawEntries: unknown,
+  options?: { fallback?: string[]; lowercase?: boolean },
+) {
+  const normalizedEntries = collectCustomerServiceEntries(rawEntries, options);
+
+  if (normalizedEntries.length > 0) {
+    return normalizedEntries;
+  }
+
+  return options?.fallback
+    ? collectCustomerServiceEntries(options.fallback, options)
+    : [];
+}
 
 const platformConfigSchema = new Schema(
   {
@@ -265,6 +342,39 @@ const platformConfigSchema = new Schema(
       default: "/QUESTION_HUB_PAYMENT_QR_CODE.jpeg",
       trim: true,
     },
+    customerServicePhoneNumbers: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          maxlength: 40,
+        },
+      ],
+      default: [],
+      validate: {
+        validator: (value: string[]) =>
+          Array.isArray(value) &&
+          value.length <= MAX_CUSTOMER_SERVICE_CONTACTS,
+        message: `A maximum of ${MAX_CUSTOMER_SERVICE_CONTACTS} customer service phone numbers is allowed.`,
+      },
+    },
+    customerServiceEmails: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          lowercase: true,
+          maxlength: 120,
+        },
+      ],
+      default: () => [...DEFAULT_CUSTOMER_SERVICE_EMAILS],
+      validate: {
+        validator: (value: string[]) =>
+          Array.isArray(value) &&
+          value.length <= MAX_CUSTOMER_SERVICE_CONTACTS,
+        message: `A maximum of ${MAX_CUSTOMER_SERVICE_CONTACTS} customer service emails is allowed.`,
+      },
+    },
 
     // ─── Points Earning Config (Phase 7) ──────────────────────────
     pointsPerTextAnswer: {
@@ -455,6 +565,39 @@ export async function getPlatformConfig(): Promise<PlatformConfigDocument> {
       shouldSave = true;
     }
 
+    const normalizedCustomerServicePhoneNumbers = normalizeCustomerServiceEntries(
+      config.customerServicePhoneNumbers,
+      {
+        fallback: getFallbackCustomerServicePhoneNumbers(config),
+      },
+    );
+    if (
+      !areStringArraysEqual(
+        config.customerServicePhoneNumbers ?? [],
+        normalizedCustomerServicePhoneNumbers,
+      )
+    ) {
+      config.customerServicePhoneNumbers = normalizedCustomerServicePhoneNumbers;
+      shouldSave = true;
+    }
+
+    const normalizedCustomerServiceEmails = normalizeCustomerServiceEntries(
+      config.customerServiceEmails,
+      {
+        fallback: DEFAULT_CUSTOMER_SERVICE_EMAILS,
+        lowercase: true,
+      },
+    );
+    if (
+      !areStringArraysEqual(
+        config.customerServiceEmails ?? [],
+        normalizedCustomerServiceEmails,
+      )
+    ) {
+      config.customerServiceEmails = normalizedCustomerServiceEmails;
+      shouldSave = true;
+    }
+
     if (shouldSave) {
       await config.save();
     }
@@ -563,6 +706,23 @@ export function getManualPaymentDetails(config: Partial<PlatformConfigRecord> | 
       config?.manualPaymentEsewaNumber?.trim() || "9819748466",
     qrCodeUrl:
       config?.manualPaymentQrCodeUrl?.trim() || "/QUESTION_HUB_PAYMENT_QR_CODE.jpeg",
+  };
+}
+
+export function getCustomerServiceDetails(
+  config: Partial<PlatformConfigRecord> | null | undefined,
+) {
+  return {
+    phoneNumbers: normalizeCustomerServiceEntries(
+      config?.customerServicePhoneNumbers,
+      {
+        fallback: getFallbackCustomerServicePhoneNumbers(config),
+      },
+    ),
+    emails: normalizeCustomerServiceEntries(config?.customerServiceEmails, {
+      fallback: DEFAULT_CUSTOMER_SERVICE_EMAILS,
+      lowercase: true,
+    }),
   };
 }
 

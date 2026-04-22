@@ -7,7 +7,11 @@ import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
-import { getPlatformConfig, getPlatformSocialLinks } from "@/models/PlatformConfig";
+import {
+  getCustomerServiceDetails,
+  getPlatformConfig,
+  getPlatformSocialLinks,
+} from "@/models/PlatformConfig";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,7 +20,13 @@ export default async function HomePage() {
   const session = await getSafeServerSession();
 
   if (!session?.user) {
-    return <PublicLanding />;
+    const config = await getPlatformConfig();
+    return (
+      <PublicLanding
+        trialDays={config.trialDays}
+        customerService={getCustomerServiceDetails(config)}
+      />
+    );
   }
 
   if (session.user.role === "ADMIN") {

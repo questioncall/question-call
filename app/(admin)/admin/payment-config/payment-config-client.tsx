@@ -1,8 +1,15 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { ChangeEvent, useEffect, useState } from "react";
-import { Loader2Icon, QrCodeIcon, SaveIcon, UploadCloudIcon } from "lucide-react";
+import { type ChangeEvent, type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import {
+  Loader2Icon,
+  MailIcon,
+  PhoneIcon,
+  QrCodeIcon,
+  SaveIcon,
+  UploadCloudIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,17 +17,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { postMultipartWithProgress } from "@/lib/client-upload";
+import {
+  CONTACT_SERVICE_EMAIL,
+  MAX_CUSTOMER_SERVICE_CONTACTS,
+} from "@/lib/constants";
 
 type ManualPaymentConfig = {
   manualPaymentRecipientName?: string;
   manualPaymentEsewaNumber?: string;
   manualPaymentQrCodeUrl?: string;
+  customerServicePhoneNumbers?: string[];
+  customerServiceEmails?: string[];
 };
 
 const FALLBACK_QR = "/QUESTION_HUB_PAYMENT_QR_CODE.jpeg";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function getCustomerServiceSlots(values?: string[]) {
+  return Array.from(
+    { length: MAX_CUSTOMER_SERVICE_CONTACTS },
+    (_, index) => values?.[index] ?? "",
+  );
 }
 
 export function PaymentConfigClient() {
@@ -32,6 +52,13 @@ export function PaymentConfigClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [customerServicePhoneNumbers, setCustomerServicePhoneNumbers] = useState<string[]>(
+    () => getCustomerServiceSlots(),
+  );
+  const [customerServiceEmails, setCustomerServiceEmails] = useState<string[]>(
+    () => getCustomerServiceSlots([CONTACT_SERVICE_EMAIL]),
+  );
+  const [savingCustomerService, setSavingCustomerService] = useState(false);
 
   useEffect(() => {
     async function fetchConfig() {
@@ -46,6 +73,16 @@ export function PaymentConfigClient() {
         setRecipientName(data.manualPaymentRecipientName || "Jiban Mijhar");
         setEsewaNumber(data.manualPaymentEsewaNumber || "9819748466");
         setQrPreview(data.manualPaymentQrCodeUrl || FALLBACK_QR);
+        setCustomerServicePhoneNumbers(
+          getCustomerServiceSlots(data.customerServicePhoneNumbers),
+        );
+        setCustomerServiceEmails(
+          getCustomerServiceSlots(
+            data.customerServiceEmails?.length
+              ? data.customerServiceEmails
+              : [CONTACT_SERVICE_EMAIL],
+          ),
+        );
       } catch (error) {
         toast.error(getErrorMessage(error));
       } finally {
@@ -111,6 +148,58 @@ export function PaymentConfigClient() {
     }
   };
 
+  const updateCustomerServiceSlot = (
+    index: number,
+    value: string,
+    setter: Dispatch<SetStateAction<string[]>>,
+  ) => {
+    setter((current) =>
+      current.map((entry, currentIndex) =>
+        currentIndex === index ? value : entry,
+      ),
+    );
+  };
+
+  const handleSaveCustomerService = async () => {
+    setSavingCustomerService(true);
+
+    try {
+      const response = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerServicePhoneNumbers: customerServicePhoneNumbers,
+          customerServiceEmails,
+        }),
+      });
+
+      const data = (await response.json()) as ManualPaymentConfig & {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update customer service info");
+      }
+
+      setConfig(data);
+      setCustomerServicePhoneNumbers(
+        getCustomerServiceSlots(data.customerServicePhoneNumbers),
+      );
+      setCustomerServiceEmails(
+        getCustomerServiceSlots(
+          data.customerServiceEmails?.length
+            ? data.customerServiceEmails
+            : [CONTACT_SERVICE_EMAIL],
+        ),
+      );
+      toast.success("Customer service details updated for the public footer.");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSavingCustomerService(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -124,10 +213,10 @@ export function PaymentConfigClient() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           <QrCodeIcon className="mr-2 inline-block size-6 text-primary" />
-          Manual Payment Config
+          Payment & Customer Service Config
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Update the name, eSewa number, and QR image shown on the manual payment page.
+          Update manual payment details and the customer service contacts shown in the public landing footer.
         </p>
       </div>
 
@@ -214,6 +303,112 @@ export function PaymentConfigClient() {
               <SaveIcon className="mr-2 size-4" />
             )}
             Save Manual Payment Config
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Customer Service Footer</CardTitle>
+          <CardDescription>
+            Add up to {MAX_CUSTOMER_SERVICE_CONTACTS} phone numbers and {MAX_CUSTOMER_SERVICE_CONTACTS} emails for the public landing page footer.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4 rounded-2xl border border-border bg-background p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <PhoneIcon className="size-4" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Phone numbers</p>
+                <p className="text-xs text-muted-foreground">
+                  These will be shown as tap-to-call chips in the footer.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {customerServicePhoneNumbers.map((phoneNumber, index) => (
+                <div key={`customer-phone-${index}`} className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Number {index + 1}
+                  </label>
+                  <Input
+                    value={phoneNumber}
+                    onChange={(event) =>
+                      updateCustomerServiceSlot(
+                        index,
+                        event.target.value,
+                        setCustomerServicePhoneNumbers,
+                      )
+                    }
+                    placeholder="e.g. +977 98XXXXXXXX"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-2xl border border-border bg-background p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <MailIcon className="size-4" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Highlighted emails</p>
+                <p className="text-xs text-muted-foreground">
+                  These appear with stronger emphasis in the public footer.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {customerServiceEmails.map((email, index) => (
+                <div key={`customer-email-${index}`} className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Email {index + 1}
+                  </label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(event) =>
+                      updateCustomerServiceSlot(
+                        index,
+                        event.target.value,
+                        setCustomerServiceEmails,
+                      )
+                    }
+                    placeholder={
+                      index === 0
+                        ? CONTACT_SERVICE_EMAIL
+                        : "support@example.com"
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs leading-5 text-muted-foreground">
+              If all email slots are cleared, the default support email will stay available so the footer never becomes empty.
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col items-stretch gap-3 bg-muted/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-5 text-muted-foreground">
+            This uses the same cached PlatformConfig record as the rest of the site, so it adds only a very small server-side read on the public homepage.
+          </p>
+          <Button
+            onClick={handleSaveCustomerService}
+            disabled={savingCustomerService}
+            className="w-full sm:w-auto"
+          >
+            {savingCustomerService ? (
+              <Loader2Icon className="mr-2 size-4 animate-spin" />
+            ) : (
+              <SaveIcon className="mr-2 size-4" />
+            )}
+            Save Customer Service
           </Button>
         </CardFooter>
       </Card>

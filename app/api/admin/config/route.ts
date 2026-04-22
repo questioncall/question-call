@@ -6,7 +6,9 @@ import PlatformConfig, {
   getPlatformConfig,
   clearPlatformConfigCache,
   getPlatformSocialLinks,
+  normalizeCustomerServiceEntries,
 } from "@/models/PlatformConfig";
+import { CONTACT_SERVICE_EMAIL } from "@/lib/constants";
 import { pusherServer } from "@/lib/pusher/pusherServer";
 import {
   ADMIN_UPDATES_CHANNEL,
@@ -69,6 +71,22 @@ export async function PUT(request: Request) {
       const normalizedSocialLinks = normalizePlatformSocialLinks(updates.socialLinks);
       updates.socialLinks = normalizedSocialLinks;
       Object.assign(updates, getLegacySocialHandleUpdates(normalizedSocialLinks));
+    }
+
+    if ("customerServicePhoneNumbers" in updates) {
+      updates.customerServicePhoneNumbers = normalizeCustomerServiceEntries(
+        updates.customerServicePhoneNumbers,
+      );
+    }
+
+    if ("customerServiceEmails" in updates) {
+      updates.customerServiceEmails = normalizeCustomerServiceEntries(
+        updates.customerServiceEmails,
+        {
+          fallback: [CONTACT_SERVICE_EMAIL],
+          lowercase: true,
+        },
+      );
     }
 
     await connectToDatabase();

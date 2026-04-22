@@ -29,6 +29,8 @@ import {
   UsersIcon,
   CalendarIcon,
   BookOpenIcon,
+  MailIcon,
+  PhoneIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -41,6 +43,31 @@ function LandingStyles() {
     <style>{`
       .lpb-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
       .lpb-btn:hover { transform: translateY(-2px); }
+      .lpb-nav-chip { border: 1px solid transparent; transition: all 0.2s ease; }
+      .lpb-nav-chip:hover {
+        transform: translateY(-1px);
+        background: rgba(31,118,110,0.1);
+        border-color: rgba(31,118,110,0.22);
+        box-shadow: 0 12px 28px rgba(31,118,110,0.12);
+      }
+      .lpb-section-pill {
+        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        box-shadow: 0 0 0 rgba(31,118,110,0);
+      }
+      .lpb-section-pill:hover {
+        transform: translateY(-1px) scale(1.02);
+        filter: saturate(1.08) brightness(1.02);
+        box-shadow: 0 12px 28px rgba(31,118,110,0.12);
+      }
+      .lpb-footer-link,
+      .lpb-footer-contact-chip {
+        transition: transform 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+      .lpb-footer-contact-row { justify-content: flex-end; }
+      .lpb-footer-link:hover,
+      .lpb-footer-contact-chip:hover {
+        transform: translateY(-1px);
+      }
       .lpb-btn-primary { background: linear-gradient(135deg, #1f766e, #0f5c55); box-shadow: 0 4px 14px rgba(31,118,110,0.4); }
       .lpb-btn-primary:hover { background: linear-gradient(135deg, #238e87, #1a6d65); box-shadow: 0 8px 28px rgba(31,118,110,0.55), 0 0 20px rgba(31,118,110,0.25); }
       .lpb-btn-secondary { border: 1.5px solid rgba(31,118,110,0.35); background: rgba(255,255,255,0.8); }
@@ -81,6 +108,9 @@ function LandingStyles() {
           align-items: center !important;
           width: 100%;
         }
+        .lpb-footer-contact-row {
+          justify-content: center !important;
+        }
         .lpb-stats-bar {
           min-width: 0 !important;
           justify-content: center !important;
@@ -107,6 +137,11 @@ type BenefitItem = {
   desc: string;
 };
 
+type CustomerServiceDetails = {
+  phoneNumbers: string[];
+  emails: string[];
+};
+
 type PlatformData = {
   name: string;
   tagline: string;
@@ -120,6 +155,10 @@ type PlatformData = {
 };
 
 const QUALIFICATION_ANSWERS = 10;
+const DEFAULT_CUSTOMER_SERVICE_DETAILS: CustomerServiceDetails = {
+  phoneNumbers: [],
+  emails: [CONTACT_SERVICE_EMAIL],
+};
 
 const PLATFORM: PlatformData = {
   name: APP_NAME,
@@ -369,9 +408,8 @@ function Nav() {
                 color: isDark ? "#9dc8c3" : "#2a6b64",
                 textDecoration: "none",
                 borderRadius: 8,
-                transition: "all 0.15s",
               }}
-              className="nav-link"
+              className="nav-link lpb-nav-chip"
             >
               {label}
             </a>
@@ -520,37 +558,6 @@ function Hero({ isDark }: { isDark: boolean }) {
           textAlign: "center",
         }}
       >
-        {/* Pill badge */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "0.4rem 1rem",
-            borderRadius: 100,
-            border: `1px solid rgba(31,118,110,${isDark ? "0.4" : "0.3"})`,
-            background: isDark
-              ? "rgba(31,118,110,0.12)"
-              : "rgba(31,118,110,0.07)",
-            marginBottom: "1.5rem",
-            transition: "all 0.4s",
-            opacity: count ? 1 : 0,
-            transform: count ? "translateY(0)" : "translateY(-10px)",
-          }}
-        >
-          <GraduationCapIcon size={14} color="#1f766e" />
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#1f766e",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Fast teacher help for classrooms
-          </span>
-        </div>
-
         <h1
           style={{
             fontSize: "clamp(2.6rem,6vw,4.5rem)",
@@ -590,11 +597,10 @@ function Hero({ isDark }: { isDark: boolean }) {
           }}
         >
           Students post academic questions, teachers accept them live, and a
-          focused answer channel opens immediately.
+          private answer channel opens right away.
           <br />
-          Built around fast 15-minute response windows, with chat, audio and
-          video calls, plus file sharing while the solution is being worked
-          out.
+          Get help within 15 minutes using chat, audio or video calls, and
+          file sharing while the answer is being solved.
         </p>
 
         <div
@@ -1258,7 +1264,13 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
 }
 
 /* ─────────────────────── FOR STUDENTS ─────────────────────── */
-function ForStudents({ isDark }: { isDark: boolean }) {
+function ForStudents({
+  isDark,
+  trialDays,
+}: {
+  isDark: boolean;
+  trialDays: number;
+}) {
   const { ref, visible } = useScrollReveal();
   return (
     <section
@@ -1275,7 +1287,7 @@ function ForStudents({ isDark }: { isDark: boolean }) {
         <SectionLabel label="For Students" />
         <h2 style={headingStyle(isDark)}>Ask once and keep learning</h2>
         <p style={subStyle(isDark)}>
-          Start with a {PLATFORM.trialDays}-day free trial, get fast teacher
+          Start with a {trialDays}-day free trial, get fast teacher
           help, and keep building with quizzes and courses in the same student
           workspace.
         </p>
@@ -2448,7 +2460,13 @@ function Comparison({ isDark }: { isDark: boolean }) {
 }
 
 /* ─────────────────────── CTA ─────────────────────── */
-function CTASection({ isDark }: { isDark: boolean }) {
+function CTASection({
+  isDark,
+  trialDays,
+}: {
+  isDark: boolean;
+  trialDays: number;
+}) {
   const { ref, visible } = useScrollReveal();
   return (
     <section
@@ -2520,7 +2538,7 @@ function CTASection({ isDark }: { isDark: boolean }) {
               letterSpacing: "0.06em",
             }}
           >
-            {PLATFORM.trialDays}-day free trial for students
+            {trialDays}-day free trial for students
           </span>
         </div>
 
@@ -2608,8 +2626,16 @@ function CTASection({ isDark }: { isDark: boolean }) {
 }
 
 /* ─────────────────────── FOOTER ─────────────────────── */
-function Footer({ isDark }: { isDark: boolean }) {
+function Footer({
+  isDark,
+  customerService,
+}: {
+  isDark: boolean;
+  customerService: CustomerServiceDetails;
+}) {
   const border = isDark ? "rgba(31,118,110,0.18)" : "rgba(31,118,110,0.14)";
+  const hasCustomerService =
+    customerService.phoneNumbers.length > 0 || customerService.emails.length > 0;
   return (
     <footer
       style={{
@@ -2671,6 +2697,7 @@ function Footer({ isDark }: { isDark: boolean }) {
             <Link
               key={label}
               href={href}
+              className="lpb-footer-link"
               style={{
                 fontSize: 13,
                 color: isDark ? "#5a9990" : "#6aaba4",
@@ -2701,19 +2728,102 @@ function Footer({ isDark }: { isDark: boolean }) {
           >
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
-          <a
-            href={`mailto:${CONTACT_SERVICE_EMAIL}`}
-            style={{
-              fontSize: 12,
-              color: isDark ? "#5a9990" : "#6aaba4",
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
-          >
-            Contact service: {CONTACT_SERVICE_EMAIL}
-          </a>
+          {hasCustomerService ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "inherit",
+                gap: 8,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: isDark ? "#67a69e" : "#4a8a82",
+                  margin: 0,
+                }}
+              >
+                Contact us
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: isDark ? "#7eb8b1" : "#5e8d86",
+                  margin: 0,
+                }}
+              >
+                Customer service
+              </p>
+              <div
+                className="lpb-footer-contact-row"
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  maxWidth: 360,
+                }}
+              >
+                {customerService.phoneNumbers.map((phoneNumber) => (
+                  <a
+                    key={phoneNumber}
+                    href={`tel:${phoneNumber.replace(/[^\d+]/g, "")}`}
+                    className="lpb-footer-contact-chip"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "0.45rem 0.75rem",
+                      borderRadius: 999,
+                      border: `1px solid ${isDark ? "rgba(31,118,110,0.24)" : "rgba(31,118,110,0.18)"}`,
+                      background: isDark
+                        ? "rgba(15,35,30,0.68)"
+                        : "rgba(255,255,255,0.82)",
+                      color: isDark ? "#9dc8c3" : "#2a6b64",
+                      textDecoration: "none",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <PhoneIcon size={12} />
+                    {phoneNumber}
+                  </a>
+                ))}
+                {customerService.emails.map((email) => (
+                  <a
+                    key={email}
+                    href={`mailto:${email}`}
+                    className="lpb-footer-contact-chip"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "0.45rem 0.75rem",
+                      borderRadius: 999,
+                      border: "1px solid rgba(31,118,110,0.28)",
+                      background: isDark
+                        ? "rgba(31,118,110,0.2)"
+                        : "rgba(31,118,110,0.12)",
+                      color: isDark ? "#d2f2ed" : "#0f5c55",
+                      textDecoration: "none",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      boxShadow: "0 10px 24px rgba(31,118,110,0.08)",
+                    }}
+                  >
+                    <MailIcon size={12} />
+                    {email}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <a
             href="https://github.com/siddthecoder"
+            className="lpb-footer-link"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -2748,6 +2858,7 @@ function SectionLabel({
       }}
     >
       <span
+        className="lpb-section-pill"
         style={{
           fontSize: 11.5,
           fontWeight: 800,
@@ -2882,7 +2993,13 @@ function subStyle(isDark: boolean): React.CSSProperties {
 }
 
 /* ─────────────────────── ROOT EXPORT ─────────────────────── */
-export function PublicLanding() {
+export function PublicLanding({
+  trialDays = PLATFORM.trialDays,
+  customerService = DEFAULT_CUSTOMER_SERVICE_DETAILS,
+}: {
+  trialDays?: number;
+  customerService?: CustomerServiceDetails;
+}) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -2901,14 +3018,14 @@ export function PublicLanding() {
         <Hero isDark={isDark} />
         <StatsBar isDark={isDark} />
         <HowItWorks isDark={isDark} />
-        <ForStudents isDark={isDark} />
+        <ForStudents isDark={isDark} trialDays={trialDays} />
         <ForTeachers isDark={isDark} />
         <QuizPortal isDark={isDark} />
         <CourseLibrary isDark={isDark} />
         <Comparison isDark={isDark} />
-        <CTASection isDark={isDark} />
+        <CTASection isDark={isDark} trialDays={trialDays} />
       </main>
-      <Footer isDark={isDark} />
+      <Footer isDark={isDark} customerService={customerService} />
     </div>
   );
 }

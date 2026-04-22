@@ -4,6 +4,7 @@
  */
 export const APP_NAME = "Question Call";
 export const CONTACT_SERVICE_EMAIL = "questioncall24@gmail.com";
+export const MAX_CUSTOMER_SERVICE_CONTACTS = 3;
 export const DEFAULT_SOCIAL_HANDLE_BASE =
   CONTACT_SERVICE_EMAIL.split("@")[0] ?? "questioncall";
 

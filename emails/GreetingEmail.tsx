@@ -1,4 +1,5 @@
 import * as React from "react";
+import { APP_NAME } from "@/lib/constants";
 
 interface GreetingEmailProps {
   fullName: string;
@@ -17,9 +18,9 @@ export function GreetingEmail({
     <div
       style={{
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        backgroundColor: "#f0f4ff",
+        backgroundColor: "#eef8f5",
         padding: "40px 0",
-        color: "#333",
+        color: "#23403b",
       }}
     >
       <table
@@ -30,7 +31,7 @@ export function GreetingEmail({
           margin: "0 auto",
           backgroundColor: "#ffffff",
           borderRadius: "12px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+          boxShadow: "0 12px 32px rgba(15, 92, 85, 0.12)",
           overflow: "hidden",
         }}
       >
@@ -39,7 +40,7 @@ export function GreetingEmail({
           <tr>
             <td
               style={{
-                background: "linear-gradient(90deg, #4f46e5, #3b82f6)",
+                background: "linear-gradient(135deg, #1f766e, #0f5c55)",
                 color: "#fff",
                 padding: "24px 30px",
                 textAlign: "center",
@@ -59,7 +60,7 @@ export function GreetingEmail({
                   fontWeight: "600",
                   fontSize: "20px",
                   marginBottom: "16px",
-                  color: "#1e3a8a",
+                  color: "#0f5c55",
                 }}
               >
                 Hello {fullName.split(" ")[0]},
@@ -71,7 +72,7 @@ export function GreetingEmail({
                   fontSize: "16px",
                   lineHeight: "1.6",
                   marginBottom: "20px",
-                  color: "#374151",
+                  color: "#365d56",
                 }}
               >
                 {message}
@@ -86,7 +87,7 @@ export function GreetingEmail({
                     rel="noopener noreferrer"
                     style={{
                       display: "inline-block",
-                      backgroundColor: "#4f46e5",
+                      backgroundColor: "#1f766e",
                       color: "#ffffff",
                       padding: "12px 20px",
                       borderRadius: "8px",
@@ -104,20 +105,20 @@ export function GreetingEmail({
               {content && (
                 <div
                   style={{
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e0e7ff",
+                    backgroundColor: "#f4fbf8",
+                    border: "1px solid rgba(31, 118, 110, 0.15)",
                     borderRadius: "10px",
                     padding: "16px",
                     fontSize: "15px",
                     lineHeight: "1.6",
-                    color: "#1e40af",
+                    color: "#1a6259",
                     marginBottom: "24px",
                   }}
                   dangerouslySetInnerHTML={{ __html: content }}
                 />
               )}
 
-              <p style={{ fontSize: "14px", color: "#6b7280" }}>
+              <p style={{ fontSize: "14px", color: "#5c7b74" }}>
                 If you have any questions or didn’t request this email, please
                 ignore it or contact our support team.
               </p>
@@ -128,14 +129,14 @@ export function GreetingEmail({
           <tr>
             <td
               style={{
-                backgroundColor: "#f9fafb",
+                backgroundColor: "#f6fbfa",
                 textAlign: "center",
                 padding: "14px",
                 fontSize: "12px",
-                color: "#94a3b8",
+                color: "#86a8a0",
               }}
             >
-              © {new Date().getFullYear()} {process.env.NEXT_PUBLIC_APP_NAME}. All rights reserved.
+              © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
             </td>
           </tr>
         </tbody>

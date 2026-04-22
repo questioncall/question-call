@@ -80,9 +80,20 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     label: "Payment Config",
     href: "/admin/payment-config",
     description:
-      "Manage payment recipient details, QR setup, manual payment copy, and settlement presentation.",
+      "Manage payment recipient details, QR setup, manual payment copy, and public customer-service footer contacts.",
     group: "Platform Config",
-    keywords: ["payment", "esewa", "qr", "manual payment", "recipient", "wallet"],
+    keywords: [
+      "payment",
+      "esewa",
+      "qr",
+      "manual payment",
+      "recipient",
+      "wallet",
+      "customer service",
+      "support email",
+      "support phone",
+      "footer contact",
+    ],
   },
   {
     id: "format-config",
