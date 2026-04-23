@@ -1,5 +1,6 @@
 import Pusher from "pusher";
 
+import { auditCallPayload } from "@/lib/call-logging";
 import type { FeedQuestion } from "@/lib/question-types";
 import type { ChatMessage, ChannelStatus } from "@/types/channel";
 import {
@@ -9,6 +10,7 @@ import {
   CHANNEL_MESSAGE_EVENT,
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
+  MESSAGE_DELETED_EVENT,
   NEW_CHANNEL_EVENT,
   COURSE_UPDATED_EVENT,
   COURSE_UPDATES_CHANNEL,
@@ -130,30 +132,50 @@ export async function emitSubscriptionUpdated(
   await pusherServer.trigger(pusherChannel, SUBSCRIPTION_UPDATED_EVENT, data);
 }
 
-/** Broadcast an incoming call to a specific user */
+/** Broadcast an incoming call to a specific user (global — user channel) */
 export async function emitIncomingCall(
   targetUserId: string,
   payload: {
     callSessionId: string;
     channelId: string;
     callerName: string;
+    callerImage: string | null;
+    callerId: string;
     mode: "AUDIO" | "VIDEO";
   },
 ) {
-  const pusherChannel = getChannelPusherName(payload.channelId);
+  const userPusherChannel = getUserPusherName(targetUserId);
   const { CALL_INCOMING_EVENT } = await import("@/lib/pusher/events");
-  await pusherServer.trigger(pusherChannel, CALL_INCOMING_EVENT, {
-    ...payload,
+  auditCallPayload(CALL_INCOMING_EVENT, payload, {
     targetUserId,
+    channelId: payload.channelId,
+    hasCallerImage: Boolean(payload.callerImage),
   });
+  await pusherServer.trigger(userPusherChannel, CALL_INCOMING_EVENT, payload);
 }
 
-/** Broadcast a call status event (accepted/rejected/ended) on the channel */
-export async function emitCallEvent(
-  channelId: string,
+/** Broadcast a call lifecycle event (accepted/rejected/cancelled/missed) to a specific user */
+export async function emitCallStatusToUser(
+  targetUserId: string,
   event: string,
   payload: Record<string, unknown>,
 ) {
+  const userPusherChannel = getUserPusherName(targetUserId);
+  auditCallPayload(event, payload, {
+    targetUserId,
+  });
+  await pusherServer.trigger(userPusherChannel, event, payload);
+}
+
+/** Broadcast that a message was soft-deleted on a channel */
+export async function emitMessageDeleted(
+  channelId: string,
+  messageId: string,
+  deletedBy: string,
+) {
   const pusherChannel = getChannelPusherName(channelId);
-  await pusherServer.trigger(pusherChannel, event, payload);
+  await pusherServer.trigger(pusherChannel, MESSAGE_DELETED_EVENT, {
+    messageId,
+    deletedBy,
+  });
 }

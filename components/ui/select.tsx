@@ -10,6 +10,7 @@ type SelectOption = {
 };
 
 export function Select({
+  id,
   value,
   onValueChange,
   className,
@@ -18,6 +19,7 @@ export function Select({
   options,
   children,
 }: {
+  id?: string;
   value: string;
   onValueChange: (value: string) => void;
   className?: string;
@@ -36,7 +38,12 @@ export function Select({
     if (children) {
       const items: SelectOption[] = [];
       React.Children.forEach(children, (child) => {
-        if (React.isValidElement(child) && (child.type as any).name === "SelectItem") {
+        const isSelectItem =
+          React.isValidElement(child) &&
+          typeof child.type !== "string" &&
+          child.type.name === "SelectItem";
+
+        if (isSelectItem) {
           const childProps = child.props as { value: string; children: React.ReactNode };
           const label = React.Children.toArray(childProps.children).join("");
           items.push({ value: childProps.value, label });
@@ -66,6 +73,7 @@ export function Select({
   return (
     <div ref={containerRef} className={cn("relative", className)} onMouseDown={(e) => e.stopPropagation()}>
       <button
+        id={id}
         type="button"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => {

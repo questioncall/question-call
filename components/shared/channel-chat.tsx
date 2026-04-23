@@ -21,12 +21,14 @@ import {
   PhoneIncomingIcon,
   PhoneOutgoingIcon,
   PhoneMissedIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import { canDeleteChatMessage } from "@/lib/message-deletion";
 import { getAnswerFormatLabel } from "@/lib/question-types";
 import { cn } from "@/lib/utils";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
@@ -35,9 +37,9 @@ import {
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
   MESSAGE_MARKED_EVENT,
+  MESSAGE_DELETED_EVENT,
   ANSWER_SUBMITTED_EVENT,
   CHANNEL_CLOSED_EVENT,
-  CALL_INCOMING_EVENT,
   getChannelPusherName,
 } from "@/lib/pusher/events";
 import {
@@ -51,6 +53,7 @@ import {
   setChannelRating,
   setAnswerSubmitted,
   toggleMessageMarked,
+  setMessageDeleted,
   markMessagesAsSeen,
   markOwnMessagesAsSeen,
   clearActiveChannel,
@@ -187,6 +190,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const pendingFilesRef = useRef<PendingFile[]>([]);
 
   // ─── Call Logic ──────────────────────────────────────
+  // Outgoing call state is managed globally in workspace-shell.
+  // We dispatch a custom event that workspace-shell listens to.
   const handleStartCall = async (mode: "AUDIO" | "VIDEO") => {
     if (!channelId || startingCallType !== null) return;
     setStartingCallType(mode);
@@ -200,9 +205,15 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       if (!res.ok) {
         throw new Error(data.error || "Failed to start call");
       }
-      router.push(`/calls/${data.callSessionId}`);
+      // Signal the global outgoing call overlay via custom DOM event
+      window.dispatchEvent(
+        new CustomEvent("qc:outgoing-call", {
+          detail: { callSessionId: data.callSessionId, channelId, mode },
+        }),
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error starting call");
+    } finally {
       setStartingCallType(null);
     }
   };
@@ -301,25 +312,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       dispatch(toggleMessageMarked(payload));
     };
 
-    const handleIncomingCall = (payload: {
-      callSessionId: string;
-      channelId: string;
-      callerName: string;
-      mode: "AUDIO" | "VIDEO";
-      targetUserId: string;
-    }) => {
-      if (payload.targetUserId === userId) {
-        toast.info(
-          `${payload.callerName} started an ${payload.mode.toLowerCase()} call`,
-          {
-            duration: 10000,
-            action: {
-              label: "Join Call",
-              onClick: () => router.push(`/calls/${payload.callSessionId}`),
-            },
-          }
-        );
-      }
+    const handleMessageDeleted = (payload: { messageId: string }) => {
+      dispatch(setMessageDeleted({ messageId: payload.messageId }));
     };
 
     pusherChannel.bind(CHANNEL_MESSAGE_EVENT, handleMessage);
@@ -328,7 +322,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     pusherChannel.bind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
     pusherChannel.bind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
     pusherChannel.bind(MESSAGE_MARKED_EVENT, handleMessageMarked);
-    pusherChannel.bind(CALL_INCOMING_EVENT, handleIncomingCall);
+    pusherChannel.bind(MESSAGE_DELETED_EVENT, handleMessageDeleted);
+    // NOTE: Incoming call events are now handled globally in workspace-shell
 
     return () => {
       pusherChannel.unbind(CHANNEL_MESSAGE_EVENT, handleMessage);
@@ -337,7 +332,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       pusherChannel.unbind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
       pusherChannel.unbind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
       pusherChannel.unbind(MESSAGE_MARKED_EVENT, handleMessageMarked);
-      pusherChannel.unbind(CALL_INCOMING_EVENT, handleIncomingCall);
+      pusherChannel.unbind(MESSAGE_DELETED_EVENT, handleMessageDeleted);
       client.unsubscribe(pusherChannelName);
     };
   }, [channelId, userId, dispatch, router]);
@@ -378,13 +373,13 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   }, []);
 
   // ─── Upload file ──────────────────────────────────────
-  const uploadFileToServer = async (
+  const uploadFileToServer = useCallback(async (
     file: File,
     options?: {
       durationSeconds?: number | null;
       onProgress?: (percent: number) => void;
     },
-  ): Promise<string> => {
+  ): Promise<{ url: string; publicId: string | null }> => {
     let fileToUpload = file;
     const durationSeconds = options?.durationSeconds ?? null;
 
@@ -409,7 +404,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       }
     }
 
-    const data = await uploadFileViaServer<{ secure_url: string }>(fileToUpload, {
+    const data = await uploadFileViaServer<{ secure_url: string; public_id?: string }>(fileToUpload, {
       fields:
         typeof durationSeconds === "number"
           ? { videoDurationSeconds: String(durationSeconds) }
@@ -419,8 +414,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       },
     });
 
-    return data.secure_url;
-  };
+    return { url: data.secure_url, publicId: data.public_id || null };
+  }, [channel?.maxVideoDurationMinutes]);
 
   const removePendingFile = useCallback((pendingFileId: string) => {
     setPendingFiles((prev) => {
@@ -539,7 +534,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         }),
       );
 
-      let uploadedMediaUrl: string | undefined;
+      let uploadedMedia: { url: string; publicId: string | null } | undefined;
 
       if (pendingFile) {
         try {
@@ -553,7 +548,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                 : pendingFile.file.name),
           });
 
-          uploadedMediaUrl = await uploadFileToServer(pendingFile.file, {
+          uploadedMedia = await uploadFileToServer(pendingFile.file, {
             durationSeconds: pendingFile.durationSeconds,
             onProgress: (percent) => {
               setUploadProgress({
@@ -581,8 +576,9 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content: content?.trim() || undefined,
-            mediaUrl: uploadedMediaUrl || undefined,
+            mediaUrl: uploadedMedia?.url || undefined,
             mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : undefined,
+            mediaPublicId: uploadedMedia?.publicId || undefined,
           }),
         });
 
@@ -599,7 +595,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               id: savedMsg.id,
               isSending: false,
               isDelivered: true,
-              mediaUrl: uploadedMediaUrl || null,
+              mediaUrl: uploadedMedia?.url || null,
             },
           }),
         );
@@ -612,7 +608,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         throw error;
       }
     },
-    [channel?.maxVideoDurationMinutes, channelId, dispatch, userId],
+    [channel?.maxVideoDurationMinutes, channelId, dispatch, userId, uploadFileToServer],
   );
 
   // ─── Send message ────────────────────────────────────
@@ -719,7 +715,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             value: 0,
           });
 
-          const secureUrl = await uploadFileToServer(file, {
+          const uploaded = await uploadFileToServer(file, {
             onProgress: (percent) => {
               setUploadProgress({
                 label: getUploadLabel("audio"),
@@ -731,7 +727,11 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           const res = await fetch(`/api/channels/${channelId}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mediaUrl: secureUrl, mediaType: "AUDIO" }),
+            body: JSON.stringify({
+              mediaUrl: uploaded.url,
+              mediaType: "AUDIO",
+              mediaPublicId: uploaded.publicId || undefined,
+            }),
           });
 
           if (res.ok) {
@@ -739,7 +739,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             dispatch(
               updateMessage({
                 id: tempId,
-                updates: { id: savedMsg.id, isSending: false, mediaUrl: secureUrl },
+                updates: { id: savedMsg.id, isSending: false, mediaUrl: uploaded.url },
               }),
             );
           } else {
@@ -814,7 +814,24 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     syncMarkToServer(messageId, nextMark);
   };
 
-
+  // ─── Delete message (sender only) ─────────────────────
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!channelId) return;
+    // Optimistic update
+    dispatch(setMessageDeleted({ messageId }));
+    try {
+      const res = await fetch(`/api/channels/${channelId}/messages/${messageId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error || "Failed to delete message");
+        // Note: we don't undo here — the Pusher event will confirm or a reload will fix state
+      }
+    } catch {
+      toast.error("Failed to delete message");
+    }
+  };
   const handleSubmitAnswer = async () => {
     if (markedMessagesCount === 0) {
       toast.error("Please mark at least one message as the answer.");
@@ -1097,6 +1114,34 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             {group.messages.map((msg) => {
               const isOwn = msg.isOwn;
               const canToggleMark = !isAsker && isOwn && isActive && !isAnswerSubmitted;
+              const canDelete = canDeleteChatMessage(msg);
+
+              // Deleted messages get a placeholder
+              if (msg.isDeleted) {
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex w-full ${isOwn ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-2.5 text-sm italic shadow-sm",
+                        isOwn
+                          ? "rounded-tr-sm bg-muted/40 text-muted-foreground"
+                          : "rounded-tl-sm border border-border bg-muted/20 text-muted-foreground",
+                      )}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Trash2Icon className="size-3.5 opacity-50" />
+                        This message was deleted
+                      </span>
+                      <div className={`text-[10px] opacity-50 mt-1 flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                        {msg.sentAt ? formatMessageTime(msg.sentAt) : ""}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               // System messages get a special style
               if (msg.isSystemMessage) {
@@ -1205,6 +1250,23 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                           title={msg.isMarkedAsAnswer ? "Unmark part of answer" : "Mark as part of answer"}
                         >
                           <StarIcon className={`size-4 ${msg.isMarkedAsAnswer ? "fill-yellow-500" : ""}`} />
+                        </button>
+                      )}
+
+                      {/* Delete button (sender only) */}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          className={cn(
+                            "absolute right-2 flex size-7 items-center justify-center rounded-full transition-all",
+                            "bg-background/80 text-muted-foreground backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500",
+                            "opacity-0 group-hover:opacity-100",
+                            canToggleMark ? "bottom-2" : "top-2",
+                          )}
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          title="Delete message"
+                        >
+                          <Trash2Icon className="size-3.5" />
                         </button>
                       )}
 

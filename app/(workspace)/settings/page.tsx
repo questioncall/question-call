@@ -1,4 +1,5 @@
-import { BellRingIcon, LockIcon, ShieldCheckIcon } from "lucide-react";
+import Link from "next/link";
+import { BellIcon, ChevronRightIcon, UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,24 +10,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { createNoIndexMetadata } from "@/lib/seo";
 
 const settingSections = [
   {
-    title: "Account details",
-    text: "Change your visible profile information, email preferences, and identity settings here.",
-    icon: ShieldCheckIcon,
+    title: "Update Account Settings",
+    text: "Edit your profile details, avatar, bio, and the information people see across the platform.",
+    href: "/settings/profile",
+    cta: "Open account settings",
+    icon: UserIcon,
   },
   {
-    title: "Notifications",
-    text: "Choose how quickly you hear about new answers, accepted threads, and payment reminders.",
-    icon: BellRingIcon,
-  },
-  {
-    title: "Privacy controls",
-    text: "Decide which answers stay private and how much activity is shown to the rest of the platform.",
-    icon: LockIcon,
+    title: "Call Settings",
+    text: "Choose separate incoming and outgoing call tones, and decide whether incoming calls stay silent.",
+    href: "/settings/calls",
+    cta: "Open call settings",
+    icon: BellIcon,
   },
 ] as const;
 
@@ -42,17 +41,17 @@ export default function SettingsPage() {
       <Card className="border border-border/70 shadow-sm">
         <CardHeader>
           <CardDescription>Settings</CardDescription>
-          <CardTitle>Workspace settings</CardTitle>
+          <CardTitle>Choose a settings area</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-            This route is the shared place for personal preferences, notifications, and
-            account controls. It is no longer tied to a student or teacher-specific path.
+            Your settings route now works like a small hub. Pick the area you want
+            to update and we will take you straight to that form.
           </p>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         {settingSections.map((section) => (
           <Card key={section.title} className="border border-border/70 shadow-sm">
             <CardHeader>
@@ -63,39 +62,21 @@ export default function SettingsPage() {
               <CardTitle>{section.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-7 text-muted-foreground">{section.text}</p>
+              <p className="text-sm leading-7 text-muted-foreground">
+                {section.text}
+              </p>
             </CardContent>
             <CardFooter>
-              <Button size="sm" variant="outline">
-                Configure
+              <Button asChild size="sm" className="gap-2">
+                <Link href={section.href}>
+                  {section.cta}
+                  <ChevronRightIcon className="size-4" />
+                </Link>
               </Button>
             </CardFooter>
           </Card>
         ))}
       </div>
-
-      <Card className="border border-border/70 shadow-sm">
-        <CardHeader>
-          <CardTitle>Notification preview</CardTitle>
-          <CardDescription>Dummy preferences while the real form is still pending.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 px-4 py-3">
-            <span>Instant alerts for accepted questions</span>
-            <span className="font-medium text-foreground">Enabled</span>
-          </div>
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 px-4 py-3">
-            <span>Daily digest email</span>
-            <span className="font-medium text-foreground">Paused</span>
-          </div>
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 px-4 py-3">
-            <span>Marketing updates</span>
-            <span className="font-medium text-foreground">Off</span>
-          </div>
-          <Separator />
-          <Button size="sm">Save dummy settings</Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

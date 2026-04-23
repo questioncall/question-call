@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+import { normalizeCallSettings, type UserCallSettings } from "@/lib/call-settings";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProfilePath, getUserHandle } from "@/lib/user-paths";
 import User, { type UserRecord, type UserRole } from "@/models/User";
@@ -41,14 +42,14 @@ export async function getSafeServerSession() {
 
 type WorkspaceUserRecord = Pick<
   UserRecord,
-  "name" | "email" | "username" | "role" | "userImage"
+  "name" | "email" | "username" | "role" | "userImage" | "callSettings"
 >;
 
 export async function getWorkspaceUser(sessionUser: Session["user"]) {
   await connectToDatabase();
 
   const dbUser = await User.findById(sessionUser.id)
-    .select("name email username role userImage")
+    .select("name email username role userImage callSettings")
     .lean<WorkspaceUserRecord | null>();
 
   return {
@@ -58,6 +59,9 @@ export async function getWorkspaceUser(sessionUser: Session["user"]) {
     username: dbUser?.username ?? sessionUser.username ?? "",
     role: dbUser?.role ?? sessionUser.role,
     userImage: dbUser?.userImage ?? "",
+    callSettings: normalizeCallSettings(
+      dbUser?.callSettings as Partial<UserCallSettings> | null | undefined,
+    ),
   };
 }
 
@@ -143,7 +147,10 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.username = user.username;
-        token.isMasterAdmin = (user as any).isMasterAdmin;
+        token.isMasterAdmin =
+          "isMasterAdmin" in user && typeof user.isMasterAdmin === "boolean"
+            ? user.isMasterAdmin
+            : undefined;
       }
 
       return token;

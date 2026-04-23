@@ -103,6 +103,7 @@ export async function POST(request: Request, context: RouteParams) {
       content: body.content?.trim() || "",
       mediaUrl: body.mediaUrl || null,
       mediaType: body.mediaType || null,
+      mediaPublicId: body.mediaPublicId || null,
       isSeen: false,
       isDelivered: true,
       sentAt: new Date(),

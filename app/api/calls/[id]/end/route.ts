@@ -2,10 +2,16 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { logCallLifecycle } from "@/lib/call-logging";
+import {
+  getCallParticipantIds,
+  getCallSummaryText,
+} from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
 import CallSession from "@/models/CallSession";
 import Message from "@/models/Message";
 import { emitChannelMessage } from "@/lib/pusher/pusherServer";
+import User from "@/models/User";
 import type { ChatMessage } from "@/types/channel";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -26,8 +32,7 @@ export async function POST(request: Request, context: RouteParams) {
       return NextResponse.json({ error: "Call session not found" }, { status: 404 });
     }
 
-    const teacherId = callSession.teacherId.toString();
-    const studentId = callSession.studentId.toString();
+    const { teacherId, studentId, callerId } = getCallParticipantIds(callSession);
 
     if (userId !== teacherId && userId !== studentId) {
       return NextResponse.json({ error: "Not a participant" }, { status: 403 });
@@ -46,16 +51,19 @@ export async function POST(request: Request, context: RouteParams) {
       const endedAt = callSession.endedAt ? new Date(callSession.endedAt).getTime() : Date.now();
       const durationSeconds = startedAt ? Math.max(0, Math.round((endedAt - startedAt) / 1000)) : null;
 
-      // Determine who initiated the call (the person who created the CallSession — teacherId is acceptor, studentId is asker)
-      // The caller is whoever triggered the /api/calls/create, which stores the channelId
-      const callerName = session.user.name || "Unknown";
+      const resolvedCallerId = callerId || userId;
+      const callerUser = await User.findById(resolvedCallerId)
+        .select("name")
+        .lean<{ name?: string | null } | null>();
+      const callerName = callerUser?.name || session.user.name || "Unknown";
 
       // Create a system message in the channel with call metadata
       const channelId = callSession.channelId.toString();
-      const modeLabel = callSession.mode === "VIDEO" ? "Video" : "Audio";
-      const contentText = durationSeconds && durationSeconds > 0
-        ? `${modeLabel} call · ${formatCallDuration(durationSeconds)}`
-        : `${modeLabel} call`;
+      const contentText = getCallSummaryText({
+        mode: callSession.mode,
+        status: "ENDED",
+        durationSeconds,
+      });
 
       const systemMsg = await Message.create({
         channelId,
@@ -68,7 +76,7 @@ export async function POST(request: Request, context: RouteParams) {
           status: callSession.status,
           durationSeconds,
           callerName,
-          callerId: userId,
+          callerId: resolvedCallerId,
         },
         sentAt: new Date(),
       });
@@ -93,11 +101,19 @@ export async function POST(request: Request, context: RouteParams) {
           status: callSession.status,
           durationSeconds,
           callerName,
-          callerId: userId,
+          callerId: resolvedCallerId,
         },
       };
 
       await emitChannelMessage(channelId, chatMessage).catch(console.error);
+
+      logCallLifecycle("ended", {
+        callSessionId: id,
+        channelId,
+        endedBy: userId,
+        callerId: resolvedCallerId,
+        durationSeconds,
+      });
     }
 
     return NextResponse.json({ success: true, status: callSession.status });
@@ -108,14 +124,4 @@ export async function POST(request: Request, context: RouteParams) {
       { status: 500 },
     );
   }
-}
-
-function formatCallDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (m < 60) return s > 0 ? `${m}m ${s}s` : `${m}m`;
-  const h = Math.floor(m / 60);
-  const remainM = m % 60;
-  return remainM > 0 ? `${h}h ${remainM}m` : `${h}h`;
 }

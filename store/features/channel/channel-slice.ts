@@ -122,6 +122,18 @@ const channelSlice = createSlice({
       });
     },
 
+    /** Mark a message as deleted (from Pusher or local action) */
+    setMessageDeleted(state, action: PayloadAction<{ messageId: string }>) {
+      const msg = state.messages.find((m) => m.id === action.payload.messageId);
+      if (msg) {
+        msg.isDeleted = true;
+        msg.content = "";
+        msg.mediaUrl = null;
+        msg.mediaType = null;
+        msg.isMarkedAsAnswer = false;
+      }
+    },
+
     /** Reset the active channel state (when navigating away) */
     clearActiveChannel() {
       return initialState;
@@ -137,6 +149,7 @@ export const {
   updateMessage,
   removeMessage,
   toggleMessageMarked,
+  setMessageDeleted,
   setChannelStatus,
   setChannelRating,
   setAnswerSubmitted,

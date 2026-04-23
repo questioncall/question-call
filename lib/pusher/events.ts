@@ -13,6 +13,8 @@ export const CHANNEL_STATUS_EVENT = "channel:status";
 export const CHANNEL_MESSAGES_SEEN_EVENT = "channel:messages_seen";
 // Marking a message as part of the formal answer
 export const MESSAGE_MARKED_EVENT = "message:marked";
+// Soft-delete a message (sender only)
+export const MESSAGE_DELETED_EVENT = "message:deleted";
 
 // Fired when the teacher submits the final answer
 export const ANSWER_SUBMITTED_EVENT = "answer:submitted";
@@ -62,3 +64,5 @@ export const CALL_INCOMING_EVENT = "call:incoming";
 export const CALL_ACCEPTED_EVENT = "call:accepted";
 export const CALL_REJECTED_EVENT = "call:rejected";
 export const CALL_ENDED_EVENT = "call:ended";
+export const CALL_CANCELLED_EVENT = "call:cancelled";
+export const CALL_MISSED_EVENT = "call:missed";

@@ -1,5 +1,10 @@
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
 
+import {
+  CALL_RINGTONE_VALUES,
+  DEFAULT_CALL_SETTINGS,
+} from "@/lib/call-settings";
+
 export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "EXPIRED";
 
@@ -183,6 +188,22 @@ const userSchema = new Schema(
     },
     userImage: {
       type: String,
+    },
+    callSettings: {
+      silentIncomingCalls: {
+        type: Boolean,
+        default: DEFAULT_CALL_SETTINGS.silentIncomingCalls,
+      },
+      incomingRingtone: {
+        type: String,
+        enum: CALL_RINGTONE_VALUES,
+        default: DEFAULT_CALL_SETTINGS.incomingRingtone,
+      },
+      outgoingRingtone: {
+        type: String,
+        enum: CALL_RINGTONE_VALUES,
+        default: DEFAULT_CALL_SETTINGS.outgoingRingtone,
+      },
     },
     isSuspended: {
       type: Boolean,

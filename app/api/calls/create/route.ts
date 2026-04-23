@@ -2,10 +2,14 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { logCallLifecycle } from "@/lib/call-logging";
+import { CALL_RATE_LIMITS } from "@/lib/call-policies";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
+import { enforceRequestRateLimit } from "@/lib/request-rate-limit";
 import Channel from "@/models/Channel";
 import CallSession from "@/models/CallSession";
+import User from "@/models/User";
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +29,27 @@ export async function POST(request: Request) {
     }
 
     await connectToDatabase();
+
+    const rateLimit = await enforceRequestRateLimit({
+      ...CALL_RATE_LIMITS.create,
+      userId,
+      request,
+    });
+    if (!rateLimit.ok) {
+      logCallLifecycle("rate_limited", {
+        action: CALL_RATE_LIMITS.create.action,
+        userId,
+      });
+      return NextResponse.json(
+        { error: rateLimit.error },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+          },
+        },
+      );
+    }
 
     let channel = await Channel.findById(channelId)
       .select("status timerDeadline askerId acceptorId")
@@ -73,19 +98,35 @@ export async function POST(request: Request) {
       roomName,
       teacherId,
       studentId,
+      callerId: userId,
       mode,
-      status: "CREATED",
+      status: "RINGING",
     });
 
-    // Notify the other participant via Pusher
+    // Fetch caller's avatar for the incoming call overlay
+    const callerUser = await User.findById(userId).select("userImage").lean();
+    const callerImage = callerUser?.userImage || null;
+
+    // Notify the other participant via Pusher (user-scoped channel for global reach)
     const otherUserId = userId === askerId ? acceptorId : askerId;
     const { emitIncomingCall } = await import("@/lib/pusher/pusherServer");
     emitIncomingCall(otherUserId, {
       callSessionId: newCall._id.toString(),
       channelId,
       callerName: session.user.name || "A user",
+      callerImage,
+      callerId: userId,
       mode: mode as "AUDIO" | "VIDEO",
     }).catch(console.error);
+
+    logCallLifecycle("created", {
+      callSessionId: newCall._id.toString(),
+      channelId,
+      callerId: userId,
+      calleeId: otherUserId,
+      mode,
+      callerHasAvatar: Boolean(callerImage),
+    });
 
     return NextResponse.json({ callSessionId: newCall._id.toString() }, { status: 201 });
   } catch (error) {

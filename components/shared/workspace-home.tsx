@@ -1031,10 +1031,10 @@ export function WorkspaceHome({
                     type="button"
                     onClick={() => setActiveView(option.value)}
                     className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap",
+                      "rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all duration-200",
                       activeView === option.value
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground",
+                        ? "border-foreground bg-foreground text-background shadow-sm hover:border-foreground/90 hover:bg-foreground/90"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground hover:shadow-sm",
                     )}
                   >
                     {option.label}

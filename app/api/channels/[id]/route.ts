@@ -179,6 +179,7 @@ export async function GET(_request: Request, context: RouteParams) {
         isSeen: msg.isSeen || false,
         isDelivered: msg.isDelivered || false,
         isMarkedAsAnswer: msg.isMarkedAsAnswer || false,
+        isDeleted: msg.isDeleted || false,
         sentAt: new Date(msg.sentAt).toISOString(),
         callInfo: callMeta ? {
           callSessionId: callMeta.callSessionId || "",

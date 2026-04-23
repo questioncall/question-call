@@ -77,6 +77,7 @@ export type ChatMessage = {
   isSeen: boolean;
   isDelivered?: boolean;
   isMarkedAsAnswer?: boolean;
+  isDeleted?: boolean;
   sentAt: string;
   callInfo?: {
     callSessionId: string;
@@ -97,6 +98,7 @@ export type SendMessagePayload = {
   content?: string;
   mediaUrl?: string;
   mediaType?: MessageMediaType;
+  mediaPublicId?: string;
 };
 
 /** Response from the accept API — includes channelId for redirect */

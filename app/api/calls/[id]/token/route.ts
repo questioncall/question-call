@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
 import { authOptions } from "@/lib/auth";
+import { logCallLifecycle } from "@/lib/call-logging";
+import { canIssueCallToken } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
 import CallSession from "@/models/CallSession";
 
@@ -26,6 +28,19 @@ export async function GET(request: Request, context: RouteParams) {
 
     if (callSession.status === "ENDED" || callSession.status === "REJECTED" || callSession.status === "MISSED") {
       return NextResponse.json({ error: "Call has already ended." }, { status: 403 });
+    }
+
+    if (!canIssueCallToken(callSession.status)) {
+      logCallLifecycle("token_blocked", {
+        callSessionId: id,
+        channelId: callSession.channelId.toString(),
+        requestedBy: userId,
+        status: callSession.status,
+      });
+      return NextResponse.json(
+        { error: "Call has not been accepted yet." },
+        { status: 409 },
+      );
     }
 
     const teacherId = callSession.teacherId.toString();
@@ -57,10 +72,12 @@ export async function GET(request: Request, context: RouteParams) {
 
     const token = await at.toJwt();
 
-    // Mark as ACTIVE if it was just CREATED
-    if (callSession.status === "CREATED") {
-       await CallSession.updateOne({ _id: id }, { status: "ACTIVE" });
-    }
+    logCallLifecycle("token_issued", {
+      callSessionId: id,
+      channelId: callSession.channelId.toString(),
+      issuedTo: userId,
+      roomName: callSession.roomName,
+    });
 
     return NextResponse.json({ token, serverUrl: wsUrl });
   } catch (error) {

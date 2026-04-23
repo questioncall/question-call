@@ -45,6 +45,25 @@ const messageSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  // ─── Soft-delete fields ─────────────────────────────────────
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
+  deletedBy: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
+  // ─── Cloudinary asset tracking (for cleanup on delete) ──────
+  mediaPublicId: {
+    type: String,
+    default: null,
+  },
   callMetadata: {
     type: {
       callSessionId: { type: String, required: true },

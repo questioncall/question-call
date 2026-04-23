@@ -1,6 +1,6 @@
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
 
-export const CALL_STATUSES = ["CREATED", "ACTIVE", "ENDED", "REJECTED", "MISSED"] as const;
+export const CALL_STATUSES = ["CREATED", "RINGING", "ACTIVE", "ENDED", "REJECTED", "MISSED"] as const;
 export const CALL_MODES = ["AUDIO", "VIDEO"] as const;
 
 export type CallStatus = (typeof CALL_STATUSES)[number];
@@ -32,6 +32,12 @@ const callSessionSchema = new Schema(
       required: true,
       index: true,
     },
+    callerId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
     mode: {
       type: String,
       enum: CALL_MODES,
@@ -46,7 +52,7 @@ const callSessionSchema = new Schema(
     },
     startedAt: {
       type: Date,
-      default: Date.now,
+      default: null,
     },
     endedAt: {
       type: Date,
@@ -62,6 +68,7 @@ const callSessionSchema = new Schema(
 callSessionSchema.index({ channelId: 1, status: 1 });
 callSessionSchema.index({ teacherId: 1, status: 1 });
 callSessionSchema.index({ studentId: 1, status: 1 });
+callSessionSchema.index({ callerId: 1, status: 1 });
 
 export type CallSessionRecord = InferSchemaType<typeof callSessionSchema>;
 export type CallSessionDocument = HydratedDocument<CallSessionRecord>;

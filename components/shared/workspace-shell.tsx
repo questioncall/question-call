@@ -40,6 +40,15 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DEFAULT_CALL_SETTINGS,
+  type UserCallSettings,
+} from "@/lib/call-settings";
+
+import {
+  enqueueIncomingCall,
+  removeIncomingCall as removeIncomingCallFromQueue,
+} from "@/lib/incoming-call-queue";
 import { cn } from "@/lib/utils";
 import {
   getLeaderboardPath,
@@ -60,7 +69,14 @@ import {
   PLATFORM_SOCIAL_LINKS_UPDATED_EVENT,
   PLATFORM_UPDATES_CHANNEL,
   SUBSCRIPTION_UPDATED_EVENT,
+  CALL_INCOMING_EVENT,
+  CALL_ACCEPTED_EVENT,
+  CALL_REJECTED_EVENT,
+  CALL_CANCELLED_EVENT,
+  CALL_MISSED_EVENT,
 } from "@/lib/pusher/events";
+import { IncomingCallOverlay, type IncomingCallPayload } from "@/components/shared/incoming-call-overlay";
+import { OutgoingCallOverlay, type OutgoingCallState } from "@/components/shared/outgoing-call-overlay";
 import {
   setChannelsLoading,
   setChannelsList,
@@ -82,6 +98,7 @@ type WorkspaceUser = {
   username?: string | null;
   role: WorkspaceRole;
   userImage?: string | null;
+  callSettings: UserCallSettings;
 };
 
 type WorkspaceShellProps = {
@@ -161,6 +178,17 @@ export function WorkspaceShell({
     useState(channelsHydrated);
   const [liveSocialLinks, setLiveSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
 
+  // ── Global call state ───────────────────────────────────────
+  const [incomingCalls, setIncomingCalls] = useState<IncomingCallPayload[]>([]);
+  const [outgoingCall, setOutgoingCall] = useState<OutgoingCallState | null>(null);
+  const [outgoingAcceptedCallId, setOutgoingAcceptedCallId] = useState<string | null>(null);
+  const [outgoingRejectedCallId, setOutgoingRejectedCallId] = useState<string | null>(null);
+  const [outgoingMissedCallId, setOutgoingMissedCallId] = useState<string | null>(null);
+
+  const removeIncomingCall = useCallback((callSessionId?: string) => {
+    setIncomingCalls((prev) => removeIncomingCallFromQueue(prev, callSessionId));
+  }, []);
+
   const totalUnreadChannels = channels.reduce(
     (acc, ch) => acc + (ch.unreadCount > 0 ? 1 : 0),
     0
@@ -197,6 +225,8 @@ export function WorkspaceShell({
   useEffect(() => {
     setLiveSocialLinks(socialLinks);
   }, [socialLinks]);
+
+
 
   // Subscribe to user-specific channel for real-time list updates (global)
   useEffect(() => {
@@ -236,7 +266,7 @@ export function WorkspaceShell({
       }
     });
 
-channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
+    channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
       if (data.channel) {
         dispatch(upsertChannelItem(data.channel));
       }
@@ -256,12 +286,41 @@ channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
       }));
     });
 
+    // ── Global incoming call listener ──────────────────────────
+    channel.bind(CALL_INCOMING_EVENT, (data: IncomingCallPayload) => {
+      setIncomingCalls((prev) => enqueueIncomingCall(prev, data));
+    });
+
+    // ── Call lifecycle events (for outgoing calls we initiated) ─
+    channel.bind(CALL_ACCEPTED_EVENT, (data: { callSessionId: string }) => {
+      setOutgoingAcceptedCallId(data.callSessionId);
+    });
+
+    channel.bind(CALL_REJECTED_EVENT, (data: { callSessionId: string }) => {
+      setOutgoingRejectedCallId(data.callSessionId);
+    });
+
+    // Caller cancelled before pickup — clear matching incoming call
+    channel.bind(CALL_CANCELLED_EVENT, (data: { callSessionId: string }) => {
+      removeIncomingCall(data.callSessionId);
+    });
+
+    channel.bind(CALL_MISSED_EVENT, (data: { callSessionId: string }) => {
+      removeIncomingCall(data.callSessionId);
+      setOutgoingMissedCallId(data.callSessionId);
+    });
+
     return () => {
       channel.unbind(CHANNEL_UPDATED_EVENT);
       channel.unbind(NEW_CHANNEL_EVENT);
+      channel.unbind(CALL_INCOMING_EVENT);
+      channel.unbind(CALL_ACCEPTED_EVENT);
+      channel.unbind(CALL_REJECTED_EVENT);
+      channel.unbind(CALL_CANCELLED_EVENT);
+      channel.unbind(CALL_MISSED_EVENT);
       pusherClient.unsubscribe(userChannel);
     };
-  }, [user.id, dispatch]);
+  }, [user.id, dispatch, removeIncomingCall]);
 
   useEffect(() => {
     const pusherClient = getPusherClient();
@@ -282,7 +341,7 @@ channel.bind(NEW_CHANNEL_EVENT, (data: NewChannelPayload) => {
     };
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     dispatch(setProfile({
       id: user.id,
       name: user.name || "",
@@ -300,8 +359,33 @@ useEffect(() => {
       baseMaxQuestions: 0,
       bonusQuestions: 0,
       referralCode: null,
+      callSettings: user.callSettings || DEFAULT_CALL_SETTINGS,
     }));
-  }, [dispatch, user.email, user.id, user.name, user.role, user.userImage, user.username]);
+  }, [
+    dispatch,
+    user.callSettings,
+    user.email,
+    user.id,
+    user.name,
+    user.role,
+    user.userImage,
+    user.username,
+  ]);
+
+  // ── Listen for outgoing call requests from channel-chat ────────
+  useEffect(() => {
+    const handleOutgoingCall = (e: Event) => {
+      const detail = (e as CustomEvent<OutgoingCallState>).detail;
+      if (detail?.callSessionId) {
+        setOutgoingCall(detail);
+        setOutgoingAcceptedCallId(null);
+        setOutgoingRejectedCallId(null);
+        setOutgoingMissedCallId(null);
+      }
+    };
+    window.addEventListener("qc:outgoing-call", handleOutgoingCall);
+    return () => window.removeEventListener("qc:outgoing-call", handleOutgoingCall);
+  }, []);
 
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -323,7 +407,11 @@ useEffect(() => {
     username: profile.username || user.username || "",
     role: profile.isHydrated ? profile.role : user.role,
     userImage: profile.userImage || user.userImage || "",
-};
+  };
+  const resolvedCallSettings = profile.isHydrated
+    ? profile.callSettings
+    : user.callSettings || DEFAULT_CALL_SETTINGS;
+  const activeIncomingCall = incomingCalls[0] ?? null;
 
   const handle = getUserHandle(resolvedUser);
   const leaderboardHref = getLeaderboardPath(resolvedUser);
@@ -568,6 +656,27 @@ collapseSidebarOnClick: true,
             {children}
           </div>
         </SidebarInset>
+
+        {/* ── Global call overlays (mounted outside sidebar) ─── */}
+        <IncomingCallOverlay
+          call={activeIncomingCall}
+          onDismiss={() => removeIncomingCall(activeIncomingCall?.callSessionId)}
+          isSilent={resolvedCallSettings.silentIncomingCalls}
+          ringtone={resolvedCallSettings.incomingRingtone}
+        />
+        <OutgoingCallOverlay
+          call={outgoingCall}
+          onDismiss={() => {
+            setOutgoingCall(null);
+            setOutgoingAcceptedCallId(null);
+            setOutgoingRejectedCallId(null);
+            setOutgoingMissedCallId(null);
+          }}
+          wasAccepted={outgoingAcceptedCallId === outgoingCall?.callSessionId}
+          wasRejected={outgoingRejectedCallId === outgoingCall?.callSessionId}
+          wasMissed={outgoingMissedCallId === outgoingCall?.callSessionId}
+          ringbackTone={resolvedCallSettings.outgoingRingtone}
+        />
       </SidebarProvider>
     </WorkspaceFilterProvider>
   );

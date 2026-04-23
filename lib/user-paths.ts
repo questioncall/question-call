@@ -73,7 +73,7 @@ export function getSettingsPath(user?: UserPathInput | null) {
     return "/admin/settings";
   }
 
-  return "/settings/profile";
+  return "/settings";
 }
 
 export function getSubscriptionPath(user?: UserPathInput | null) {
