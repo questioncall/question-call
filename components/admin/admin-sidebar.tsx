@@ -18,7 +18,9 @@ import {
   BellIcon,
   MegaphoneIcon,
   KeyRoundIcon,
-  Share2Icon
+  Share2Icon,
+  Zap,
+  Code2,
 } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
@@ -43,6 +45,8 @@ const iconMap: Record<string, React.ElementType> = {
   "Coupons": FileTextIcon,
   "Live sessions": VideoIcon,
   "Legal": ShieldAlertIcon,
+  "Services": Zap,
+  "Developer": Code2,
 };
 
 // Group categories based on what the user wanted: Finance/Operations at top, then configurations.
@@ -60,8 +64,8 @@ const groupedItems = [
     items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Courses", "Coupons", "Live sessions"].includes(item.label))
   },
   {
-    category: "GENERAL",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Settings", "Social Media", "Pricing", "Payment config", "Format config", "AI Keys", "Legal"].includes(item.label))
+    category: "PLATFORM",
+    items: ADMIN_NAV_ITEMS.filter(item => ["Services", "Developer", "Settings", "Social Media", "Pricing", "Payment config", "Format config", "AI Keys", "Legal"].includes(item.label))
   }
 ];
 

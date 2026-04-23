@@ -203,9 +203,29 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     group: "Platform Config",
     keywords: ["legal", "terms", "privacy", "policy", "content"],
   },
+  {
+    id: "services",
+    label: "Services",
+    href: "/admin/services",
+    description:
+      "View all platform services, API usage analytics, and billing overview.",
+    group: "Platform Config",
+    keywords: ["services", "analytics", "usage", "billing", "api", "usage stats"],
+  },
+  {
+    id: "developer",
+    label: "Developer",
+    href: "/admin/developer",
+    description:
+      "Configure developer emails for error alerts, error thresholds, and monitoring settings.",
+    group: "Platform Config",
+    keywords: ["developer", "email", "error", "alerts", "threshold", "monitoring"],
+  },
 ];
 
 export const ADMIN_NAV_ITEMS = [
+  { href: "/admin/services", label: "Services" },
+  { href: "/admin/developer", label: "Developer" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
   { href: "/admin/settings", label: "Settings" },
