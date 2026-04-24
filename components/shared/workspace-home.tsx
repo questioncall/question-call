@@ -24,6 +24,7 @@ import {
   TrophyIcon,
   MedalIcon,
   MoreHorizontalIcon,
+  ImageIcon,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -159,12 +160,12 @@ const REACTION_CONFIG: {
   { type: "same_doubt", icon: HelpCircleIcon, label: "Same doubt" },
 ];
 
-const FEED_VIEW_OPTIONS: { value: FeedView; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "waiting", label: "Waiting" },
-  { value: "solved", label: "Solved" },
-  { value: "media", label: "Media" },
-  { value: "discussion", label: "Discussion" },
+const FEED_VIEW_OPTIONS: { value: FeedView; label: string; icon: any }[] = [
+  { value: "all", label: "All", icon: BookOpenIcon },
+  { value: "waiting", label: "Waiting", icon: Clock3Icon },
+  { value: "solved", label: "Solved", icon: CheckCircle2Icon },
+  { value: "media", label: "Media", icon: ImageIcon },
+  { value: "discussion", label: "Discussion", icon: MessageSquareIcon },
 ];
 
 const FEED_SORT_OPTIONS: {
@@ -664,7 +665,7 @@ export function WorkspaceHome({
             <Link
               key={course.id}
               href={`/courses/${course.slug}`}
-              className="group relative h-[10.75rem] w-[10rem] shrink-0 snap-start overflow-hidden rounded-[1.75rem] border border-border/70 bg-background shadow-sm transition-colors hover:border-primary/30"
+              className="group relative h-[9.5rem] w-[8.5rem] shrink-0 snap-start overflow-hidden rounded-[1.5rem] border border-border/70 bg-background shadow-sm transition-colors hover:border-primary/30"
             >
               <div
                 className={cn(
@@ -1020,10 +1021,9 @@ export function WorkspaceHome({
   return (
     <div className="space-y-6">
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-6">
-          {mobileCourseRail}
-          <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
-            <CardContent className="overflow-x-auto px-3 py-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="min-w-0 flex flex-col gap-6">
+          <Card className="order-1 overflow-hidden border border-border/70 bg-background shadow-sm">
+            <CardContent className="overflow-x-auto px-3 py-2 sm:px-6 sm:py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex min-w-max items-center gap-2">
                 {FEED_VIEW_OPTIONS.map((option) => (
                   <button
@@ -1031,12 +1031,13 @@ export function WorkspaceHome({
                     type="button"
                     onClick={() => setActiveView(option.value)}
                     className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all duration-200",
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all duration-200",
                       activeView === option.value
                         ? "border-foreground bg-foreground text-background shadow-sm hover:border-foreground/90 hover:bg-foreground/90"
                         : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground hover:shadow-sm",
                     )}
                   >
+                    <option.icon className="size-3" />
                     {option.label}
                   </button>
                 ))}
@@ -1097,7 +1098,12 @@ export function WorkspaceHome({
             </CardContent>
           </Card>
 
-          {/* Loading skeleton */}
+          <div className="order-2">
+            {mobileCourseRail}
+          </div>
+
+          <div className="order-3 space-y-6">
+            {/* Loading skeleton */}
           {isLoading && !isHydrated && (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -1170,7 +1176,7 @@ export function WorkspaceHome({
                 className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
               >
                 <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
-                  <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
+                  <div className="hidden md:flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
                     {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
                       const count = item.reactions.filter(
                         (reaction) => reaction.type === type,
@@ -1551,33 +1557,60 @@ export function WorkspaceHome({
                     </div>
 
                     <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/[0.18] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleComments(item.id)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                            isExpandedComments
-                              ? "border-primary/40 bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          <MessageSquareIcon className="size-3.5" />
-                          {item.commentCount} comments
-                        </button>
+                      <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+                        {/* Mobile reactions */}
+                        <div className="flex items-center gap-3 md:hidden">
+                          {REACTION_CONFIG.map(({ type, icon: Icon }) => {
+                            const count = item.reactions.filter((r) => r.type === type).length;
+                            const isActive = userReaction?.type === type;
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => handleReact(item.id, type)}
+                                className={cn(
+                                  "flex items-center gap-1.5 text-xs font-medium transition-colors",
+                                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                )}
+                              >
+                                <Icon className={cn("size-4", isActive && "fill-current")} />
+                                <span>{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
-                          <CheckCircle2Icon className="size-3.5" />
-                          {item.answerCount} answers
-                        </span>
-
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                        {/* Desktop reactions info */}
+                        <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
                           <ThumbsUpIcon className="size-3.5" />
                           {totalReactions} reacts
                         </span>
+
+                        <div className="flex items-center gap-3 sm:gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleComments(item.id)}
+                            className={cn(
+                              "flex sm:inline-flex items-center gap-1.5 text-xs font-medium transition-colors sm:rounded-full sm:border sm:px-3 sm:py-1.5",
+                              isExpandedComments
+                                ? "text-primary sm:border-primary/40 sm:bg-primary/10"
+                                : "text-muted-foreground hover:text-foreground sm:border-border sm:bg-background"
+                            )}
+                          >
+                            <MessageSquareIcon className="size-4 sm:size-3.5" />
+                            <span>{item.commentCount}</span>
+                            <span className="hidden sm:inline"> comments</span>
+                          </button>
+
+                          <span className="flex sm:inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:rounded-full sm:border sm:border-border sm:bg-background sm:px-3 sm:py-1.5">
+                            <CheckCircle2Icon className="size-4 sm:size-3.5" />
+                            <span>{item.answerCount}</span>
+                            <span className="hidden sm:inline"> answers</span>
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                      <div className="flex items-center gap-2">
                         {canComment && (
                           <Button
                             onClick={() => toggleComments(item.id)}
@@ -1585,7 +1618,7 @@ export function WorkspaceHome({
                             variant={
                               isExpandedComments ? "secondary" : "outline"
                             }
-                            className="w-full sm:w-auto"
+                            className="hidden sm:flex"
                           >
                             <MessageSquareIcon className="mr-1 size-3.5" />
                             Comment
@@ -1597,7 +1630,7 @@ export function WorkspaceHome({
                             disabled={isAcceptLoading}
                             onClick={() => handleAccept(item.id)}
                             size="sm"
-                            className="w-full sm:w-auto"
+                            className="flex-1 sm:flex-none"
                           >
                             {isAcceptLoading ? (
                               <Loader2Icon className="mr-1 size-3.5 animate-spin" />
@@ -1613,11 +1646,11 @@ export function WorkspaceHome({
                             asChild
                             size="sm"
                             variant="ghost"
-                            className="w-full justify-between sm:w-auto sm:justify-center"
+                            className="flex-1 sm:flex-none justify-between sm:justify-center border border-border sm:border-transparent"
                           >
                             <Link href={getChannelPath(item.channelId)}>
                               Open thread
-                              <ArrowUpRightIcon />
+                              <ArrowUpRightIcon className="size-3.5" />
                             </Link>
                           </Button>
                         )}
@@ -1726,6 +1759,7 @@ export function WorkspaceHome({
               </article>
             );
           })}
+        </div>
         </div>
 
         <div className="hidden space-y-6 md:block xl:hidden">

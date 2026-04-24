@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import {
   CameraIcon,
+  ChevronDownIcon,
   Loader2Icon,
   SparklesIcon,
   XIcon,
@@ -86,6 +87,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isOpeningCamera, setIsOpeningCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Image attachments
   const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([]);
@@ -423,6 +425,9 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
           <div className="space-y-2">
             <Label htmlFor="q-body">
               Details
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (Optional)
+              </span>
               <span className="ml-2 text-xs text-muted-foreground">
                 {bodyLen}/5000
               </span>
@@ -555,7 +560,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                     <button
                       type="button"
                       onClick={() => removeImage(i)}
-                      className="absolute -right-1 -top-1 rounded-full bg-background border border-border p-0.5 text-foreground opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-8px] translate-y-[8px]"
+                      className="absolute right-1 top-1 rounded-full bg-background/90 border border-border p-1 text-foreground shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon className="size-3.5" />
                     </button>
@@ -586,103 +591,117 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
             ) : null}
           </div>
 
-          {/* Configuration Grid */}
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div className="space-y-3">
-              <Label>Answer format</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {FORMAT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
-                      selectedFormats.includes(opt.value)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-foreground hover:border-primary/40"
-                    }`}
-                    onClick={() =>
-                      setSelectedFormats((current) =>
-                        toggleSelectableAnswerFormat(current, opt.value),
-                      )
-                    }
-                    type="button"
-                  >
-                    <span className="font-medium">{opt.label}</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
-                      {opt.desc}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Choose one or more required formats. If you select multiple, the final teacher answer must include all of them.
-              </p>
-            </div>
+          {/* Advanced options — collapsible on mobile, always visible on sm+ */}
+          <div className="sm:contents">
+            <button
+              type="button"
+              className="flex sm:hidden w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+              onClick={() => setAdvancedOpen((v) => !v)}
+            >
+              <span>Advanced options</span>
+              <ChevronDownIcon className={`size-4 text-muted-foreground transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`} />
+            </button>
 
-            {/* Visibility */}
-            <div className="space-y-3">
-              <Label>Answer visibility</Label>
-              <div className="grid gap-2 sm:h-[calc(100%-28px)] sm:grid-cols-2">
-                {VISIBILITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                      visibility === opt.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-foreground hover:border-primary/40"
-                    }`}
-                    onClick={() => setVisibility(opt.value)}
-                    type="button"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+            <div className={`space-y-6 ${advancedOpen ? "block" : "hidden"} sm:block`}>
+              {/* Configuration Grid */}
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-3">
+                  <Label>Answer format</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {FORMAT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                          selectedFormats.includes(opt.value)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-foreground hover:border-primary/40"
+                        }`}
+                        onClick={() =>
+                          setSelectedFormats((current) =>
+                            toggleSelectableAnswerFormat(current, opt.value),
+                          )
+                        }
+                        type="button"
+                      >
+                        <span className="font-medium">{opt.label}</span>
+                        <span className="hidden sm:block text-xs text-muted-foreground mt-0.5">
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="hidden sm:block text-xs text-muted-foreground">
+                    Choose one or more required formats. If you select multiple, the final teacher answer must include all of them.
+                  </p>
+                </div>
 
-          {/* Optional metadata */}
-          <div className="grid gap-3 pt-2 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-subject">Subject</Label>
-              <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
-                id="q-subject"
-                onChange={(e) => setSubject(e.target.value)}
-                value={subject}
-              >
-                <option value="">Any Subject</option>
-                {SUBJECT_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-stream">Stream</Label>
-              <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
-                id="q-stream"
-                onChange={(e) => setStream(e.target.value)}
-                value={stream}
-              >
-                <option value="">Any Stream</option>
-                {STREAM_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-level">Level</Label>
-              <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
-                id="q-level"
-                onChange={(e) => setLevel(e.target.value)}
-                value={level}
-              >
-                <option value="">Any Level</option>
-                {LEVEL_OPTIONS.map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
+                {/* Visibility */}
+                <div className="space-y-3">
+                  <Label>Answer visibility</Label>
+                  <div className="grid grid-cols-2 gap-2 sm:h-[calc(100%-28px)]">
+                    {VISIBILITY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                          visibility === opt.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-foreground hover:border-primary/40"
+                        }`}
+                        onClick={() => setVisibility(opt.value)}
+                        type="button"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional metadata */}
+              <div className="grid gap-3 pt-2 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-subject">Subject</Label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
+                    id="q-subject"
+                    onChange={(e) => setSubject(e.target.value)}
+                    value={subject}
+                  >
+                    <option value="">Any Subject</option>
+                    {SUBJECT_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-stream">Stream</Label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
+                    id="q-stream"
+                    onChange={(e) => setStream(e.target.value)}
+                    value={stream}
+                  >
+                    <option value="">Any Stream</option>
+                    {STREAM_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider" htmlFor="q-level">Level</Label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
+                    id="q-level"
+                    onChange={(e) => setLevel(e.target.value)}
+                    value={level}
+                  >
+                    <option value="">Any Level</option>
+                    {LEVEL_OPTIONS.map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 

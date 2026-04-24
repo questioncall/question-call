@@ -22,6 +22,9 @@ import { OnboardingVideoModal } from "@/components/shared/onboarding-video-modal
 import { WorkspaceFilterProvider } from "@/components/shared/workspace-filter-context";
 import { LogoMark } from "@/components/shared/logo";
 import { NavUser } from "@/components/shared/nav-user";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { SocialHandlesHover } from "@/components/shared/social-handles-hover";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import {
   Sidebar,
   SidebarContent,
@@ -624,6 +627,13 @@ collapseSidebarOnClick: true,
           </SidebarContent>
 
           <SidebarFooter>
+            <div className="flex items-center justify-between px-2 pb-2 md:hidden">
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <SocialHandlesHover links={liveSocialLinks} />
+              </div>
+              <NotificationBell userId={resolvedUser.id} />
+            </div>
             <NavUser
               loading={isSidebarLoading}
               user={{

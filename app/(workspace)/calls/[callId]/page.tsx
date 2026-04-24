@@ -312,7 +312,7 @@ export default function CallSessionPage() {
   }
 
   return (
-    <div className="relative isolate flex h-full min-h-0 w-full flex-col bg-black text-white">
+    <div className="fixed inset-0 z-[9999] isolate flex h-[100dvh] w-[100dvw] overflow-hidden flex-col bg-black text-white">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-center px-4 py-4">
         <div className="pointer-events-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 rounded-[2rem] border border-white/10 bg-black/55 px-3 py-2.5 backdrop-blur-sm">
           <div className="min-w-0">
@@ -320,7 +320,7 @@ export default function CallSessionPage() {
               Live Call
             </p>
             <p className="truncate text-sm font-medium text-white">
-              Secure audio room
+              Secure call room
             </p>
           </div>
 
@@ -415,11 +415,11 @@ export default function CallSessionPage() {
       ) : null}
 
       <LiveKitRoom
-        video={false}
-        audio
+        video={true}
+        audio={true}
         token={token}
         serverUrl={serverUrl}
-        className="relative flex-1 w-full [&_.lk-button-group]:gap-1 [&_.lk-control-bar]:mb-4 [&_.lk-control-bar]:w-[calc(100%-1rem)] [&_.lk-control-bar]:max-w-[22rem] [&_.lk-control-bar]:rounded-3xl [&_.lk-control-bar]:border [&_.lk-control-bar]:border-white/10 [&_.lk-control-bar]:bg-black/70 [&_.lk-control-bar]:px-2 [&_.lk-control-bar]:py-2 [&_.lk-control-bar]:backdrop-blur-md [&_.lk-disconnect-button]:hidden sm:[&_.lk-control-bar]:w-auto sm:[&_.lk-control-bar]:max-w-none"
+        className="relative flex-1 w-full [&_.lk-button-group]:gap-1 [&_.lk-control-bar]:mb-4 [&_.lk-control-bar]:w-[calc(100%-1rem)] [&_.lk-control-bar]:max-w-[22rem] [&_.lk-control-bar]:rounded-3xl [&_.lk-control-bar]:border [&_.lk-control-bar]:border-white/10 [&_.lk-control-bar]:bg-black/70 [&_.lk-control-bar]:px-2 [&_.lk-control-bar]:py-2 [&_.lk-control-bar]:backdrop-blur-md [&_.lk-disconnect-button]:hidden sm:[&_.lk-control-bar]:w-auto sm:[&_.lk-control-bar]:max-w-none [&_.lk-grid-layout]:!flex [&_.lk-grid-layout]:!h-full [&_.lk-grid-layout]:!w-full [&_.lk-grid-layout]:!flex-col sm:[&_.lk-grid-layout]:!grid [&_.lk-participant-tile]:!absolute [&_.lk-participant-tile]:!inset-0 [&_.lk-participant-tile]:!w-full [&_.lk-participant-tile]:!h-full [&_.lk-participant-tile[data-lk-local-participant='true']]:!w-[100px] [&_.lk-participant-tile[data-lk-local-participant='true']]:!h-[140px] [&_.lk-participant-tile[data-lk-local-participant='true']]:!top-auto [&_.lk-participant-tile[data-lk-local-participant='true']]:!bottom-28 [&_.lk-participant-tile[data-lk-local-participant='true']]:!left-auto [&_.lk-participant-tile[data-lk-local-participant='true']]:!right-4 [&_.lk-participant-tile[data-lk-local-participant='true']]:!z-10 [&_.lk-participant-tile[data-lk-local-participant='true']]:!rounded-xl [&_.lk-participant-tile[data-lk-local-participant='true']]:!border [&_.lk-participant-tile[data-lk-local-participant='true']]:!border-white/20 [&_.lk-participant-tile[data-lk-local-participant='true']]:!shadow-xl sm:[&_.lk-participant-tile]:!relative sm:[&_.lk-participant-tile]:!inset-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!w-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!h-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!rounded-none sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!border-none"
         data-lk-theme="default"
         onDisconnected={handleDisconnected}
       >

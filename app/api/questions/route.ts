@@ -34,9 +34,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (typeof body.body !== "string" || body.body.trim().length < 12 || body.body.trim().length > 5000) {
+    const questionBody = typeof body.body === "string" ? body.body.trim() : "";
+    if (questionBody.length > 0 && (questionBody.length < 12 || questionBody.length > 5000)) {
       return NextResponse.json(
-        { error: "Body must be between 12 and 5000 characters" },
+        { error: "Details must be empty or between 12 and 5000 characters" },
         { status: 400 },
       );
     }
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
     const question = await Question.create({
       askerId: session.user.id,
       title: body.title.trim(),
-      body: body.body.trim(),
+      body: questionBody,
       images: Array.isArray(body.images) ? body.images : [],
       answerFormat: requestedAnswerFormat,
       answerVisibility: body.answerVisibility || "PUBLIC",

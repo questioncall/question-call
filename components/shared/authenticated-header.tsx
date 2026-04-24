@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon, Loader2Icon, MessageCircleIcon, BookIcon, UserIcon } from "lucide-react";
+import { BookOpenIcon, SearchIcon, SlidersHorizontalIcon, PlusIcon, Loader2Icon, MessageCircleIcon, BookIcon, UserIcon, MenuIcon } from "lucide-react";
 
 import { PostQuestionModal } from "@/components/shared/post-question-modal";
 import { SocialHandlesHover } from "@/components/shared/social-handles-hover";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { LogoMark } from "@/components/shared/logo";
 import { useWorkspaceFilters, type WorkspaceFilterState } from "@/components/shared/workspace-filter-context";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { Button } from "@/components/ui/button";
@@ -197,11 +198,16 @@ export function AuthenticatedHeader({
         )}
       >
         <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
-          <SidebarTrigger className="shrink-0" />
-          <div className="relative hidden max-w-xl flex-1 md:mx-auto md:block" ref={searchRef}>
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-[18px] -translate-y-1/2 text-muted-foreground" />
+          {/* Desktop: normal sidebar trigger on left */}
+          <SidebarTrigger className="shrink-0 hidden md:inline-flex" />
+          {/* Mobile: app logo on left instead of sidebar trigger */}
+          <Link href="/" className="flex items-center gap-2 md:hidden shrink-0">
+            <LogoMark size={28} className="rounded-lg" />
+          </Link>
+          <div className="relative hidden md:flex flex-1 max-w-xl mx-auto" ref={searchRef}>
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 sm:left-3 size-4 sm:size-[18px] -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="h-10 pl-10 text-base md:text-sm"
+              className="h-9 sm:h-10 pl-8 sm:pl-10 text-xs sm:text-sm bg-muted/40 md:bg-background"
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => { if (searchValue.trim().length >= 2) setShowDropdown(true); }}
@@ -304,57 +310,75 @@ export function AuthenticatedHeader({
               </div>
             )}
           </div>
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2.5">
             {showQuizLink ? (
-              <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5">
+              <Button asChild variant="outline" size="icon-sm" className="hidden md:inline-flex md:size-auto md:px-3 md:py-1.5">
                 <Link href="/quiz">
-                  <BookOpenIcon className="size-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Play Quiz</span>
+                  <BookOpenIcon className="size-4 md:mr-1" />
+                  <span className="hidden md:inline">Play Quiz</span>
                 </Link>
               </Button>
             ) : null}
-            {useModalForPrimary ? (
-              <Button
-                size="icon-sm"
-                className="sm:size-auto sm:px-3 sm:py-1.5"
-                onClick={() => setIsPostModalOpen(true)}
-              >
-                <PlusIcon className="size-4 sm:mr-1" />
-                <span className="hidden sm:inline">{primaryLabel}</span>
-              </Button>
-            ) : (
-              <Button asChild size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
-                <Link href={primaryHref}>
-                  <PlusIcon className="size-4 sm:hidden" />
-                  <span className="hidden sm:inline">{primaryLabel}</span>
-                </Link>
-              </Button>
-            )}
+
             {showQuestionFilter ? (
               <Button
                 size="icon-sm"
-                className="sm:size-auto sm:px-3 sm:py-1.5"
+                className="size-9 sm:size-auto sm:px-3 sm:py-1.5"
                 onClick={() => { setDraftFilters(currentFilters); setIsFilterOpen(true); }}
                 variant="outline"
               >
-                <SlidersHorizontalIcon className="size-4 sm:mr-1" />
+                <SlidersHorizontalIcon className="size-[18px] sm:size-4 sm:mr-1" />
                 <span className="hidden sm:inline">
                   Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
                 </span>
                 {activeFilterCount > 0 ? (
-                  <span className="flex sm:hidden size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">{activeFilterCount}</span>
+                  <span className="flex sm:hidden absolute top-0 right-0 -translate-y-[2px] translate-x-[2px] size-3.5 items-center justify-center rounded-full border border-background bg-primary text-[8px] font-bold text-primary-foreground">{activeFilterCount}</span>
                 ) : null}
               </Button>
             ) : null}
-            <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary">
-              <Link href="/courses">
-                <BookOpenIcon className="size-4 sm:mr-1" />
-                <span className="hidden sm:inline">Courses</span>
-              </Link>
-            </Button>
-            <SocialHandlesHover links={socialLinks} />
-            <ThemeToggle />
+
+            {useModalForPrimary ? (
+              <Button
+                size="icon-sm"
+                className="size-9 sm:size-auto sm:px-3 sm:py-1.5"
+                onClick={() => setIsPostModalOpen(true)}
+              >
+                <PlusIcon className="size-[18px] sm:size-4 sm:mr-1" />
+                <span className="hidden sm:inline">{primaryLabel}</span>
+              </Button>
+            ) : (
+              <Button asChild size="icon-sm" className="size-9 sm:size-auto sm:px-3 sm:py-1.5" variant={primaryLabel === "Open messages" ? "outline" : "default"}>
+                <Link href={primaryHref}>
+                  <PlusIcon className="size-[18px] sm:hidden" />
+                  <span className="hidden sm:inline">{primaryLabel}</span>
+                </Link>
+              </Button>
+            )}
+            
             {userId && <NotificationBell userId={userId} />}
+
+            <div className="hidden md:flex items-center gap-2.5">
+              <Button asChild variant="outline" size="icon-sm" className="sm:size-auto sm:px-3 sm:py-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary">
+                <Link href="/courses">
+                  <BookOpenIcon className="size-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Courses</span>
+                </Link>
+              </Button>
+              <SocialHandlesHover links={socialLinks} />
+              <ThemeToggle />
+            </div>
+            {/* Mobile: sidebar toggle on right side with larger size */}
+            <button
+              type="button"
+              onClick={() => {
+                const trigger = document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement | null;
+                trigger?.click();
+              }}
+              className="inline-flex md:hidden items-center justify-center size-9 rounded-xl border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-muted active:scale-95 ml-0.5"
+              aria-label="Open menu"
+            >
+              <MenuIcon className="size-[18px]" />
+            </button>
           </div>
         </div>
       </header>
