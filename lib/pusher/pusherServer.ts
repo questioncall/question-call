@@ -119,21 +119,20 @@ export async function emitNotification(
     createdAt: new Date(notification.createdAt).toISOString(),
   };
 
-  const settled = await Promise.allSettled([
-    pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
-      notification: payload,
-    }),
-    sendPushNotificationToUser(userId, {
-      type: notification.type,
-      message: notification.message,
-      href: payload.href,
-    }),
-  ]);
+  // Pusher (in-app real-time) is awaited — it drives the instant UI update.
+  await pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
+    notification: payload,
+  });
 
-  const rejected = settled.find((result) => result.status === "rejected");
-  if (rejected?.status === "rejected") {
-    throw rejected.reason;
-  }
+  // Web Push (device notification) is fire-and-forget — it should not
+  // slow down the request that created the notification.
+  void sendPushNotificationToUser(userId, {
+    type: notification.type,
+    message: notification.message,
+    href: payload.href,
+  }).catch((error) => {
+    console.error("[emitNotification] Web Push background send failed", error);
+  });
 }
 
 /** Broadcast a new channel to a specific user */

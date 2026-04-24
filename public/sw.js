@@ -158,23 +158,24 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
+function isAppleWebPushEnvironment() {
+  const userAgent = self.navigator?.userAgent || "";
+  const maxTouchPoints = self.navigator?.maxTouchPoints || 0;
+  const isAppleDevice =
+    /iPad|iPhone|iPod/i.test(userAgent) ||
+    (userAgent.includes("Macintosh") && maxTouchPoints > 1);
+  const isChromiumLike = /CriOS|Chrome|Edg|OPR|SamsungBrowser|Firefox/i.test(
+    userAgent,
+  );
+
+  return isAppleDevice && !isChromiumLike;
+}
+
 async function handlePush(event) {
   const payload = getPushPayload(event);
   const title = payload.title || "Question Call";
   const body = payload.body || "You have a new update.";
   const targetUrl = payload.url || "/";
-  const windowClients = await self.clients.matchAll({
-    type: "window",
-    includeUncontrolled: true,
-  });
-
-  const hasVisibleClient = windowClients.some(
-    (client) => client.focused || client.visibilityState === "visible",
-  );
-
-  if (hasVisibleClient) {
-    return;
-  }
 
   await self.registration.showNotification(title, {
     body,

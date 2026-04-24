@@ -93,6 +93,9 @@ export async function sendPushNotificationToUser(
 
   const payload = JSON.stringify(buildPushPayload(notification));
 
+  const endpointSuffix = (endpoint: string) =>
+    endpoint.length > 30 ? `…${endpoint.slice(-30)}` : endpoint;
+
   await Promise.allSettled(
     subscriptions.map(async (subscription) => {
       try {
@@ -116,12 +119,23 @@ export async function sendPushNotificationToUser(
             ? Number((error as { statusCode?: number }).statusCode)
             : undefined;
 
-        if (statusCode === 404 || statusCode === 410) {
+        console.warn(
+          `[web-push] Send failed for user=${userId} endpoint=${endpointSuffix(subscription.endpoint)} status=${statusCode ?? "unknown"}`,
+        );
+
+        // Only delete on 410 (Gone) — the endpoint is permanently invalid.
+        // 404 can be transient on Android (endpoint churn during subscription refresh).
+        if (statusCode === 410) {
+          console.warn(
+            `[web-push] Deleting gone subscription id=${String(subscription._id)} endpoint=${endpointSuffix(subscription.endpoint)}`,
+          );
           await PushSubscriptionModel.findByIdAndDelete(subscription._id).catch(() => null);
           return;
         }
 
-        console.error("[web-push] Failed to send notification", error);
+        if (statusCode !== 404) {
+          console.error("[web-push] Unexpected push send error", error);
+        }
       }
     }),
   );

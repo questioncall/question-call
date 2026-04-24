@@ -114,6 +114,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const isMarkingAllReadRef = useRef(false);
   const subscriptionSyncRef = useRef<string | null>(null);
+  const hasFetchedServerStateRef = useRef(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -173,56 +174,43 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     });
   }, [fetchPushPublicKey]);
 
-  const refreshPushState = useCallback(async () => {
+  // Use server-side push state as source of truth (fixes Android toggle regression).
+  // Only runs once on mount — not on every focus/visibility event.
+  const fetchServerPushState = useCallback(async () => {
     const supported = supportsPushNotifications();
     setPushSupported(supported);
 
     if (!supported) {
       setPushEnabled(false);
-      subscriptionSyncRef.current = null;
       return;
     }
 
     setPushPermission(Notification.permission);
 
     try {
-      const registration = await getPushRegistration();
-      if (!registration) {
-        setPushEnabled(false);
+      const res = await fetch("/api/push/status", { cache: "no-store" });
+      if (!res.ok) {
         return;
       }
 
-      const subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        if (Notification.permission === "granted") {
-          const recreatedSubscription = await createPushSubscription().catch(() => null);
+      const data = await res.json();
+      setPushEnabled(Boolean(data.hasActiveSubscription));
 
-          if (recreatedSubscription) {
-            const synced = await syncSubscriptionWithServer(
-              recreatedSubscription,
-              true,
-            ).catch(() => false);
-
-            setPushEnabled(synced);
-            return;
+      // If server says we have a subscription but browser doesn't have one,
+      // silently try to re-create it (background, no UI flap).
+      if (data.hasActiveSubscription && Notification.permission === "granted") {
+        const registration = await getPushRegistration();
+        if (registration) {
+          const browserSub = await registration.pushManager.getSubscription();
+          if (browserSub) {
+            subscriptionSyncRef.current = browserSub.endpoint;
           }
         }
-
-        subscriptionSyncRef.current = null;
-        setPushEnabled(false);
-        return;
       }
-
-      const synced =
-        Notification.permission === "granted"
-          ? await syncSubscriptionWithServer(subscription, true).catch(() => false)
-          : false;
-
-      setPushEnabled(Boolean(subscription) && (Notification.permission !== "granted" || synced));
     } catch {
-      setPushEnabled(false);
+      // Network error — keep current state, don't flap
     }
-  }, [createPushSubscription, syncSubscriptionWithServer]);
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -237,37 +225,14 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     }
   }, []);
 
+  // Fetch server-side push state once on mount — no focus/visibility re-checks.
   useEffect(() => {
-    void refreshPushState();
-  }, [refreshPushState]);
-
-  useEffect(() => {
-    if (!supportsPushNotifications()) {
+    if (hasFetchedServerStateRef.current) {
       return;
     }
-
-    const handleVisibilityOrFocus = () => {
-      void refreshPushState();
-    };
-
-    const handleControllerChange = () => {
-      void refreshPushState();
-    };
-
-    void navigator.serviceWorker.ready.then(() => {
-      void refreshPushState();
-    });
-
-    window.addEventListener("focus", handleVisibilityOrFocus);
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
-
-    return () => {
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
-    };
-  }, [refreshPushState]);
+    hasFetchedServerStateRef.current = true;
+    void fetchServerPushState();
+  }, [fetchServerPushState]);
 
   // Subscribe to real-time notifications via Pusher
   useEffect(() => {
@@ -283,7 +248,6 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         toast(payload.notification.message, {
           icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
         });
-        void refreshPushState();
       }
     });
 
@@ -291,7 +255,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       userChannel.unbind(NOTIFICATION_EVENT);
       client.unsubscribe(getUserPusherName(userId));
     };
-  }, [refreshPushState, userId]);
+  }, [userId]);
 
   // Fetch on open
   useEffect(() => {
@@ -454,7 +418,6 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       );
     } finally {
       setIsPushLoading(false);
-      void refreshPushState();
     }
   };
 
