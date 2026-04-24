@@ -98,6 +98,8 @@ type WorkspaceUser = {
   email?: string | null;
   username?: string | null;
   role: WorkspaceRole;
+  teacherModeVerified?: boolean;
+  totalAnswered?: number;
   userImage?: string | null;
   callSettings: UserCallSettings;
 };
@@ -349,6 +351,8 @@ export function WorkspaceShell({
       email: user.email || "",
       username: user.username || "",
       role: user.role,
+      teacherModeVerified: user.teacherModeVerified ?? false,
+      totalAnswered: user.totalAnswered ?? 0,
       userImage: user.userImage ?? "",
       subscriptionStatus: "NONE",
       subscriptionEnd: null,
@@ -369,6 +373,8 @@ export function WorkspaceShell({
     user.id,
     user.name,
     user.role,
+    user.teacherModeVerified,
+    user.totalAnswered,
     user.userImage,
     user.username,
   ]);
@@ -623,6 +629,9 @@ collapseSidebarOnClick: true,
               user={{
                 name: resolvedUser.name || roleLabel,
                 email: resolvedUser.email || "",
+                role: resolvedUser.role,
+                teacherModeVerified: user.teacherModeVerified ?? false,
+                totalAnswered: user.totalAnswered ?? 0,
                 userImage: resolvedUser.userImage || "",
               }}
             />

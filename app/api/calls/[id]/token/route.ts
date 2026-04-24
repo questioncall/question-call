@@ -7,6 +7,7 @@ import { logCallLifecycle } from "@/lib/call-logging";
 import { canIssueCallToken } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
 import CallSession from "@/models/CallSession";
+import Channel from "@/models/Channel";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -24,6 +25,20 @@ export async function GET(request: Request, context: RouteParams) {
     const callSession = await CallSession.findById(id).lean();
     if (!callSession) {
       return NextResponse.json({ error: "Call session not found" }, { status: 404 });
+    }
+
+    const channel = await Channel.findById(callSession.channelId)
+      .select("status timerDeadline timeExtensionCount")
+      .lean();
+    if (!channel) {
+      return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+    }
+
+    if (channel.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "This channel is no longer active." },
+        { status: 409 },
+      );
     }
 
     if (callSession.status === "ENDED" || callSession.status === "REJECTED" || callSession.status === "MISSED") {
@@ -79,7 +94,13 @@ export async function GET(request: Request, context: RouteParams) {
       roomName: callSession.roomName,
     });
 
-    return NextResponse.json({ token, serverUrl: wsUrl });
+    return NextResponse.json({
+      token,
+      serverUrl: wsUrl,
+      channelId: callSession.channelId.toString(),
+      timerDeadline: new Date(channel.timerDeadline).toISOString(),
+      timeExtensionCount: channel.timeExtensionCount ?? 0,
+    });
   } catch (error) {
     console.error("[GET /api/calls/[id]/token]", error);
     return NextResponse.json(

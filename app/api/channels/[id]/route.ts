@@ -2,16 +2,15 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { emitDeadlineWarningIfNeeded } from "@/lib/channel-deadline-warning";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitNotification } from "@/lib/pusher/pusherServer";
 import "@/models/User";
 import "@/models/Question";
 import { getFormatDurationMinutes, getPlatformConfig } from "@/models/PlatformConfig";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
 import Answer from "@/models/Answer";
-import Notification from "@/models/Notification";
 import type { ChannelDetail, ChatMessage } from "@/types/channel";
 import type { AnswerFormat } from "@/types/question";
 
@@ -96,26 +95,13 @@ export async function GET(_request: Request, context: RouteParams) {
 
     const isAnswerSubmitted = await Answer.exists({ channelId: id });
 
-    // Check if deadline has passed - send warning notification if at 80%
-    if (channel.status === "ACTIVE" && !isAnswerSubmitted) {
-      const now = new Date();
-      const deadline = new Date(channel.timerDeadline);
-      const totalTime = deadline.getTime() - new Date(channel.openedAt).getTime();
-      const elapsed = now.getTime() - new Date(channel.openedAt).getTime();
-      const percentElapsed = totalTime > 0 ? (elapsed / totalTime) * 100 : 0;
-
-      if (percentElapsed >= 80 && percentElapsed < 100) {
-        const notif = await Notification.create({
-          userId: channel.acceptorId,
-          type: "DEADLINE_WARNING",
-          message: "Hurry! Time is running out to answer the question.",
-        }).catch(() => null);
-
-        if (notif) {
-          await emitNotification(channel.acceptorId.toString(), notif).catch(console.error);
-        }
-      }
-    }
+    await emitDeadlineWarningIfNeeded({
+      channelId: id,
+      acceptorId,
+      status: channel.status,
+      timerDeadline: channel.timerDeadline,
+      hasAnswerSubmitted: Boolean(isAnswerSubmitted),
+    });
 
     const channelDetail: ChannelDetail = {
       id: channel._id.toString(),
@@ -124,6 +110,7 @@ export async function GET(_request: Request, context: RouteParams) {
       acceptorId: acceptorId,
       openedAt: new Date(channel.openedAt).toISOString(),
       timerDeadline: new Date(channel.timerDeadline).toISOString(),
+      timeExtensionCount: channel.timeExtensionCount ?? 0,
       closedAt: channel.closedAt ? new Date(channel.closedAt).toISOString() : null,
       status: channel.status as ChannelDetail["status"],
       isClosedByAsker: channel.isClosedByAsker,

@@ -28,6 +28,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import {
+  CHANNEL_EXTENSION_MINUTES,
+  CHANNEL_WARNING_THRESHOLD_MS,
+  MAX_CHANNEL_TIME_EXTENSIONS,
+} from "@/lib/channel-timer";
 import { canDeleteChatMessage } from "@/lib/message-deletion";
 import { getAnswerFormatLabel } from "@/lib/question-types";
 import { cn } from "@/lib/utils";
@@ -36,6 +41,7 @@ import {
   CHANNEL_MESSAGE_EVENT,
   CHANNEL_STATUS_EVENT,
   CHANNEL_MESSAGES_SEEN_EVENT,
+  CHANNEL_TIMER_UPDATED_EVENT,
   MESSAGE_MARKED_EVENT,
   MESSAGE_DELETED_EVENT,
   ANSWER_SUBMITTED_EVENT,
@@ -51,6 +57,7 @@ import {
   removeMessage,
   setChannelStatus,
   setChannelRating,
+  setChannelTimer,
   setAnswerSubmitted,
   toggleMessageMarked,
   setMessageDeleted,
@@ -172,6 +179,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const [countdown, setCountdown] = useState<number>(0);
 
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
+  const [isExtendingTime, setIsExtendingTime] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   const [ratingValue, setRatingValue] = useState(0);
@@ -205,6 +213,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       if (!res.ok) {
         throw new Error(data.error || "Failed to start call");
       }
+      void router.prefetch(`/calls/${data.callSessionId}`);
       // Signal the global outgoing call overlay via custom DOM event
       window.dispatchEvent(
         new CustomEvent("qc:outgoing-call", {
@@ -295,6 +304,33 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       }
     };
 
+    const handleTimerUpdated = (payload: {
+      timerDeadline?: string;
+      timeExtensionCount?: number;
+      extendedBy?: string;
+      extendedByName?: string;
+      extensionMinutes?: number;
+    }) => {
+      if (!payload.timerDeadline || typeof payload.timeExtensionCount !== "number") {
+        return;
+      }
+
+      dispatch(
+        setChannelTimer({
+          timerDeadline: payload.timerDeadline,
+          timeExtensionCount: payload.timeExtensionCount,
+        }),
+      );
+
+      if (payload.extendedBy && userId && payload.extendedBy !== userId) {
+        toast.info(
+          `${payload.extendedByName || "The other participant"} added ${
+            payload.extensionMinutes || CHANNEL_EXTENSION_MINUTES
+          } more minutes.`,
+        );
+      }
+    };
+
     const handleAnswerSubmitted = () => {
       dispatch(setAnswerSubmitted(true));
     };
@@ -319,6 +355,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     pusherChannel.bind(CHANNEL_MESSAGE_EVENT, handleMessage);
     pusherChannel.bind(CHANNEL_STATUS_EVENT, handleStatus);
     pusherChannel.bind(CHANNEL_MESSAGES_SEEN_EVENT, handleMessagesSeen);
+    pusherChannel.bind(CHANNEL_TIMER_UPDATED_EVENT, handleTimerUpdated);
     pusherChannel.bind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
     pusherChannel.bind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
     pusherChannel.bind(MESSAGE_MARKED_EVENT, handleMessageMarked);
@@ -329,6 +366,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       pusherChannel.unbind(CHANNEL_MESSAGE_EVENT, handleMessage);
       pusherChannel.unbind(CHANNEL_STATUS_EVENT, handleStatus);
       pusherChannel.unbind(CHANNEL_MESSAGES_SEEN_EVENT, handleMessagesSeen);
+      pusherChannel.unbind(CHANNEL_TIMER_UPDATED_EVENT, handleTimerUpdated);
       pusherChannel.unbind(ANSWER_SUBMITTED_EVENT, handleAnswerSubmitted);
       pusherChannel.unbind(CHANNEL_CLOSED_EVENT, handleChannelClosed);
       pusherChannel.unbind(MESSAGE_MARKED_EVENT, handleMessageMarked);
@@ -884,11 +922,43 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     }
   };
 
+  const handleExtendTime = useCallback(async () => {
+    if (!channelId || isExtendingTime) return;
+
+    setIsExtendingTime(true);
+    try {
+      const response = await fetch(`/api/channels/${channelId}/extend`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add more time.");
+      }
+
+      dispatch(
+        setChannelTimer({
+          timerDeadline: data.timerDeadline,
+          timeExtensionCount: data.timeExtensionCount,
+        }),
+      );
+      toast.success(`Added ${CHANNEL_EXTENSION_MINUTES} more minutes to this channel.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to add more time.");
+    } finally {
+      setIsExtendingTime(false);
+    }
+  }, [channelId, dispatch, isExtendingTime]);
+
   // ─── Derived state ────────────────────────────────────
   const isActive = channel?.status === "ACTIVE";
   const isClosed = channel?.status === "CLOSED";
   const isExpired = channel?.status === "EXPIRED";
   const isAsker = userId === channel?.askerId;
+  const timeExtensionsRemaining = Math.max(
+    0,
+    MAX_CHANNEL_TIME_EXTENSIONS - (channel?.timeExtensionCount ?? 0),
+  );
   const counterpartName = isAsker ? channel?.acceptorName : channel?.askerName;
   const groupedMessages = useMemo(() => {
     const groups: { dateLabel: string; messages: typeof messages }[] = [];
@@ -934,6 +1004,12 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   // ─── Countdown color ──────────────────────────────────
   const countdownUrgent = countdown > 0 && countdown < 5 * 60 * 1000; // < 5 min
   const countdownWarning = countdown > 0 && countdown < 15 * 60 * 1000; // < 15 min
+  const canExtendTime =
+    isActive &&
+    !isAnswerSubmitted &&
+    countdown > 0 &&
+    countdown <= CHANNEL_WARNING_THRESHOLD_MS &&
+    timeExtensionsRemaining > 0;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-background">
@@ -984,18 +1060,43 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               </div>
             )}
             {isActive && (
-              <div
-                className={cn(
-                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors sm:text-sm",
-                  countdownUrgent
-                    ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
-                    : countdownWarning
-                      ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "border-border bg-background text-foreground",
-                )}
-              >
-                <ClockIcon className="size-4" />
-                {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors sm:text-sm",
+                    countdownUrgent
+                      ? "border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
+                      : countdownWarning
+                        ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "border-border bg-background text-foreground",
+                  )}
+                >
+                  <ClockIcon className="size-4" />
+                  {countdown > 0 ? formatCountdown(countdown) : "Time's up"}
+                </div>
+                {canExtendTime ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                    onClick={() => { void handleExtendTime(); }}
+                    disabled={isExtendingTime}
+                  >
+                    {isExtendingTime ? (
+                      <>
+                        <Loader2Icon className="size-4 animate-spin" />
+                        Adding time
+                      </>
+                    ) : (
+                      <>
+                        +{CHANNEL_EXTENSION_MINUTES} min
+                        <span className="text-[11px] text-current/80">
+                          {timeExtensionsRemaining} left
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                ) : null}
               </div>
             )}
 

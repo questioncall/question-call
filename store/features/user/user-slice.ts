@@ -8,6 +8,8 @@ type UserProfileState = {
   email: string;
   username: string;
   role: "STUDENT" | "TEACHER" | "ADMIN";
+  teacherModeVerified: boolean;
+  totalAnswered: number;
   userImage?: string;
   isHydrated: boolean;
   subscriptionStatus: "TRIAL" | "ACTIVE" | "EXPIRED" | "NONE" | null;
@@ -33,6 +35,8 @@ const initialState: UserProfileState = {
   email: "",
   username: "",
   role: "STUDENT",
+  teacherModeVerified: false,
+  totalAnswered: 0,
   userImage: "",
   isHydrated: false,
   subscriptionStatus: null,
@@ -58,6 +62,8 @@ const userSlice = createSlice({
       state.email = action.payload.email || "";
       state.username = action.payload.username || "";
       state.role = action.payload.role;
+      state.teacherModeVerified = action.payload.teacherModeVerified;
+      state.totalAnswered = action.payload.totalAnswered;
       state.userImage = action.payload.userImage || "";
       state.subscriptionStatus = action.payload.subscriptionStatus;
       state.subscriptionEnd = action.payload.subscriptionEnd;
@@ -79,6 +85,12 @@ const userSlice = createSlice({
       if (action.payload.userImage !== undefined) state.userImage = action.payload.userImage;
       if (action.payload.username !== undefined) state.username = action.payload.username;
       if (action.payload.role !== undefined) state.role = action.payload.role;
+      if (action.payload.teacherModeVerified !== undefined) {
+        state.teacherModeVerified = action.payload.teacherModeVerified;
+      }
+      if (action.payload.totalAnswered !== undefined) {
+        state.totalAnswered = action.payload.totalAnswered;
+      }
       if (action.payload.subscriptionStatus !== undefined) state.subscriptionStatus = action.payload.subscriptionStatus;
       if (action.payload.subscriptionEnd !== undefined) state.subscriptionEnd = action.payload.subscriptionEnd;
       if (action.payload.pendingManualPayment !== undefined) state.pendingManualPayment = action.payload.pendingManualPayment;
@@ -102,6 +114,8 @@ const userSlice = createSlice({
       state.email = "";
       state.username = "";
       state.role = "STUDENT";
+      state.teacherModeVerified = false;
+      state.totalAnswered = 0;
       state.userImage = "";
       state.isHydrated = false;
       state.subscriptionStatus = null;

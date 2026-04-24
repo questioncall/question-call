@@ -19,6 +19,7 @@ export type ChannelRecord = {
   acceptorId: string;
   openedAt: string;
   timerDeadline: string;
+  timeExtensionCount: number;
   closedAt: string | null;
   status: ChannelStatus;
   isClosedByAsker: boolean;

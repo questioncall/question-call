@@ -15,6 +15,7 @@ import {
   COURSE_UPDATED_EVENT,
   COURSE_UPDATES_CHANNEL,
   getChannelPusherName,
+  CHANNEL_TIMER_UPDATED_EVENT,
   getUserPusherName,
   NOTIFICATION_EVENT,
   SUBSCRIPTION_UPDATED_EVENT,
@@ -84,6 +85,20 @@ export async function emitChannelStatusUpdate(
     status,
     ...data,
   });
+}
+
+export async function emitChannelTimerUpdated(
+  channelId: string,
+  data: {
+    timerDeadline: string;
+    timeExtensionCount: number;
+    extendedBy?: string;
+    extendedByName?: string;
+    extensionMinutes?: number;
+  },
+) {
+  const pusherChannel = getChannelPusherName(channelId);
+  await pusherServer.trigger(pusherChannel, CHANNEL_TIMER_UPDATED_EVENT, data);
 }
 
 /** Broadcast a notification to a specific user */

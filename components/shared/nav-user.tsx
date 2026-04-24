@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { TEACHER } from "@/lib/config"
 import {
   MoreVertical,
   LogOut,
@@ -42,6 +43,10 @@ function getPlanDisplayName(planSlug: string | null): string | null {
   return PLAN_NAME_MAP[planSlug] || null
 }
 
+function getTeacherVerificationDisplayName(isVerified: boolean): string {
+  return isVerified ? "Verified" : "Unverified"
+}
+
 export function NavUser({
   user: fallbackUser,
   loading = false,
@@ -49,6 +54,9 @@ export function NavUser({
   user: {
     name: string
     email: string
+    role?: "STUDENT" | "TEACHER" | "ADMIN"
+    teacherModeVerified?: boolean
+    totalAnswered?: number
     userImage?: string
   }
   loading?: boolean
@@ -59,8 +67,27 @@ const { isMobile } = useSidebar()
   const name = profile.name || fallbackUser.name || "Student"
   const email = profile.email || fallbackUser.email || ""
   const avatar = profile.userImage || fallbackUser.userImage || ""
-  const planSlug = profile.planSlug
+  const role = profile.isHydrated
+    ? profile.role
+    : fallbackUser.role || "STUDENT"
+  const teacherModeVerified =
+    profile.isHydrated
+      ? profile.teacherModeVerified
+      : fallbackUser.teacherModeVerified || false
+  const totalAnswered = Math.max(
+    0,
+    profile.isHydrated
+      ? profile.totalAnswered
+      : fallbackUser.totalAnswered || 0,
+  )
+  const isTeacherVerified =
+    teacherModeVerified || totalAnswered >= TEACHER.QUALIFICATION_THRESHOLD
+  const planSlug = role === "STUDENT" ? profile.planSlug : null
   const planDisplayName = getPlanDisplayName(planSlug)
+  const teacherVerificationDisplayName =
+    role === "TEACHER"
+      ? getTeacherVerificationDisplayName(isTeacherVerified)
+      : null
 
   const fallback = name ? name.substring(0, 2).toUpperCase() : "U"
 
@@ -105,6 +132,15 @@ const { isMobile } = useSidebar()
                   {planDisplayName && (
                     <span className="shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                       {planDisplayName}
+                    </span>
+                  )}
+                  {teacherVerificationDisplayName && (
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                      isTeacherVerified
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                    }`}>
+                      {teacherVerificationDisplayName}
                     </span>
                   )}
                 </div>

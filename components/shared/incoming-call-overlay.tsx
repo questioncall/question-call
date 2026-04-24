@@ -43,6 +43,11 @@ export function IncomingCallOverlay({
   const stopToneRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    if (!call?.callSessionId) return;
+    void router.prefetch(`/calls/${call.callSessionId}`);
+  }, [call?.callSessionId, router]);
+
   // ── Ringtone playback ─────────────────────────────────────────
   useEffect(() => {
     if (!call || isSilent) return;

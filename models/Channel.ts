@@ -32,6 +32,16 @@ const channelSchema = new Schema(
       type: Date,
       required: true,
     },
+    timeExtensionCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3,
+    },
+    lastDeadlineWarningAt: {
+      type: Date,
+      default: null,
+    },
     closedAt: {
       type: Date,
       default: null,

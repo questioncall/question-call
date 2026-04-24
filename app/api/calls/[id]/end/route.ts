@@ -10,7 +10,8 @@ import {
 import { connectToDatabase } from "@/lib/mongodb";
 import CallSession from "@/models/CallSession";
 import Message from "@/models/Message";
-import { emitChannelMessage } from "@/lib/pusher/pusherServer";
+import { emitChannelMessage, pusherServer } from "@/lib/pusher/pusherServer";
+import { CALL_ENDED_EVENT, getChannelPusherName } from "@/lib/pusher/events";
 import User from "@/models/User";
 import type { ChatMessage } from "@/types/channel";
 
@@ -33,6 +34,7 @@ export async function POST(request: Request, context: RouteParams) {
     }
 
     const { teacherId, studentId, callerId } = getCallParticipantIds(callSession);
+    const channelId = callSession.channelId.toString();
 
     if (userId !== teacherId && userId !== studentId) {
       return NextResponse.json({ error: "Not a participant" }, { status: 403 });
@@ -46,6 +48,14 @@ export async function POST(request: Request, context: RouteParams) {
       callSession.endedAt = new Date();
       await callSession.save();
 
+      await pusherServer
+        .trigger(getChannelPusherName(channelId), CALL_ENDED_EVENT, {
+          callSessionId: id,
+          channelId,
+          endedBy: userId,
+        })
+        .catch(console.error);
+
       // Calculate duration in seconds
       const startedAt = callSession.startedAt ? new Date(callSession.startedAt).getTime() : callSession.createdAt ? new Date(callSession.createdAt).getTime() : 0;
       const endedAt = callSession.endedAt ? new Date(callSession.endedAt).getTime() : Date.now();
@@ -58,7 +68,6 @@ export async function POST(request: Request, context: RouteParams) {
       const callerName = callerUser?.name || session.user.name || "Unknown";
 
       // Create a system message in the channel with call metadata
-      const channelId = callSession.channelId.toString();
       const contentText = getCallSummaryText({
         mode: callSession.mode,
         status: "ENDED",
@@ -116,7 +125,7 @@ export async function POST(request: Request, context: RouteParams) {
       });
     }
 
-    return NextResponse.json({ success: true, status: callSession.status });
+    return NextResponse.json({ success: true, status: callSession.status, channelId });
   } catch (error) {
     console.error("[POST /api/calls/[id]/end]", error);
     return NextResponse.json(

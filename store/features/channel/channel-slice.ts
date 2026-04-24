@@ -97,6 +97,17 @@ const channelSlice = createSlice({
       }
     },
 
+    /** Sync timer updates such as time extensions */
+    setChannelTimer(
+      state,
+      action: PayloadAction<{ timerDeadline: string; timeExtensionCount: number }>,
+    ) {
+      if (state.channel) {
+        state.channel.timerDeadline = action.payload.timerDeadline;
+        state.channel.timeExtensionCount = action.payload.timeExtensionCount;
+      }
+    },
+
     /** Mark answer as submitted */
     setAnswerSubmitted(state, action: PayloadAction<boolean>) {
       state.isAnswerSubmitted = action.payload;
@@ -152,6 +163,7 @@ export const {
   setMessageDeleted,
   setChannelStatus,
   setChannelRating,
+  setChannelTimer,
   setAnswerSubmitted,
   markMessagesAsSeen,
   markOwnMessagesAsSeen,

@@ -45,6 +45,11 @@ export function OutgoingCallOverlay({
   const stopToneRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    if (!call?.callSessionId) return;
+    void router.prefetch(`/calls/${call.callSessionId}`);
+  }, [call?.callSessionId, router]);
+
   // ── Ringback tone playback ────────────────────────────────────
   useEffect(() => {
     if (!call) return;

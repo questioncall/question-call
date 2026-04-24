@@ -42,14 +42,21 @@ export async function getSafeServerSession() {
 
 type WorkspaceUserRecord = Pick<
   UserRecord,
-  "name" | "email" | "username" | "role" | "userImage" | "callSettings"
+  | "name"
+  | "email"
+  | "username"
+  | "role"
+  | "userImage"
+  | "callSettings"
+  | "teacherModeVerified"
+  | "totalAnswered"
 >;
 
 export async function getWorkspaceUser(sessionUser: Session["user"]) {
   await connectToDatabase();
 
   const dbUser = await User.findById(sessionUser.id)
-    .select("name email username role userImage callSettings")
+    .select("name email username role userImage callSettings teacherModeVerified totalAnswered")
     .lean<WorkspaceUserRecord | null>();
 
   return {
@@ -58,6 +65,8 @@ export async function getWorkspaceUser(sessionUser: Session["user"]) {
     email: dbUser?.email ?? sessionUser.email ?? "",
     username: dbUser?.username ?? sessionUser.username ?? "",
     role: dbUser?.role ?? sessionUser.role,
+    teacherModeVerified: dbUser?.teacherModeVerified ?? false,
+    totalAnswered: dbUser?.totalAnswered ?? 0,
     userImage: dbUser?.userImage ?? "",
     callSettings: normalizeCallSettings(
       dbUser?.callSettings as Partial<UserCallSettings> | null | undefined,

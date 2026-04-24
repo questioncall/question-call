@@ -11,6 +11,7 @@ export const QUESTION_UPDATED_EVENT = "question:updated";
 export const CHANNEL_MESSAGE_EVENT = "channel:message";
 export const CHANNEL_STATUS_EVENT = "channel:status";
 export const CHANNEL_MESSAGES_SEEN_EVENT = "channel:messages_seen";
+export const CHANNEL_TIMER_UPDATED_EVENT = "channel:timer_updated";
 // Marking a message as part of the formal answer
 export const MESSAGE_MARKED_EVENT = "message:marked";
 // Soft-delete a message (sender only)
