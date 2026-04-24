@@ -73,6 +73,10 @@ self.addEventListener("push", (event) => {
   event.waitUntil(handlePush(event));
 });
 
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(refreshPushSubscription(event));
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -146,6 +150,14 @@ function getPushPayload(event) {
   }
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+
+  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+}
+
 async function handlePush(event) {
   const payload = getPushPayload(event);
   const title = payload.title || "Question Call";
@@ -175,6 +187,49 @@ async function handlePush(event) {
       url: targetUrl,
     },
   });
+}
+
+async function refreshPushSubscription(event) {
+  try {
+    const keyResponse = await fetch("/api/push/public-key", {
+      cache: "no-store",
+    });
+    const keyData = await keyResponse.json().catch(() => ({}));
+
+    if (!keyResponse.ok || !keyData.publicKey) {
+      return;
+    }
+
+    const subscription = await self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+    });
+
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subscription: subscription.toJSON(),
+      }),
+    });
+
+    const oldEndpoint = event.oldSubscription?.endpoint;
+    if (oldEndpoint) {
+      await fetch("/api/push/unsubscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          endpoint: oldEndpoint,
+        }),
+      }).catch(() => null);
+    }
+  } catch (error) {
+    console.error("[SW] Failed to refresh push subscription", error);
+  }
 }
 
 async function focusOrOpenClient(targetUrl) {

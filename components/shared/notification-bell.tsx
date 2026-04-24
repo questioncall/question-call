@@ -118,10 +118,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const syncSubscriptionWithServer = useCallback(
-    async (subscription: PushSubscription) => {
+    async (subscription: PushSubscription, force = false) => {
       const syncKey = subscription.endpoint;
 
-      if (subscriptionSyncRef.current === syncKey) {
+      if (!force && subscriptionSyncRef.current === syncKey) {
         return true;
       }
 
@@ -146,6 +146,33 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     [],
   );
 
+  const fetchPushPublicKey = useCallback(async () => {
+    const keyResponse = await fetch("/api/push/public-key", {
+      cache: "no-store",
+    });
+    const keyData = await keyResponse.json().catch(() => ({}));
+
+    if (!keyResponse.ok || !keyData.publicKey) {
+      throw new Error(keyData.error || "Push notifications are not configured yet.");
+    }
+
+    return keyData.publicKey as string;
+  }, []);
+
+  const createPushSubscription = useCallback(async () => {
+    const registration = await getPushRegistration();
+    if (!registration) {
+      throw new Error("Push service is still starting. Please try again.");
+    }
+
+    const publicKey = await fetchPushPublicKey();
+
+    return registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+  }, [fetchPushPublicKey]);
+
   const refreshPushState = useCallback(async () => {
     const supported = supportsPushNotifications();
     setPushSupported(supported);
@@ -167,6 +194,20 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
       const subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
+        if (Notification.permission === "granted") {
+          const recreatedSubscription = await createPushSubscription().catch(() => null);
+
+          if (recreatedSubscription) {
+            const synced = await syncSubscriptionWithServer(
+              recreatedSubscription,
+              true,
+            ).catch(() => false);
+
+            setPushEnabled(synced);
+            return;
+          }
+        }
+
         subscriptionSyncRef.current = null;
         setPushEnabled(false);
         return;
@@ -174,14 +215,14 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
       const synced =
         Notification.permission === "granted"
-          ? await syncSubscriptionWithServer(subscription).catch(() => false)
+          ? await syncSubscriptionWithServer(subscription, true).catch(() => false)
           : false;
 
       setPushEnabled(Boolean(subscription) && (Notification.permission !== "granted" || synced));
     } catch {
       setPushEnabled(false);
     }
-  }, [syncSubscriptionWithServer]);
+  }, [createPushSubscription, syncSubscriptionWithServer]);
 
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -242,6 +283,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         toast(payload.notification.message, {
           icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
         });
+        void refreshPushState();
       }
     });
 
@@ -249,7 +291,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       userChannel.unbind(NOTIFICATION_EVENT);
       client.unsubscribe(getUserPusherName(userId));
     };
-  }, [userId]);
+  }, [refreshPushState, userId]);
 
   // Fetch on open
   useEffect(() => {
@@ -336,39 +378,29 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         return;
       }
 
-      const keyResponse = await fetch("/api/push/public-key", {
-        cache: "no-store",
-      });
-      const keyData = await keyResponse.json().catch(() => ({}));
-
-      if (!keyResponse.ok || !keyData.publicKey) {
-        throw new Error(keyData.error || "Push notifications are not configured yet.");
-      }
-
       const registration = await getPushRegistration();
       if (!registration) {
         throw new Error("Push service is still starting. Please try again.");
       }
 
       let subscription = await registration.pushManager.getSubscription();
+      let publicKey: string | null = null;
 
-      if (
-        subscription &&
-        !hasMatchingApplicationServerKey(subscription, keyData.publicKey)
-      ) {
+      if (subscription) {
+        publicKey = await fetchPushPublicKey();
+      }
+
+      if (subscription && publicKey && !hasMatchingApplicationServerKey(subscription, publicKey)) {
         await subscription.unsubscribe().catch(() => {});
         subscriptionSyncRef.current = null;
         subscription = null;
       }
 
       if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-        });
+        subscription = await createPushSubscription();
       }
 
-      const synced = await syncSubscriptionWithServer(subscription);
+      const synced = await syncSubscriptionWithServer(subscription, true);
       if (!synced) {
         throw new Error("Failed to enable push notifications.");
       }
