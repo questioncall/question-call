@@ -1,4 +1,4 @@
-import { calcTotalPointsEarned } from "@/lib/points";
+import { calcTeacherPayoutBreakdown } from "@/lib/points";
 import { connectToDatabase } from "@/lib/mongodb";
 import {
   emitQuestionUpdated,
@@ -275,14 +275,11 @@ export async function processExpiredChannels(
         const teacher = await User.findById(teacherId)
           .select("_id isMonetized")
           .lean();
-        const pointsEarned =
+        const payout =
           teacher?.isMonetized && existingAnswer
-            ? calcTotalPointsEarned(
-                existingAnswer.answerFormat,
-                AUTO_CLOSE_RATING,
-                config,
-              )
-            : 0;
+            ? calcTeacherPayoutBreakdown(AUTO_CLOSE_RATING, config)
+            : null;
+        const pointsEarned = payout?.finalPoints ?? 0;
 
         await applyBayesianRating({
           teacherId,
@@ -303,8 +300,15 @@ export async function processExpiredChannels(
             metadata: {
               channelId,
               questionId: question?._id?.toString() ?? null,
+              questionTitle: question?.title ?? null,
               rating: AUTO_CLOSE_RATING,
               answerFormat: existingAnswer.answerFormat,
+              ratingPoints: payout?.ratingPoints ?? 0,
+              bonusPoints: payout?.bonusPoints ?? 0,
+              grossPoints: payout?.grossPoints ?? pointsEarned,
+              commissionPercent: payout?.commissionPercent ?? 0,
+              commissionPoints: payout?.commissionPoints ?? 0,
+              finalPoints: payout?.finalPoints ?? pointsEarned,
             },
           }).catch((error) => {
             console.error("[wallet-history] Failed to record auto-close reward", error);
@@ -391,6 +395,8 @@ export async function processExpiredChannels(
         metadata: {
           channelId,
           questionId: question?._id?.toString() ?? null,
+          questionTitle: question?.title ?? null,
+          penaltyPoints: penalty,
         },
       }).catch((error) => {
         console.error("[wallet-history] Failed to record timeout penalty", error);

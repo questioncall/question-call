@@ -345,7 +345,7 @@ export function CoursesBrowseClient({
                   variant="outline"
                   className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
                 >
-                  <Link href="/auth/register/STUDENT">Create Free Account</Link>
+                  <Link href="/auth/signup/student">Create Free Account</Link>
                 </Button>
               </div>
             </div>

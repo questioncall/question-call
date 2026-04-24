@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDaysIcon, CheckIcon, XIcon } from "lucide-react";
+import { CalendarDaysIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -35,10 +34,16 @@ type AdminLiveSessionsClientProps = {
   sessions: SessionData[];
 };
 
+const kathmanduDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Kathmandu",
+});
+
 export function AdminLiveSessionsClient({
   sessions: initialSessions,
 }: AdminLiveSessionsClientProps) {
-  const [sessions, setSessions] = useState(initialSessions);
+  const [sessions] = useState(initialSessions);
   const [filter, setFilter] = useState<string>("all");
 
   const filteredSessions = sessions.filter((session) => {
@@ -67,7 +72,8 @@ export function AdminLiveSessionsClient({
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Live sessions</h1>
           <p className="text-sm text-muted-foreground">
-            Monitor all live sessions across the platform.
+            Monitor all live sessions across the platform. Recording shows whether
+            a replay link or uploaded recording has been attached after the class.
           </p>
         </div>
       </div>
@@ -122,7 +128,9 @@ export function AdminLiveSessionsClient({
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <CalendarDaysIcon className="size-3.5" />
-                      {new Date(session.scheduledAt).toLocaleString()}
+                      {kathmanduDateTimeFormatter.format(
+                        new Date(session.scheduledAt),
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(session.status)}</td>

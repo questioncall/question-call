@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pointsToNpr, roundPoints } from "@/lib/points";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
+import { resolveStudentSubscriptionState } from "@/lib/subscription-state";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
@@ -24,6 +25,31 @@ type WalletEarningHistoryItem = {
   occurredAt: string;
 };
 
+type QuestionPayoutHistoryItem = {
+  id: string;
+  type: string;
+  questionTitle: string | null;
+  rating: number | null;
+  ratingPoints: number;
+  bonusPoints: number;
+  commissionPercent: number;
+  commissionPoints: number;
+  penaltyPoints: number;
+  finalPoints: number;
+  occurredAt: string;
+};
+
+type WalletHistoryMetadata = {
+  questionTitle?: string | null;
+  rating?: number;
+  ratingPoints?: number;
+  bonusPoints?: number;
+  commissionPercent?: number;
+  commissionPoints?: number;
+  finalPoints?: number;
+  penaltyPoints?: number;
+};
+
 type WalletHistoryEventRow = {
   _id: { toString(): string };
   type: string;
@@ -31,6 +57,7 @@ type WalletHistoryEventRow = {
   description?: string | null;
   pointsDelta: number;
   occurredAt: Date;
+  metadata?: WalletHistoryMetadata | null;
 };
 
 type CourseSaleCreditMetadata = {
@@ -45,6 +72,13 @@ type CourseSaleCreditRow = {
   createdAt: Date;
   metadata?: CourseSaleCreditMetadata | null;
 };
+
+const QUESTION_PAYOUT_EVENT_TYPES = new Set([
+  "ANSWER_REWARD",
+  "AUTO_CLOSE_REWARD",
+  "LOW_RATING_PENALTY",
+  "TIMEOUT_PENALTY",
+]);
 
 export async function GET() {
   try {
@@ -119,23 +153,36 @@ export async function GET() {
     let maxQuestions = 0;
     let baseMaxQuestions = 0;
     let bonusQuestions = 0;
+    let studentSubscriptionStatus: string | null = null;
+    let studentSubscriptionEnd: string | null = null;
 
     if (session.user.role === "STUDENT") {
       questionsAsked = user.questionsAsked ?? 0;
       bonusQuestions = user.bonusQuestions ?? 0;
       const plans = getHydratedPlans(config);
-      const currentPlan = plans.find(p => p.slug === user.planSlug) || plans[0];
+      const resolvedSubscription = resolveStudentSubscriptionState({
+        userPlanSlug: user.planSlug ?? null,
+        userSubscriptionEnd: user.subscriptionEnd ?? null,
+        snapshotPlanSlug: subscription?.planSlug ?? null,
+        snapshotStatus: subscription?.subscriptionStatus ?? null,
+        snapshotEnd: subscription?.subscriptionEnd ?? null,
+      });
+      const currentPlan =
+        plans.find((p) => p.slug === resolvedSubscription.planSlug) || plans[0];
       baseMaxQuestions = currentPlan?.maxQuestions ?? 0;
       maxQuestions = baseMaxQuestions > 0 ? baseMaxQuestions + bonusQuestions : baseMaxQuestions;
       questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
+      studentSubscriptionStatus = resolvedSubscription.subscriptionStatus;
+      studentSubscriptionEnd = resolvedSubscription.subscriptionEnd;
     }
 
     let earningHistory: WalletEarningHistoryItem[] = [];
+    let questionPayoutHistory: QuestionPayoutHistoryItem[] = [];
 
     if (session.user.role === "TEACHER") {
       const [walletHistoryEvents, courseSaleCredits] = await Promise.all([
         WalletHistoryEvent.find({ userId: session.user.id })
-          .select("_id type title description pointsDelta occurredAt")
+          .select("_id type title description pointsDelta occurredAt metadata")
           .sort({ occurredAt: -1 })
           .limit(historyLimit)
           .lean(),
@@ -150,8 +197,10 @@ export async function GET() {
           .lean(),
       ]);
 
-      const walletEventHistory = (walletHistoryEvents as WalletHistoryEventRow[]).map(
-        (event) => ({
+      const walletEventRows = walletHistoryEvents as WalletHistoryEventRow[];
+      const walletEventHistory = walletEventRows
+        .filter((event) => !QUESTION_PAYOUT_EVENT_TYPES.has(event.type))
+        .map((event) => ({
           id: event._id.toString(),
           type: event.type,
           title: event.title,
@@ -159,8 +208,42 @@ export async function GET() {
           pointsDelta: roundPoints(event.pointsDelta),
           nprAmount: null,
           occurredAt: new Date(event.occurredAt).toISOString(),
-        }),
-      );
+        }));
+
+      questionPayoutHistory = walletEventRows
+        .filter((event) => QUESTION_PAYOUT_EVENT_TYPES.has(event.type))
+        .map((event) => {
+          const metadata = event.metadata ?? null;
+          const penaltyPoints = roundPoints(
+            Math.max(
+              0,
+              metadata?.penaltyPoints ??
+                (event.pointsDelta < 0 ? Math.abs(event.pointsDelta) : 0),
+            ),
+          );
+          const finalPoints = roundPoints(
+            metadata?.finalPoints ??
+              (event.pointsDelta > 0 ? event.pointsDelta : -penaltyPoints),
+          );
+
+          return {
+            id: event._id.toString(),
+            type: event.type,
+            questionTitle:
+              metadata?.questionTitle?.trim() ||
+              event.description ||
+              null,
+            rating:
+              typeof metadata?.rating === "number" ? metadata.rating : null,
+            ratingPoints: roundPoints(metadata?.ratingPoints ?? 0),
+            bonusPoints: roundPoints(metadata?.bonusPoints ?? 0),
+            commissionPercent: roundPoints(metadata?.commissionPercent ?? 0),
+            commissionPoints: roundPoints(metadata?.commissionPoints ?? 0),
+            penaltyPoints,
+            finalPoints,
+            occurredAt: new Date(event.occurredAt).toISOString(),
+          };
+        });
 
       const courseSaleHistory = (courseSaleCredits as CourseSaleCreditRow[]).map(
         (transaction) => {
@@ -191,6 +274,14 @@ export async function GET() {
             new Date(left.occurredAt).getTime(),
         )
         .slice(0, historyLimit);
+
+      questionPayoutHistory = questionPayoutHistory
+        .sort(
+          (left, right) =>
+            new Date(right.occurredAt).getTime() -
+            new Date(left.occurredAt).getTime(),
+        )
+        .slice(0, historyLimit);
     }
 
     return NextResponse.json({
@@ -206,11 +297,11 @@ export async function GET() {
       qualificationThreshold: config.qualificationThreshold,
       subscriptionStatus:
         session.user.role === "STUDENT"
-          ? subscription?.subscriptionStatus ?? null
+          ? studentSubscriptionStatus
           : user.subscriptionStatus ?? null,
       subscriptionEnd:
         session.user.role === "STUDENT"
-          ? subscription?.subscriptionEnd ?? null
+          ? studentSubscriptionEnd
           : user.subscriptionEnd ?? null,
       questionsAsked,
       questionsRemaining,
@@ -226,6 +317,7 @@ export async function GET() {
       totalPenaltyPoints,
       creditablePoints: roundPoints(pointBalance),
       earningHistory,
+      questionPayoutHistory,
     });
   } catch (error) {
     console.error("[GET /api/wallet]", error);

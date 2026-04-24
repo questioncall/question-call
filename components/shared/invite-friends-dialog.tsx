@@ -61,8 +61,8 @@ export function InviteFriendsDialog({
       setSent(true);
       setEmails("");
       setMessage("");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send invitations");
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ export function InviteFriendsDialog({
           <div className="text-center py-6">
             <div className="text-4xl mb-3">🎁</div>
             <p className="text-muted-foreground mb-4">
-              Your invitations have been sent! When your friends sign up, you'll both receive bonus questions.
+              Your invitations have been sent! When your friends sign up, you&apos;ll both receive bonus questions.
             </p>
             <Button onClick={() => setSent(false)} variant="outline">
               Invite More Friends

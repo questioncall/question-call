@@ -20,7 +20,13 @@ type FormatConfig = {
   minWithdrawalPoints: number;
   qualificationThreshold: number;
   commissionPercent: number;
+  ratingPointsFor2Star: number;
+  ratingPointsFor3Star: number;
+  ratingPointsFor4Star: number;
+  ratingPointsFor5Star: number;
   scoreDeductionAmount: number;
+  bonusPointsFor2Star: number;
+  bonusPointsFor3Star: number;
   bonusPointsFor4Star: number;
   bonusPointsFor5Star: number;
   penaltyPointsForLowRating: number;
@@ -28,6 +34,16 @@ type FormatConfig = {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function getTeacherNetPayout(basePoints: number, bonusPoints: number, commissionPercent: number) {
+  const gross = basePoints + bonusPoints;
+  const commissionPoints = (gross * commissionPercent) / 100;
+  return {
+    gross,
+    commissionPoints,
+    net: Math.max(0, gross - commissionPoints),
+  };
 }
 
 export function FormatClient() {
@@ -89,21 +105,51 @@ export function FormatClient() {
 
   if (!config) return null;
 
+  const payoutPreview = [
+    {
+      rating: "2 Star",
+      ratingPoints: config.ratingPointsFor2Star || 0,
+      bonusPoints: config.bonusPointsFor2Star || 0,
+    },
+    {
+      rating: "3 Star",
+      ratingPoints: config.ratingPointsFor3Star || 0,
+      bonusPoints: config.bonusPointsFor3Star || 0,
+    },
+    {
+      rating: "4 Star",
+      ratingPoints: config.ratingPointsFor4Star || 0,
+      bonusPoints: config.bonusPointsFor4Star || 0,
+    },
+    {
+      rating: "5 Star",
+      ratingPoints: config.ratingPointsFor5Star || 0,
+      bonusPoints: config.bonusPointsFor5Star || 0,
+    },
+  ].map((entry) => ({
+    ...entry,
+    ...getTeacherNetPayout(
+      entry.ratingPoints,
+      entry.bonusPoints,
+      config.commissionPercent || 0,
+    ),
+  }));
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           <SlidersIcon className="mr-2 inline-block size-6 text-primary" />
           Format & Platform Rules
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tune the core mechanics: answer constraints, teacher economics, and withdrawal points.
+          Tune answer deadlines, teacher payouts, commission, and withdrawal rules from one place.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_1.35fr]">
         {/* Answer Durations */}
-        <Card className="md:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle>Format Deadlines</CardTitle>
             <CardDescription>Max minutes a teacher has to submit answer.</CardDescription>
@@ -151,128 +197,244 @@ export function FormatClient() {
           </CardContent>
         </Card>
 
-        {/* Format Points */}
-        <Card className="md:col-span-1">
+        <Card>
           <CardHeader>
-            <CardTitle>Base Points Earned</CardTitle>
-            <CardDescription>Base points credited per answered question format.</CardDescription>
+            <CardTitle>Teacher Payout Formula</CardTitle>
+            <CardDescription>
+              Question payouts now follow rating points + bonus points, then platform commission is deducted.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Text Answer Points</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.pointsPerTextAnswer || 0}
-                onChange={(e) => handleChange("pointsPerTextAnswer", e.target.value)}
-              />
+          <CardContent className="space-y-6">
+            <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              Teacher payout formula:
+              <span className="ml-1 font-medium text-foreground">
+                rating points + rating bonus - platform commission = final credited points
+              </span>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Photo Answer Points</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.pointsPerPhotoAnswer || 0}
-                onChange={(e) => handleChange("pointsPerPhotoAnswer", e.target.value)}
-              />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">2-Star Rating Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.ratingPointsFor2Star || 0}
+                  onChange={(e) => handleChange("ratingPointsFor2Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">2-Star Bonus Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.bonusPointsFor2Star || 0}
+                  onChange={(e) => handleChange("bonusPointsFor2Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">3-Star Rating Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.ratingPointsFor3Star || 0}
+                  onChange={(e) => handleChange("ratingPointsFor3Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">3-Star Bonus Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.bonusPointsFor3Star || 0}
+                  onChange={(e) => handleChange("bonusPointsFor3Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4-Star Rating Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.ratingPointsFor4Star || 0}
+                  onChange={(e) => handleChange("ratingPointsFor4Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">4-Star Bonus Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.bonusPointsFor4Star || 0}
+                  onChange={(e) => handleChange("bonusPointsFor4Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">5-Star Rating Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.ratingPointsFor5Star || 0}
+                  onChange={(e) => handleChange("ratingPointsFor5Star", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">5-Star Bonus Points</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.bonusPointsFor5Star || 0}
+                  onChange={(e) => handleChange("bonusPointsFor5Star", e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Video Answer Points</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.pointsPerVideoAnswer || 0}
-                onChange={(e) => handleChange("pointsPerVideoAnswer", e.target.value)}
-              />
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-3">Rating</th>
+                    <th className="px-3 py-3">Rating Points</th>
+                    <th className="px-3 py-3">Bonus</th>
+                    <th className="px-3 py-3">Commission</th>
+                    <th className="px-3 py-3">Final Credit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payoutPreview.map((entry) => (
+                    <tr key={entry.rating} className="border-b border-border/50 last:border-0">
+                      <td className="px-3 py-3 font-medium text-foreground">{entry.rating}</td>
+                      <td className="px-3 py-3">{entry.ratingPoints}</td>
+                      <td className="px-3 py-3">+{entry.bonusPoints}</td>
+                      <td className="px-3 py-3 text-muted-foreground">
+                        -{entry.commissionPoints.toFixed(2)} ({config.commissionPercent || 0}%)
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-emerald-600">
+                        {entry.net.toFixed(2)} pts
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
 
-        {/* Withdrawal rules */}
-        <Card className="md:col-span-2">
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Economics & Withdrawals</CardTitle>
-            <CardDescription>Rules defining payouts, thresholds, and deductions.</CardDescription>
+            <CardDescription>
+              Clear business rules for monetization, deductions, and point-to-cash conversion.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Point to NPR Rate</label>
-              <Input
-                type="number"
-                step="0.1"
-                min={0}
-                value={config.pointToNprRate || 0}
-                onChange={(e) => handleChange("pointToNprRate", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">E.g., 0.1 = 1 Point is 0.1 NPR</p>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Qualification Threshold</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={config.qualificationThreshold || 0}
+                  onChange={(e) => handleChange("qualificationThreshold", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Teachers unlock payouts after this many completed answers.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Commission %</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={config.commissionPercent || 0}
+                  onChange={(e) => handleChange("commissionPercent", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Platform cut from the gross rating payout.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Timeout Penalty</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.scoreDeductionAmount || 0}
+                  onChange={(e) => handleChange("scoreDeductionAmount", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deducted if the teacher misses the answer deadline.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">1-Star Penalty</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={config.penaltyPointsForLowRating || 0}
+                  onChange={(e) => handleChange("penaltyPointsForLowRating", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deducted when the answer gets a 1-star rating and the question resets.
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Min Withdrawal Points</label>
-              <Input
-                type="number"
-                min={1}
-                value={config.minWithdrawalPoints || 0}
-                onChange={(e) => handleChange("minWithdrawalPoints", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Qualification Threshold</label>
-              <Input
-                type="number"
-                min={1}
-                value={config.qualificationThreshold || 0}
-                onChange={(e) => handleChange("qualificationThreshold", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Free answers before teacher makes money</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Commission %</label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={config.commissionPercent || 0}
-                onChange={(e) => handleChange("commissionPercent", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Platform cut</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Timeout Score Penalty</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.scoreDeductionAmount || 0}
-                onChange={(e) => handleChange("scoreDeductionAmount", e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">+ Bonus (4 Star)</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.bonusPointsFor4Star || 0}
-                onChange={(e) => handleChange("bonusPointsFor4Star", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">+ Bonus (5 Star)</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.bonusPointsFor5Star || 0}
-                onChange={(e) => handleChange("bonusPointsFor5Star", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">- Penalty (Low Rating)</label>
-              <Input
-                type="number"
-                min={0}
-                value={config.penaltyPointsForLowRating || 0}
-                onChange={(e) => handleChange("penaltyPointsForLowRating", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Base points reduced by this</p>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Point to NPR Rate</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={config.pointToNprRate || 0}
+                  onChange={(e) => handleChange("pointToNprRate", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Example: 1 means 1 point = NPR 1. Example: 0.1 means 10 points = NPR 1.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Min Withdrawal Points</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={config.minWithdrawalPoints || 0}
+                  onChange={(e) => handleChange("minWithdrawalPoints", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minimum balance required before a withdrawal request can be submitted.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
+                <p className="font-medium text-foreground">Quick example</p>
+                <p className="mt-2 text-muted-foreground">
+                  With the current settings, a 4-star answer pays{" "}
+                  <span className="font-semibold text-foreground">
+                    {payoutPreview.find((entry) => entry.rating === "4 Star")?.net.toFixed(2) || "0.00"} pts
+                  </span>{" "}
+                  after commission.
+                </p>
+                <p className="mt-2 text-muted-foreground">
+                  A teacher needs{" "}
+                  <span className="font-semibold text-foreground">
+                    {config.minWithdrawalPoints || 0} pts
+                  </span>{" "}
+                  before cashout, at{" "}
+                  <span className="font-semibold text-foreground">
+                    NPR {config.pointToNprRate || 0}
+                  </span>{" "}
+                  per point.
+                </p>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="bg-muted/30 pt-6 mt-4">

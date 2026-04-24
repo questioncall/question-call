@@ -89,21 +89,32 @@ export default function CallSessionPage() {
 
   return (
     <div className="relative isolate flex h-full min-h-0 w-full flex-col bg-black text-white">
-      <div className="absolute inset-x-0 bottom-4 z-50 flex justify-center px-4 sm:inset-x-auto sm:bottom-auto sm:left-4 sm:top-4 sm:px-0">
-        <Button 
-          variant="destructive" 
-          onClick={handleEndCall} 
-          className="w-full max-w-xs gap-2 rounded-full shadow-lg sm:w-auto"
-        >
-           <PhoneOffIcon className="size-4" /> End Call
-        </Button>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-center px-4 py-4 sm:justify-end">
+        <div className="pointer-events-auto flex w-full max-w-sm items-center justify-between rounded-full border border-white/10 bg-black/55 px-3 py-2 backdrop-blur-sm sm:w-auto sm:max-w-none">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.22em] text-white/60">
+              Live Call
+            </p>
+            <p className="truncate text-sm font-medium text-white">
+              Secure audio room
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={handleEndCall}
+            className="ml-3 shrink-0 gap-2 rounded-full px-4 shadow-lg"
+          >
+            <PhoneOffIcon className="size-4" />
+            End
+          </Button>
+        </div>
       </div>
       <LiveKitRoom
         video={false} // Initially false, user can toggle
         audio={true}
         token={token}
         serverUrl={serverUrl}
-        className="relative flex-1 w-full"
+        className="relative flex-1 w-full [&_.lk-control-bar]:mb-4 [&_.lk-control-bar]:w-[calc(100%-1rem)] [&_.lk-control-bar]:max-w-[22rem] [&_.lk-control-bar]:rounded-3xl [&_.lk-control-bar]:border [&_.lk-control-bar]:border-white/10 [&_.lk-control-bar]:bg-black/70 [&_.lk-control-bar]:px-2 [&_.lk-control-bar]:py-2 [&_.lk-control-bar]:backdrop-blur-md [&_.lk-button-group]:gap-1 [&_.lk-disconnect-button]:hidden sm:[&_.lk-control-bar]:w-auto sm:[&_.lk-control-bar]:max-w-none"
         data-lk-theme="default"
         onDisconnected={handleEndCall}
       >

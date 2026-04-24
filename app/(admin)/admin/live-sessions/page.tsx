@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { AdminLiveSessionsClient } from "./admin-live-sessions-client";
@@ -47,7 +46,7 @@ export default async function AdminLiveSessionsPage() {
         courseSlug: courseById.get(s.courseId.toString())?.slug ?? "",
         instructorName: courseById.get(s.courseId.toString())?.instructorName ?? "Unknown",
         title: s.title,
-        scheduledAt: s.scheduledAt.toString(),
+        scheduledAt: s.scheduledAt.toISOString(),
         durationMinutes: s.durationMinutes,
         status: s.status,
         zoomLink: s.zoomLink,

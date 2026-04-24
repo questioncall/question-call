@@ -5,12 +5,9 @@ import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 import { AdminHeaderClient } from "@/components/admin/admin-header-client";
 import { AdminSearchClient } from "@/components/admin/admin-search-client";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { connectToDatabase } from "@/lib/mongodb";
+import { OnboardingVideoModal } from "@/components/shared/onboarding-video-modal";
+import { getAdminNotificationCounts } from "@/lib/admin-notifications";
 import { createNoIndexMetadata } from "@/lib/seo";
-import WithdrawalRequest from "@/models/WithdrawalRequest";
-import User from "@/models/User";
-import Transaction from "@/models/Transaction";
-import Notification from "@/models/Notification";
 
 export const metadata = createNoIndexMetadata({
   title: "Admin",
@@ -18,22 +15,7 @@ export const metadata = createNoIndexMetadata({
 });
 
 async function getAdminCounts(adminUserId: string) {
-  await connectToDatabase();
-
-  const [pendingWithdrawals, expiredSubscriptions, pendingManualSubscriptions, unreadNotifications] =
-    await Promise.all([
-      WithdrawalRequest.countDocuments({ status: "PENDING" }),
-      User.countDocuments({ role: "STUDENT", subscriptionStatus: "EXPIRED" }),
-      Transaction.countDocuments({ type: "SUBSCRIPTION_MANUAL", status: "PENDING" }),
-      Notification.countDocuments({ userId: adminUserId, isRead: false }),
-    ]);
-
-  return {
-    pendingWithdrawals,
-    expiredSubscriptions,
-    pendingManualSubscriptions,
-    unreadNotifications,
-  };
+  return getAdminNotificationCounts(adminUserId);
 }
 
 export default async function AdminPortalLayout({
@@ -55,6 +37,7 @@ export default async function AdminPortalLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <OnboardingVideoModal />
       <AdminSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-20 shrink-0 items-center justify-between border-b gap-8 border-border bg-background px-8">

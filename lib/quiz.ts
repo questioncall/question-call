@@ -104,6 +104,7 @@ export function getNepalDayBounds(reference = new Date()) {
 export function getQuizModeSettings(
   config: Awaited<ReturnType<typeof getPlatformConfig>>,
   quizType: QuizType,
+  planSlug?: string | null,
 ): QuizModeSettings {
   if (quizType === "FREE") {
     return {
@@ -113,8 +114,18 @@ export function getQuizModeSettings(
     };
   }
 
+  const premiumDailyLimitByPlan: Record<string, number | undefined> = {
+    go: config.premiumQuizDailySessionLimitGo,
+    plus: config.premiumQuizDailySessionLimitPlus,
+    pro: config.premiumQuizDailySessionLimitPro,
+    max: config.premiumQuizDailySessionLimitMax,
+  };
+  const premiumDailyLimit =
+    (planSlug ? premiumDailyLimitByPlan[planSlug] : undefined) ??
+    config.premiumQuizDailySessionLimit;
+
   return {
-    dailyLimit: config.premiumQuizDailySessionLimit,
+    dailyLimit: premiumDailyLimit,
     passPercent: config.premiumQuizPassPercent,
     pointReward: config.premiumQuizPointReward,
   };
@@ -484,7 +495,11 @@ export async function getQuizHistorySummary(
   ]);
 
   const freeSettings = getQuizModeSettings(config, "FREE");
-  const premiumSettings = getQuizModeSettings(config, "PREMIUM");
+  const premiumSettings = getQuizModeSettings(
+    config,
+    "PREMIUM",
+    subscription.planSlug,
+  );
 
   return {
     items: items.map((item) => ({

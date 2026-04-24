@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { BellIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -14,11 +13,11 @@ interface AdminCounts {
   pendingWithdrawals: number;
   expiredSubscriptions: number;
   pendingManualSubscriptions: number;
+  pendingCoursePurchases: number;
   unreadNotifications: number;
 }
 
 export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCounts }) {
-  const pathname = usePathname();
   const [counts, setCounts] = useState<AdminCounts>(initialCounts);
   const [loading, setLoading] = useState(false);
 
@@ -64,8 +63,14 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
   }, []);
 
   useEffect(() => {
-    const handleAdminNotificationsRead = () => {
-      setCounts((prev) => ({ ...prev, unreadNotifications: 0 }));
+    const handleAdminNotificationsRead = (event: Event) => {
+      const customEvent = event as CustomEvent<{ unreadNotifications?: number }>;
+      const unreadNotifications =
+        typeof customEvent.detail?.unreadNotifications === "number"
+          ? customEvent.detail.unreadNotifications
+          : 0;
+
+      setCounts((prev) => ({ ...prev, unreadNotifications }));
     };
 
     window.addEventListener("admin-notifications-read", handleAdminNotificationsRead);
@@ -73,12 +78,6 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
       window.removeEventListener("admin-notifications-read", handleAdminNotificationsRead);
     };
   }, []);
-
-  useEffect(() => {
-    if (pathname === "/admin/notifications") {
-      setCounts((prev) => ({ ...prev, unreadNotifications: 0 }));
-    }
-  }, [pathname]);
 
   return (
     <div className="flex items-center gap-3">
@@ -119,6 +118,13 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
                 {counts.pendingManualSubscriptions}
               </span>
               <span className="text-[10px] text-muted-foreground">Payments</span>
+            </span>
+            <span className="mx-1 h-4 w-px bg-border" />
+            <span className="flex flex-col items-center">
+              <span className="font-medium text-foreground">
+                {counts.pendingCoursePurchases}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Courses</span>
             </span>
           </>
         )}

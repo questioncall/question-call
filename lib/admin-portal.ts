@@ -195,6 +195,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["live sessions", "zoom", "classes", "recording", "schedule"],
   },
   {
+    id: "onboarding-videos",
+    label: "Onboarding Videos",
+    href: "/admin/onboarding-videos",
+    description:
+      "Manage first-time intro videos for students, teachers, and admins, including the role-based onboarding modal.",
+    group: "Learning & Content",
+    keywords: ["onboarding", "welcome video", "intro modal", "tutorial video", "first login"],
+  },
+  {
     id: "legal",
     label: "Legal",
     href: "/admin/legal",
@@ -241,6 +250,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/courses/coupons", label: "Coupons" },
   { href: "/admin/live-sessions", label: "Live sessions" },
+  { href: "/admin/onboarding-videos", label: "Onboarding Videos" },
   { href: "/admin/legal", label: "Legal" },
 ] as const;
 

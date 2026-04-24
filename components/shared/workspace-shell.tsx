@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { AuthenticatedHeader } from "@/components/shared/authenticated-header";
+import { OnboardingVideoModal } from "@/components/shared/onboarding-video-modal";
 import { WorkspaceFilterProvider } from "@/components/shared/workspace-filter-context";
 import { LogoMark } from "@/components/shared/logo";
 import { NavUser } from "@/components/shared/nav-user";
@@ -636,6 +637,8 @@ collapseSidebarOnClick: true,
             isChatPage ? "h-svh overflow-hidden" : "min-h-svh",
           )}
         >
+          <OnboardingVideoModal />
+
           <AuthenticatedHeader
             isScrolled={isScrolled}
             primaryHref={headerPrimaryHref}

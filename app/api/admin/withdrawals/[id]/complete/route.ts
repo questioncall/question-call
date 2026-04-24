@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { roundPoints } from "@/lib/points";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
+import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
@@ -126,6 +127,29 @@ export async function POST(
         withdrawalRequest.processedBy = session.user.id;
         withdrawalRequest.adminNote = adminNote || null;
         await withdrawalRequest.save({ session: dbSession });
+
+        await Transaction.create(
+          [
+            {
+              userId: requester._id,
+              type: "WITHDRAWAL",
+              amount: roundPoints(amountSentValue),
+              status: "COMPLETED",
+              transactionId,
+              gateway: "MANUAL",
+              reference: `WITHDRAWAL-${withdrawalRequest._id.toString()}`,
+              metadata: {
+                requestId: withdrawalRequest._id.toString(),
+                pointsRequested: roundPoints(withdrawalRequest.pointsRequested ?? 0),
+                nprEquivalent: roundPoints(withdrawalRequest.nprEquivalent ?? amountSentValue),
+                esewaNumber: withdrawalRequest.esewaNumber,
+                requesterRole: requester.role,
+                adminNote: adminNote || null,
+              },
+            },
+          ],
+          { session: dbSession },
+        );
       });
     } finally {
       await dbSession.endSession();

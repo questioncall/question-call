@@ -166,7 +166,7 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
                       <Link href="/auth/signin">Sign in to continue</Link>
                     </Button>
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/auth/register/STUDENT">Create account</Link>
+                      <Link href="/auth/signup/student">Create account</Link>
                     </Button>
                   </div>
                 ) : (

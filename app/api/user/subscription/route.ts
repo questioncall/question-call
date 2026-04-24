@@ -4,8 +4,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
+import { resolveStudentSubscriptionState } from "@/lib/subscription-state";
 import User from "@/models/User";
-import mongoose from "mongoose";
 
 export async function GET() {
   try {
@@ -22,12 +22,22 @@ export async function GET() {
       status: "PENDING",
     }).sort({ createdAt: -1 });
 
-    const user = await User.findById(session.user.id).select("planSlug questionsAsked subscriptionEnd trialUsed bonusQuestions");
+    const user = await User.findById(session.user.id).select(
+      "planSlug questionsAsked subscriptionEnd bonusQuestions referralCode",
+    );
     const subscription = await getQuizSubscriptionSnapshot(session.user.id);
     const config = await getPlatformConfig();
     const plans = getHydratedPlans(config);
+    const resolvedSubscription = resolveStudentSubscriptionState({
+      userPlanSlug: user?.planSlug,
+      userSubscriptionEnd: user?.subscriptionEnd ?? null,
+      snapshotPlanSlug: subscription.planSlug,
+      snapshotStatus: subscription.subscriptionStatus,
+      snapshotEnd: subscription.subscriptionEnd,
+    });
     
-    const currentPlan = plans.find(p => p.slug === (user?.planSlug || subscription.planSlug || "free")) || plans[0];
+    const currentPlan =
+      plans.find((p) => p.slug === resolvedSubscription.planSlug) || plans[0];
     const baseMaxQuestions = currentPlan?.maxQuestions ?? 0;
     const bonusQuestions = user?.bonusQuestions ?? 0;
     const maxQuestions = baseMaxQuestions > 0 ? baseMaxQuestions + bonusQuestions : baseMaxQuestions;
@@ -35,15 +45,16 @@ export async function GET() {
     const questionsRemaining = maxQuestions > 0 ? Math.max(0, maxQuestions - questionsAsked) : null;
 
     return NextResponse.json({
-      subscriptionStatus: subscription.subscriptionStatus,
-      subscriptionEnd: subscription.subscriptionEnd,
+      subscriptionStatus: resolvedSubscription.subscriptionStatus,
+      subscriptionEnd: resolvedSubscription.subscriptionEnd,
       pendingManualPayment: !!pendingTx,
       questionsAsked,
       questionsRemaining,
       maxQuestions,
       baseMaxQuestions,
       bonusQuestions,
-      planSlug: user?.planSlug || subscription.planSlug || "free",
+      planSlug: resolvedSubscription.planSlug,
+      referralCode: user?.referralCode || null,
     }, { status: 200 });
 
   } catch (error: unknown) {

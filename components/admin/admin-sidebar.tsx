@@ -21,6 +21,7 @@ import {
   Share2Icon,
   Zap,
   Code2,
+  ClapperboardIcon,
 } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Courses": BookOpenIcon,
   "Coupons": FileTextIcon,
   "Live sessions": VideoIcon,
+  "Onboarding Videos": ClapperboardIcon,
   "Legal": ShieldAlertIcon,
   "Services": Zap,
   "Developer": Code2,
@@ -61,7 +63,7 @@ const groupedItems = [
   },
   {
     category: "CONTENT",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Courses", "Coupons", "Live sessions"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Courses", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
   },
   {
     category: "PLATFORM",

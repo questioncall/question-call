@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
-import { connectToDatabase } from "@/lib/mongodb";
-import WithdrawalRequest from "@/models/WithdrawalRequest";
-import User from "@/models/User";
-import Transaction from "@/models/Transaction";
-import Notification from "@/models/Notification";
+import { getAdminNotificationCounts } from "@/lib/admin-notifications";
 import { authOptions } from "@/lib/auth";
 
 export async function GET() {
@@ -15,35 +11,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const counts = await getAdminNotificationCounts(session.user.id);
 
-    const [
-      pendingWithdrawalsCount,
-      expiredSubscriptionsCount,
-      pendingManualSubscriptionsCount,
-      unreadNotificationsCount,
-    ] = await Promise.all([
-      WithdrawalRequest.countDocuments({ status: "PENDING" }),
-      User.countDocuments({
-        role: "STUDENT",
-        subscriptionStatus: "EXPIRED",
-      }),
-      Transaction.countDocuments({
-        type: "SUBSCRIPTION_MANUAL",
-        status: "PENDING",
-      }),
-      Notification.countDocuments({
-        userId: session.user.id,
-        isRead: false,
-      }),
-    ]);
-
-    return NextResponse.json({
-      pendingWithdrawals: pendingWithdrawalsCount,
-      expiredSubscriptions: expiredSubscriptionsCount,
-      pendingManualSubscriptions: pendingManualSubscriptionsCount,
-      unreadNotifications: unreadNotificationsCount,
-    });
+    return NextResponse.json(counts);
   } catch (error) {
     console.error("Admin counts error:", error);
     return NextResponse.json(

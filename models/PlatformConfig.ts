@@ -188,6 +188,26 @@ const platformConfigSchema = new Schema(
       min: 0,
       max: 100,
     },
+    ratingPointsFor2Star: {
+      type: Number,
+      default: TEACHER.RATING_POINTS_2_STAR,
+      min: 0,
+    },
+    ratingPointsFor3Star: {
+      type: Number,
+      default: TEACHER.RATING_POINTS_3_STAR,
+      min: 0,
+    },
+    ratingPointsFor4Star: {
+      type: Number,
+      default: TEACHER.RATING_POINTS_4_STAR,
+      min: 0,
+    },
+    ratingPointsFor5Star: {
+      type: Number,
+      default: TEACHER.RATING_POINTS_5_STAR,
+      min: 0,
+    },
     scoreDeductionAmount: {
       type: Number,
       default: TEACHER.TIMEOUT_SCORE_DEDUCTION,
@@ -262,6 +282,47 @@ const platformConfigSchema = new Schema(
         ),
       ],
       default: getDefaultPlatformSocialLinks,
+    },
+    onboardingVideos: {
+      type: [
+        new Schema(
+          {
+            role: {
+              type: String,
+              required: true,
+              enum: ["STUDENT", "TEACHER", "ADMIN"],
+            },
+            title: {
+              type: String,
+              required: true,
+              trim: true,
+              maxlength: 120,
+            },
+            description: {
+              type: String,
+              default: "",
+              trim: true,
+              maxlength: 1000,
+            },
+            videoUrl: {
+              type: String,
+              required: true,
+              trim: true,
+            },
+            thumbnailUrl: {
+              type: String,
+              default: "",
+              trim: true,
+            },
+            isActive: {
+              type: Boolean,
+              default: true,
+            },
+          },
+          { _id: true },
+        ),
+      ],
+      default: [],
     },
 
     // Subscription Plan Pricing
@@ -492,6 +553,26 @@ const platformConfigSchema = new Schema(
     premiumQuizDailySessionLimit: {
       type: Number,
       default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT,
+      min: 0,
+    },
+    premiumQuizDailySessionLimitGo: {
+      type: Number,
+      default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT_GO,
+      min: 0,
+    },
+    premiumQuizDailySessionLimitPlus: {
+      type: Number,
+      default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT_PLUS,
+      min: 0,
+    },
+    premiumQuizDailySessionLimitPro: {
+      type: Number,
+      default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT_PRO,
+      min: 0,
+    },
+    premiumQuizDailySessionLimitMax: {
+      type: Number,
+      default: QUIZ.PREMIUM_DAILY_SESSION_LIMIT_MAX,
       min: 0,
     },
     premiumQuizPassPercent: {

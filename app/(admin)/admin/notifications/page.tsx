@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircleIcon,
   ArrowRightIcon,
@@ -21,6 +21,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getPusherClient } from "@/lib/pusher/pusherClient";
+import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
 
 type AdminNotification = {
   id: string;
@@ -29,10 +31,19 @@ type AdminNotification = {
   message: string;
   createdAt: string;
   href: string;
+  isRead: boolean;
 };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function dispatchUnreadCount(unreadNotifications: number) {
+  window.dispatchEvent(
+    new CustomEvent("admin-notifications-read", {
+      detail: { unreadNotifications },
+    }),
+  );
 }
 
 export default function AdminNotificationsPage() {
@@ -42,11 +53,12 @@ export default function AdminNotificationsPage() {
   const [filter, setFilter] = useState<"ALL" | AdminNotification["category"]>("ALL");
   const [showHistory, setShowHistory] = useState(false);
 
-  const fetchNotifications = async (includeHistory: boolean = false) => {
+  const fetchNotifications = async (includeHistory = false) => {
     try {
       setLoading(true);
       const url = includeHistory ? "/api/admin/notifications?history=true" : "/api/admin/notifications";
       const res = await fetch(url);
+
       if (!res.ok) {
         throw new Error("Failed to fetch");
       }
@@ -61,25 +73,87 @@ export default function AdminNotificationsPage() {
     }
   };
 
-  useEffect(() => {
-    void fetchNotifications(false);
-  }, []);
+  const markNotificationsSeen = useCallback(async (ids: string[]) => {
+    const unreadIds = Array.from(
+      new Set(
+        ids.filter((id) =>
+          notifications.some((notification) => notification.id === id && !notification.isRead),
+        ),
+      ),
+    );
 
-  useEffect(() => {
-    const markNotificationsAsRead = async () => {
-      try {
-        await fetch("/api/notifications/all", { method: "POST" });
-        window.dispatchEvent(new Event("admin-notifications-read"));
-      } catch {
-        // Non-blocking: admin alerts page should still render even if read-sync fails.
+    if (unreadIds.length === 0) {
+      return;
+    }
+
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        unreadIds.includes(notification.id)
+          ? { ...notification, isRead: true }
+          : notification,
+      ),
+    );
+
+    try {
+      const res = await fetch("/api/admin/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: unreadIds }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update notifications");
       }
-    };
 
-    void markNotificationsAsRead();
-  }, []);
+      dispatchUnreadCount(
+        typeof data.unreadNotifications === "number" ? data.unreadNotifications : 0,
+      );
+      setError(null);
+    } catch (err) {
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          unreadIds.includes(notification.id)
+            ? { ...notification, isRead: false }
+            : notification,
+        ),
+      );
+      setError(getErrorMessage(err));
+      void fetchNotifications(showHistory);
+    }
+  }, [notifications, showHistory]);
 
   useEffect(() => {
     void fetchNotifications(showHistory);
+  }, [showHistory]);
+
+  useEffect(() => {
+    const client = getPusherClient();
+    if (!client) {
+      return;
+    }
+
+    const channel = client.subscribe(ADMIN_UPDATES_CHANNEL);
+    const refresh = () => {
+      void fetchNotifications(showHistory);
+    };
+
+    channel.bind(ADMIN_WITHDRAWAL_EVENT, refresh);
+    channel.bind("admin:manual-payment-submitted", refresh);
+
+    return () => {
+      channel.unbind(ADMIN_WITHDRAWAL_EVENT, refresh);
+      channel.unbind("admin:manual-payment-submitted", refresh);
+      client.unsubscribe(ADMIN_UPDATES_CHANNEL);
+    };
+  }, [showHistory]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void fetchNotifications(showHistory);
+    }, 30000);
+
+    return () => window.clearInterval(interval);
   }, [showHistory]);
 
   const filteredNotifications =
@@ -92,6 +166,21 @@ export default function AdminNotificationsPage() {
     PAYMENT: notifications.filter((item) => item.category === "PAYMENT").length,
     EXPIRY: notifications.filter((item) => item.category === "EXPIRY").length,
   };
+  const unreadCount = filteredNotifications.filter((item) => !item.isRead).length;
+
+  useEffect(() => {
+    if (showHistory) {
+      return;
+    }
+
+    const visibleUnreadIds = filteredNotifications
+      .filter((notification) => !notification.isRead)
+      .map((notification) => notification.id);
+
+    if (visibleUnreadIds.length > 0) {
+      void markNotificationsSeen(visibleUnreadIds);
+    }
+  }, [filter, filteredNotifications, markNotificationsSeen, showHistory]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -104,6 +193,13 @@ export default function AdminNotificationsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Review the same alerts that power the admin notification badge.
           </p>
+          {!showHistory ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {unreadCount === 0
+                ? "All visible alerts have been marked as seen."
+                : `${unreadCount} visible alert${unreadCount === 1 ? "" : "s"} still unread.`}
+            </p>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
@@ -178,7 +274,11 @@ export default function AdminNotificationsPage() {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className="flex flex-col gap-4 rounded-xl border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between"
+                      className={`flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between ${
+                        notification.isRead
+                          ? "border-border bg-background"
+                          : "border-primary/30 bg-primary/5"
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="rounded-full bg-primary/10 p-2 text-primary">
@@ -191,9 +291,14 @@ export default function AdminNotificationsPage() {
                           )}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            {notification.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            {!notification.isRead ? (
+                              <span className="size-2 rounded-full bg-primary" />
+                            ) : null}
+                            <p className="text-sm font-semibold text-foreground">
+                              {notification.title}
+                            </p>
+                          </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {notification.message}
                           </p>
@@ -202,8 +307,15 @@ export default function AdminNotificationsPage() {
                           </p>
                         </div>
                       </div>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={notification.href}>
+                      <Button asChild variant={notification.isRead ? "outline" : "default"} size="sm">
+                        <Link
+                          href={notification.href}
+                          onClick={() => {
+                            if (!showHistory && !notification.isRead) {
+                              void markNotificationsSeen([notification.id]);
+                            }
+                          }}
+                        >
                           Open
                           <ArrowRightIcon className="ml-1 size-4" />
                         </Link>
@@ -249,11 +361,15 @@ export default function AdminNotificationsPage() {
                       {new Date(notification.createdAt).toLocaleDateString()}
                     </div>
                     <div className="col-span-2 flex items-center">
-                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${
-                        notification.category === "WITHDRAWAL" ? "bg-amber-100 text-amber-700" :
-                        notification.category === "PAYMENT" ? "bg-green-100 text-green-700" :
-                        "bg-red-100 text-red-700"
-                      }`}>
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          notification.category === "WITHDRAWAL"
+                            ? "bg-amber-100 text-amber-700"
+                            : notification.category === "PAYMENT"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                        }`}
+                      >
                         {notification.category}
                       </span>
                     </div>

@@ -96,7 +96,7 @@ export function CourseHeader({ user }: CourseHeaderProps) {
                 size="sm"
                 className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/25"
               >
-                <Link href="/auth/register/STUDENT">Get started</Link>
+                <Link href="/auth/signup/student">Get started</Link>
               </Button>
             </>
           )}
@@ -141,7 +141,7 @@ export function CourseHeader({ user }: CourseHeaderProps) {
                   size="sm"
                   className="shrink-0 bg-emerald-600 text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700"
                 >
-                  <Link href="/auth/register/STUDENT">Get started</Link>
+                  <Link href="/auth/signup/student">Get started</Link>
                 </Button>
               </>
             )}

@@ -4,6 +4,8 @@ import { Types } from "mongoose";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { pusherServer } from "@/lib/pusher/pusherServer";
+import { ADMIN_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
@@ -219,11 +221,22 @@ export async function POST(
         void sendTransactionEmail(
           masterAdminEmails,
           "Manual Course Purchase Updated",
-          `A student has submitted an update (new screenshot/reference) for an existing pending manual payment for the course "${course.title}".`,
-          existingPending._id.toString(),
+          `A student has submitted an update (new screenshot/reference) for an existing pending manual payment for the course "${course.title}".${screenshotUrl ? ` Receipt: ${screenshotUrl}` : ""}`,
+          existingPending.transactionId || transactionId,
           `NPR ${grossAmount}`,
           session.user.email ?? "Unknown"
         ).catch(console.error);
+      }
+
+      if (pusherServer) {
+        await pusherServer
+          .trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
+            transactionId,
+            type: "COURSE_PURCHASE",
+            amount: grossAmount,
+            userId: session.user.id,
+          })
+          .catch(console.error);
       }
 
       return NextResponse.json(
@@ -265,11 +278,22 @@ export async function POST(
       void sendTransactionEmail(
         masterAdminEmailsNew,
         "New Manual Course Purchase Initiated",
-        `A student has initiated a manual payment for the course "${course.title}".`,
-        createdTransaction._id.toString(),
+        `A student has initiated a manual payment for the course "${course.title}".${screenshotUrl ? ` Receipt: ${screenshotUrl}` : ""}`,
+        createdTransaction.transactionId || transactionId,
         `NPR ${grossAmount}`,
         session.user.email ?? "Unknown"
       ).catch(console.error);
+    }
+
+    if (pusherServer) {
+      await pusherServer
+        .trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
+          transactionId,
+          type: "COURSE_PURCHASE",
+          amount: grossAmount,
+          userId: session.user.id,
+        })
+        .catch(console.error);
     }
 
     return NextResponse.json(

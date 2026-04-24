@@ -78,6 +78,10 @@ type QuizManagementConfig = {
   freeQuizPassPercent: number;
   freeQuizPointReward: number;
   premiumQuizDailySessionLimit: number;
+  premiumQuizDailySessionLimitGo: number;
+  premiumQuizDailySessionLimitPlus: number;
+  premiumQuizDailySessionLimitPro: number;
+  premiumQuizDailySessionLimitMax: number;
   premiumQuizPassPercent: number;
   premiumQuizPointReward: number;
   quizViolationWarningLimit: number;
@@ -182,6 +186,10 @@ export function QuizManagementClient() {
           freeQuizPassPercent: configData.freeQuizPassPercent,
           freeQuizPointReward: configData.freeQuizPointReward,
           premiumQuizDailySessionLimit: configData.premiumQuizDailySessionLimit,
+          premiumQuizDailySessionLimitGo: configData.premiumQuizDailySessionLimitGo,
+          premiumQuizDailySessionLimitPlus: configData.premiumQuizDailySessionLimitPlus,
+          premiumQuizDailySessionLimitPro: configData.premiumQuizDailySessionLimitPro,
+          premiumQuizDailySessionLimitMax: configData.premiumQuizDailySessionLimitMax,
           premiumQuizPassPercent: configData.premiumQuizPassPercent,
           premiumQuizPointReward: configData.premiumQuizPointReward,
           quizViolationWarningLimit: configData.quizViolationWarningLimit,
@@ -650,7 +658,11 @@ export function QuizManagementClient() {
                 <CardDescription>Current reward: {formatPoints(config?.premiumQuizPointReward ?? 0)} pts on pass.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
-                <NumberField label="Daily Sessions" value={String(config?.premiumQuizDailySessionLimit ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimit", value)} />
+                <NumberField label="Fallback Daily Sessions" value={String(config?.premiumQuizDailySessionLimit ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimit", value)} />
+                <NumberField label="GO Daily Sessions" value={String(config?.premiumQuizDailySessionLimitGo ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitGo", value)} />
+                <NumberField label="Plus Daily Sessions" value={String(config?.premiumQuizDailySessionLimitPlus ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitPlus", value)} />
+                <NumberField label="Pro Daily Sessions" value={String(config?.premiumQuizDailySessionLimitPro ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitPro", value)} />
+                <NumberField label="Max Daily Sessions" value={String(config?.premiumQuizDailySessionLimitMax ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitMax", value)} />
                 <NumberField label="Pass Percent" value={String(config?.premiumQuizPassPercent ?? 0)} onChange={(value) => handleConfigChange("premiumQuizPassPercent", value)} />
                 <NumberField label="Point Reward" value={String(config?.premiumQuizPointReward ?? 0)} onChange={(value) => handleConfigChange("premiumQuizPointReward", value)} step="0.01" />
               </CardContent>

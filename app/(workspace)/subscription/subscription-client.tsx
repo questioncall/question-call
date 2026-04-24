@@ -1,14 +1,63 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Clock, CalendarDays, HelpCircle } from "lucide-react";
+import { Leaf, Clock, CalendarDays, HelpCircle, Play, BookOpen, UserCheck, Zap, Star, Info } from "lucide-react";
 import { LegalDialog } from "@/components/shared/legal-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import Link from "next/link";
 import { PlanDef } from "@/lib/plans";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
 import { APP_NAME } from "@/lib/constants";
+
+type FeatureTooltip = {
+  label: string;
+  description: string;
+};
+
+const FEATURE_TOOLTIPS: Record<string, FeatureTooltip> = {
+  "ask": {
+    label: "Ask Questions",
+    description: "Submit academic questions to get answered by verified teachers",
+  },
+  "play": {
+    label: "Play Quiz",
+    description: "Answer quiz questions and earn bonus questions for correct answers",
+  },
+  "premium quiz": {
+    label: "Premium Quiz",
+    description: "Access exclusive quizzes with higher point multipliers",
+  },
+  "attend": {
+    label: "Attend Courses",
+    description: "Watch video courses included with your plan",
+  },
+  "subscription courses": {
+    label: "Subscription Courses",
+    description: "Unlock premium courses available only to paid members",
+  },
+  "top 10%": {
+    label: "Priority Teachers",
+    description: "Get answers from the top 10% highest-rated teachers",
+  },
+  "priority teacher": {
+    label: "Priority Matching",
+    description: "Your questions get matched with teachers first",
+  },
+  "days": {
+    label: "Duration",
+    description: "How long your plan remains active",
+  },
+  "months": {
+    label: "Duration",
+    description: "Plan validity in months",
+  },
+};
 
 export function SubscriptionClient({
   hydratedPlans,
@@ -38,7 +87,6 @@ export function SubscriptionClient({
     questionsAsked,
     questionsRemaining,
     maxQuestions,
-    baseMaxQuestions,
     bonusQuestions,
     referralCode,
     planSlug,
@@ -48,6 +96,10 @@ export function SubscriptionClient({
 
   const [isHydrated, setIsHydrated] = useState(!!initialSubscriptionData);
   const [showPricing, setShowPricing] = useState(false);
+  const isTrialPlan = planSlug === "free" && subscriptionStatus === "TRIAL";
+  const isPaidPlanActive = subscriptionStatus === "ACTIVE";
+  const shouldShowUsageDashboard =
+    (isTrialPlan || isPaidPlanActive) && !showPricing;
 
   useEffect(() => {
     if (initialSubscriptionData) {
@@ -80,6 +132,9 @@ export function SubscriptionClient({
             questionsAsked: data.questionsAsked,
             questionsRemaining: data.questionsRemaining,
             maxQuestions: data.maxQuestions,
+            baseMaxQuestions: data.baseMaxQuestions,
+            bonusQuestions: data.bonusQuestions,
+            referralCode: data.referralCode,
             planSlug: data.planSlug,
           }));
         }
@@ -92,7 +147,7 @@ export function SubscriptionClient({
       }
     };
 
-    const fetchReferralStats = async () => {
+const fetchReferralStats = async () => {
       try {
         const res = await fetch("/api/user/referral");
         if (res.ok) {
@@ -116,6 +171,16 @@ export function SubscriptionClient({
       active = false;
     };
   }, [initialSubscriptionData, dispatch]);
+
+  function findFeatureTooltip(featureText: string): FeatureTooltip | null {
+    const lower = featureText.toLowerCase();
+    for (const key in FEATURE_TOOLTIPS) {
+      if (lower.includes(key)) {
+        return FEATURE_TOOLTIPS[key];
+      }
+    }
+    return null;
+  }
 
   if (!isHydrated) {
     return (
@@ -154,7 +219,7 @@ export function SubscriptionClient({
   // ==============================
   // UI 2: Active / Trial Dashboard Usage
   // ==============================
-  if (subscriptionStatus === "ACTIVE" && !showPricing) {
+  if (shouldShowUsageDashboard) {
     const daysDiff = subscriptionEnd 
       ? Math.ceil((new Date(subscriptionEnd).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
       : 0;
@@ -168,16 +233,20 @@ export function SubscriptionClient({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white mb-2">
-                Subscription Usage
+                {isTrialPlan ? "Trial Usage" : "Subscription Usage"}
               </h1>
-              <p className="text-sm text-neutral-500">Monitor your current limits and renewal deadlines.</p>
+              <p className="text-sm text-neutral-500">
+                {isTrialPlan
+                  ? "Your free trial is active right now. Track what is left and upgrade whenever you are ready."
+                  : "Monitor your current limits and renewal deadlines."}
+              </p>
             </div>
             <Button
               onClick={() => setShowPricing(true)}
               variant="outline"
               className="border-[#1B7258] text-[#1B7258] hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-xl"
             >
-              See Subscription Packages
+              See More Packages
             </Button>
           </div>
           
@@ -194,7 +263,7 @@ export function SubscriptionClient({
                 }`}>
                   <CalendarDays className="w-7 h-7" />
                 </div>
-                {planSlug === "free" && (
+                {isTrialPlan && (
                   <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[11px] font-extrabold uppercase tracking-wider rounded-full shadow-sm border border-purple-200 dark:border-purple-800">
                     Free Trial
                   </span>
@@ -204,19 +273,21 @@ export function SubscriptionClient({
                 {Math.max(0, daysDiff)} <span className="text-2xl font-medium text-neutral-400">days</span>
               </h3>
               <p className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mt-2">
-                Remaining in Billing Cycle
+                {isTrialPlan ? "Remaining in Trial" : "Remaining in Billing Cycle"}
               </p>
               
               {isEndingSoon && (
                 <div className="mt-8 border-t border-red-100 dark:border-red-900/30 pt-6">
                   <p className="text-[13px] font-semibold text-red-600 dark:text-red-400 mb-4">
-                    Wait! Your plan expires soon. Upgrade now to keep access to premium features.
+                    {isTrialPlan
+                      ? "Your free trial ends soon. Pick a paid plan now to continue without interruption."
+                      : "Your plan expires soon. Renew now to keep access to premium features."}
                   </p>
                   <Button 
-                    onClick={() => dispatch(updateProfile({ subscriptionStatus: "NONE" }))} 
+                    onClick={() => setShowPricing(true)}
                     className="w-full bg-red-600 hover:bg-red-700 text-white rounded-[14px] shadow-md h-12 font-bold transition-all"
                   >
-                    View Renewal Plans
+                    View Plans
                   </Button>
                 </div>
               )}
@@ -273,14 +344,14 @@ export function SubscriptionClient({
                 <div className="flex flex-wrap items-center gap-3 pt-2 justify-center md:justify-start">
                   <div className="bg-white dark:bg-black/20 border border-blue-200 dark:border-blue-800/50 rounded-xl px-4 py-3 flex items-center gap-3 w-full md:w-auto">
                     <span className="font-mono text-sm text-neutral-500 truncate max-w-[150px] md:max-w-xs select-all">
-                      {typeof window !== "undefined" ? `${window.location.origin}/auth/signup/student?ref=${referralCode}` : `.../auth/signup/student?ref=${referralCode}`}
+                      {typeof window !== "undefined" ? `${window.location.origin}/auth/signup?ref=${referralCode}` : `.../auth/signup?ref=${referralCode}`}
                     </span>
                     <Button 
                       variant="default" 
                       size="sm" 
                       onClick={() => {
                         if (typeof window !== "undefined") {
-                          navigator.clipboard.writeText(`${window.location.origin}/auth/signup/student?ref=${referralCode}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/auth/signup?ref=${referralCode}`);
                           alert("Link copied to clipboard!");
                         }
                       }}
@@ -295,8 +366,8 @@ export function SubscriptionClient({
                     className="h-10 border-blue-200 text-blue-700 hover:bg-blue-100 dark:border-blue-800/50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-xl px-4"
                     onClick={() => {
                       if (typeof window !== "undefined") {
-                        const subject = encodeURIComponent("Join me on {APP_NAME}!");
-                        const body = encodeURIComponent(`Hey! I'm using {APP_NAME} to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask: \n\n${window.location.origin}/auth/signup/student?ref=${referralCode}`);
+                        const subject = encodeURIComponent(`Join me on ${APP_NAME}!`);
+                        const body = encodeURIComponent(`Hey! I'm using ${APP_NAME} to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask:\n\n${window.location.origin}/auth/signup?ref=${referralCode}`);
                         window.location.href = `mailto:?subject=${subject}&body=${body}`;
                       }
                     }}
@@ -347,7 +418,7 @@ export function SubscriptionClient({
             </p>
           </div>
           
-          {subscriptionStatus === "ACTIVE" && (
+          {(subscriptionStatus === "ACTIVE" || subscriptionStatus === "TRIAL") && (
             <Button
               onClick={() => setShowPricing(false)}
               variant="outline"
@@ -360,7 +431,28 @@ export function SubscriptionClient({
 
         {/* Pricing Section */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pt-4">
-          {(hydratedPlans || []).map((plan, index) => (
+          {(hydratedPlans || []).map((plan, index) => {
+            const isCurrentTrialCard = isTrialPlan && plan.slug === "free";
+            const isCurrentPaidCard = isPaidPlanActive && plan.slug === planSlug;
+            const planHref =
+              plan.slug === "free" || isCurrentTrialCard || isCurrentPaidCard
+                ? null
+                : `/subscription/payment?plan=${plan.slug}`;
+            const ctaLabel = isCurrentTrialCard
+              ? "Current Trial"
+              : isCurrentPaidCard
+                ? "Current Plan"
+                : plan.slug === "free"
+                  ? "Included Trial"
+                  : subscriptionStatus === "EXPIRED" && plan.slug === planSlug
+                    ? "Renew Plan"
+                    : isTrialPlan
+                      ? "Upgrade Plan"
+                      : isPaidPlanActive
+                        ? "Change Plan"
+                        : "Get Plan";
+
+            return (
             <div
               key={index}
               className={`flex flex-col bg-white dark:bg-white/5 dark:backdrop-blur-xl p-8 rounded-3xl border ${
@@ -416,33 +508,66 @@ export function SubscriptionClient({
               </div>
 
               <ul className="mb-10 flex-1 space-y-4 text-[13px] font-semibold text-neutral-700 dark:text-neutral-300">
-                {plan.features.map((feature, fIndex) => (
-                  <li key={fIndex} className="flex items-center gap-4">
-                    <span className="text-base font-medium text-[#FF9E2A]">
-                      +
-                    </span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
+                {plan.features.map((feature, fIndex) => {
+                  const tooltip = findFeatureTooltip(feature);
+                  if (tooltip) {
+                    return (
+                      <li key={fIndex} className="flex items-center gap-3">
+                        <HoverCard openDelay={150} closeDelay={100}>
+                          <HoverCardTrigger asChild>
+                            <span className="flex items-center gap-3 cursor-help group">
+                              <span className="text-base font-medium text-[#FF9E2A]">
+                                +
+                              </span>
+                              <span className="group-hover:text-[#1B7258] dark:group-hover:text-[#27A883] transition-colors">
+                                {feature}
+                              </span>
+                              <Info className="size-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-hover:text-[#1B7258] dark:group-hover:text-[#27A883] transition-all" />
+                            </span>
+                          </HoverCardTrigger>
+                          <HoverCardContent align="start" side="right" className="w-56">
+                            <p className="text-xs text-muted-foreground">{tooltip.description}</p>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={fIndex} className="flex items-center gap-4">
+                      <span className="text-base font-medium text-[#FF9E2A]">
+                        +
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  );
+                })}
               </ul>
 
-              <Link
-                href={plan.slug === "free" ? "#" : `/subscription/payment?plan=${plan.slug}`}
-                className="mt-auto w-full flex"
-              >
+              {planHref ? (
+                <Link href={planHref} className="mt-auto w-full flex">
+                  <Button
+                    variant={plan.highlight ? "default" : "outline"}
+                    className={`h-12 w-full rounded-[14px] font-semibold transition-colors ${
+                      plan.highlight
+                        ? "bg-[#1B7258] hover:bg-[#145C46] text-white shadow-md"
+                        : "border-[#1B7258]/40 hover:border-[#1B7258] text-[#1B7258] hover:bg-emerald-50/50"
+                    }`}
+                  >
+                    {ctaLabel}
+                  </Button>
+                </Link>
+              ) : (
                 <Button
-                  variant={plan.highlight ? "default" : "outline"}
-                  className={`h-12 w-full rounded-[14px] font-semibold transition-colors ${
-                    plan.highlight
-                      ? "bg-[#1B7258] hover:bg-[#145C46] text-white shadow-md"
-                      : "border-[#1B7258]/40 hover:border-[#1B7258] text-[#1B7258] hover:bg-emerald-50/50"
-                  }`}
+                  variant="outline"
+                  disabled
+                  className="mt-auto h-12 w-full rounded-[14px] border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-semibold"
                 >
-                  {subscriptionStatus === "EXPIRED" ? "Renew Plan" : "Get Plan"}
+                  {ctaLabel}
                 </Button>
-              </Link>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Policy Section */}

@@ -11,7 +11,7 @@ import Answer from "@/models/Answer";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
-import { calcTotalPointsEarned } from "@/lib/points";
+import { calcTeacherPayoutBreakdown } from "@/lib/points";
 import { recordWalletHistoryEvent } from "@/lib/wallet-history";
 import type { FeedQuestion } from "@/types/question";
 
@@ -205,7 +205,9 @@ export async function POST(
         metadata: {
           channelId: channel._id.toString(),
           questionId: channel.questionId.toString(),
+          questionTitle: question?.title ?? null,
           rating,
+          penaltyPoints: penalty,
         },
       }).catch((error) => {
         console.error("[wallet-history] Failed to record low-rating penalty", error);
@@ -322,10 +324,11 @@ export async function POST(
     }
 
     if (teacher) {
-      const pointsEarned =
+      const payout =
         teacher.isMonetized && answer
-          ? calcTotalPointsEarned(answer.answerFormat, rating, config)
-          : 0;
+          ? calcTeacherPayoutBreakdown(rating, config)
+          : null;
+      const pointsEarned = payout?.finalPoints ?? 0;
 
       await User.findByIdAndUpdate(
         teacher._id,
@@ -346,15 +349,22 @@ export async function POST(
             ? `Student rated "${question.title}" with ${rating}/5 stars.`
             : `Student rated your solution ${rating}/5 stars.`,
           pointsDelta: pointsEarned,
-          metadata: {
-            channelId: channel._id.toString(),
-            questionId: channel.questionId.toString(),
-            rating,
-            answerFormat: answer?.answerFormat ?? null,
-          },
-        }).catch((error) => {
-          console.error("[wallet-history] Failed to record answer reward", error);
-        });
+            metadata: {
+              channelId: channel._id.toString(),
+              questionId: channel.questionId.toString(),
+              questionTitle: question?.title ?? null,
+              rating,
+              answerFormat: answer?.answerFormat ?? null,
+              ratingPoints: payout?.ratingPoints ?? 0,
+              bonusPoints: payout?.bonusPoints ?? 0,
+              grossPoints: payout?.grossPoints ?? pointsEarned,
+              commissionPercent: payout?.commissionPercent ?? 0,
+              commissionPoints: payout?.commissionPoints ?? 0,
+              finalPoints: payout?.finalPoints ?? pointsEarned,
+            },
+          }).catch((error) => {
+            console.error("[wallet-history] Failed to record answer reward", error);
+          });
       }
 
       const notifMessage = teacher.isMonetized && answer

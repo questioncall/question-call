@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,23 +9,19 @@ import {
   BarChart3Icon,
   BookOpenIcon,
   CalendarIcon,
-  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
-  ChevronUpIcon,
   EyeIcon,
   GripVerticalIcon,
   LayoutGridIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   SettingsIcon,
   Trash2Icon,
-  UploadCloudIcon,
   Users2Icon,
   VideoIcon,
-  XCircleIcon,
-  XIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +29,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LiveSessionManager } from "@/components/course/LiveSessionManager";
 import { AddContentModal } from "@/components/course/AddContentModal";
 import type { ManageCourseData } from "@/lib/course-page-data";
@@ -46,6 +48,23 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutGridIcon }[] = [
   { id: "live", label: "Live Sessions", icon: CalendarIcon },
   { id: "analytics", label: "Analytics", icon: BarChart3Icon },
 ];
+
+type EnrolledUser = {
+  id: string;
+  accessType: string;
+  enrolledAt: string | null;
+  lastAccessedAt: string | null;
+  overallProgressPercent: number;
+  completedVideoCount: number;
+  totalVideoCount: number;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    username: string;
+    userImage: string | null;
+  };
+};
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -89,6 +108,11 @@ export function ManageCourseClient({
 
   // ── Collapsed sections ──
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [showEnrolledUsers, setShowEnrolledUsers] = useState(false);
+  const [enrolledUsers, setEnrolledUsers] = useState<EnrolledUser[]>([]);
+  const [loadingEnrolledUsers, setLoadingEnrolledUsers] = useState(false);
+  const [enrolledUsersLoaded, setEnrolledUsersLoaded] = useState(false);
+  const [enrollmentSearch, setEnrollmentSearch] = useState("");
 
   const toggleSection = (sectionId: string) => {
     setCollapsedSections((prev) => {
@@ -115,6 +139,31 @@ export function ManageCourseClient({
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const fetchEnrolledUsers = async () => {
+    setLoadingEnrolledUsers(true);
+    try {
+      const res = await fetch(`/api/courses/${course._id}/enrollments`);
+      if (!res.ok) {
+        throw new Error("Failed to load enrolled users");
+      }
+
+      const data = (await res.json()) as { enrollments?: EnrolledUser[] };
+      setEnrolledUsers(Array.isArray(data.enrollments) ? data.enrollments : []);
+      setEnrolledUsersLoaded(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load enrolled users");
+    } finally {
+      setLoadingEnrolledUsers(false);
+    }
+  };
+
+  const openEnrolledUsersModal = async () => {
+    setShowEnrolledUsers(true);
+    if (!enrolledUsersLoaded) {
+      await fetchEnrolledUsers();
     }
   };
 
@@ -239,6 +288,20 @@ export function ManageCourseClient({
   }
 
   const totalVideos = Array.isArray(sections) ? sections.reduce((a, s) => a + (s.videos?.length || 0), 0) : 0;
+  const filteredEnrolledUsers = enrolledUsers.filter((enrollment) => {
+    const query = enrollmentSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+
+    return [
+      enrollment.student.name,
+      enrollment.student.email,
+      enrollment.student.username,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(query));
+  });
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -349,14 +412,25 @@ export function ManageCourseClient({
                       {sections?.length || 0} section{(sections?.length || 0) !== 1 && "s"} · {totalVideos} video{totalVideos !== 1 && "s"}
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddSection(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    <PlusIcon className="size-4 mr-1.5" />
-                    Add Section
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void openEnrolledUsersModal()}
+                      disabled={analytics.enrollmentCount === 0}
+                    >
+                      <Users2Icon className="size-4 mr-1.5" />
+                      Show Users
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAddSection(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      <PlusIcon className="size-4 mr-1.5" />
+                      Add Section
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Add section inline form */}
@@ -797,6 +871,95 @@ export function ManageCourseClient({
         defaultSectionId={addContentSectionId}
         onUploadSuccess={handleUploadSuccess}
       />
+
+      <Dialog open={showEnrolledUsers} onOpenChange={setShowEnrolledUsers}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden p-0">
+          <DialogHeader className="border-b border-border px-6 py-5">
+            <DialogTitle>Enrolled Users</DialogTitle>
+            <DialogDescription>
+              Search and review every learner currently enrolled in this course.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 p-6">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={enrollmentSearch}
+                onChange={(e) => setEnrollmentSearch(e.target.value)}
+                placeholder="Search by name, email, or username"
+                className="pl-9"
+              />
+            </div>
+
+            {loadingEnrolledUsers ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2Icon className="size-5 animate-spin text-primary" />
+              </div>
+            ) : filteredEnrolledUsers.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border p-10 text-center">
+                <Users2Icon className="mx-auto size-8 text-muted-foreground/40" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {analytics.enrollmentCount === 0
+                    ? "No students are enrolled yet."
+                    : "No enrolled users match your search."}
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-border">
+                <div className="divide-y divide-border">
+                  {filteredEnrolledUsers.map((enrollment) => (
+                    <div
+                      key={enrollment.id}
+                      className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-foreground">
+                            {enrollment.student.name}
+                          </p>
+                          <Badge variant="outline">{enrollment.accessType}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {enrollment.student.email}
+                        </p>
+                        {enrollment.student.username ? (
+                          <p className="text-xs text-muted-foreground">
+                            @{enrollment.student.username}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3 sm:text-right">
+                        <div>
+                          <p className="text-xs uppercase tracking-wider">Progress</p>
+                          <p className="font-medium text-foreground">
+                            {enrollment.overallProgressPercent}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wider">Videos</p>
+                          <p className="font-medium text-foreground">
+                            {enrollment.completedVideoCount}/{enrollment.totalVideoCount}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wider">Enrolled</p>
+                          <p className="font-medium text-foreground">
+                            {enrollment.enrolledAt
+                              ? new Date(enrollment.enrolledAt).toLocaleDateString()
+                              : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

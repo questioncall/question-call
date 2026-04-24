@@ -102,7 +102,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const modeSettings = getQuizModeSettings(config, body.quizType);
+    const modeSettings = getQuizModeSettings(
+      config,
+      body.quizType,
+      subscription.planSlug,
+    );
     const { start, end } = getNepalDayBounds();
     const usedToday = await QuizSession.countDocuments({
       studentId: session.user.id,

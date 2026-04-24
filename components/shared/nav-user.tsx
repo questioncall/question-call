@@ -29,6 +29,19 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getSignOutPath } from "@/lib/user-paths"
 import { useAppSelector } from "@/store/hooks"
 
+const PLAN_NAME_MAP: Record<string, string> = {
+  free: "Trial",
+  go: "GO",
+  plus: "Plus",
+  pro: "Pro",
+  max: "Max",
+}
+
+function getPlanDisplayName(planSlug: string | null): string | null {
+  if (!planSlug) return null
+  return PLAN_NAME_MAP[planSlug] || null
+}
+
 export function NavUser({
   user: fallbackUser,
   loading = false,
@@ -40,12 +53,14 @@ export function NavUser({
   }
   loading?: boolean
 }) {
-  const { isMobile } = useSidebar()
+const { isMobile } = useSidebar()
   const profile = useAppSelector((state) => state.user)
 
   const name = profile.name || fallbackUser.name || "Student"
   const email = profile.email || fallbackUser.email || ""
   const avatar = profile.userImage || fallbackUser.userImage || ""
+  const planSlug = profile.planSlug
+  const planDisplayName = getPlanDisplayName(planSlug)
 
   const fallback = name ? name.substring(0, 2).toUpperCase() : "U"
 
@@ -80,12 +95,19 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
+<Avatar className="h-8 w-8 rounded-lg grayscale">
                 <AvatarImage src={avatar} alt={name} />
                 <AvatarFallback className="rounded-lg">{fallback}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{name}</span>
+                  {planDisplayName && (
+                    <span className="shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      {planDisplayName}
+                    </span>
+                  )}
+                </div>
                 <span className="truncate text-xs text-muted-foreground">
                   {email}
                 </span>

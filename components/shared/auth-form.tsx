@@ -44,6 +44,14 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
   const searchParams = useSearchParams();
   const refCodeRaw = searchParams.get("ref");
   const referralCodeFromUrl = refCodeRaw ? refCodeRaw.toUpperCase().trim() : undefined;
+  const alternateRoleSignUpPath =
+    mode === "register" && role
+      ? appendQueryParam(
+          getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT"),
+          "ref",
+          referralCodeFromUrl,
+        )
+      : null;
   
   const dispatch = useAppDispatch();
   const { registerError, registerStatus } = useAppSelector(
@@ -395,7 +403,7 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
             <div className="mt-3 text-sm text-muted-foreground">
               Registering differently?{" "}
               <Link
-                href={getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT")}
+                href={alternateRoleSignUpPath || getSignUpPath(role === "STUDENT" ? "TEACHER" : "STUDENT")}
                 className="font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
               >
                 Switch Role
@@ -422,4 +430,14 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
       </div>
     </div>
   );
+}
+
+function appendQueryParam(path: string, key: string, value?: string | null) {
+  if (!value) {
+    return path;
+  }
+
+  const params = new URLSearchParams();
+  params.set(key, value);
+  return `${path}?${params.toString()}`;
 }

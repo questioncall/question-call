@@ -30,6 +30,7 @@ export type CompleteCoursePurchaseResult = {
   courseName: string;
   enrollmentId: string | null;
   teacherEarnings: number;
+  teacherPayoutSkipped: boolean;
 };
 
 function roundCurrency(value: number) {
@@ -93,32 +94,30 @@ export async function completeCoursePurchase({
         (transaction.metadata ?? {}) as Record<string, unknown>,
       );
 
-      if (!metadata.courseId || !metadata.instructorId) {
+      if (!metadata.courseId) {
         throw new Error("Transaction metadata is incomplete.");
       }
 
-      const [course, instructor, existingEnrollment, currentVideoCount] =
-        await Promise.all([
-          Course.findById(metadata.courseId).session(dbSession),
-          User.findById(metadata.instructorId)
-            .select("pointBalance")
-            .session(dbSession),
-          CourseEnrollment.findOne({
-            courseId: metadata.courseId,
-            studentId: transaction.userId,
-          }).session(dbSession),
-          CourseVideo.countDocuments({ courseId: metadata.courseId }).session(
-            dbSession,
-          ),
-        ]);
+      const course = await Course.findById(metadata.courseId).session(dbSession);
 
       if (!course) {
         throw new Error("Course not found for this transaction.");
       }
 
-      if (!instructor) {
-        throw new Error("Instructor not found for this transaction.");
-      }
+      const instructorId = metadata.instructorId ?? course.instructorId?.toString();
+      const [instructor, existingEnrollment, currentVideoCount] = await Promise.all([
+        instructorId
+          ? User.findById(instructorId).select("pointBalance").session(dbSession)
+          : Promise.resolve(null),
+        CourseEnrollment.findOne({
+          courseId: metadata.courseId,
+          studentId: transaction.userId,
+        }).session(dbSession),
+        CourseVideo.countDocuments({ courseId: metadata.courseId }).session(
+          dbSession,
+        ),
+      ]);
+      const teacherPayoutSkipped = !instructorId || !instructor;
 
       const grossAmount = roundCurrency(
         metadata.grossAmount ?? Number(course.price ?? transaction.amount ?? 0),
@@ -127,6 +126,7 @@ export async function completeCoursePurchase({
       const teacherEarnings = roundCurrency(
         metadata.netAmount ?? grossAmount * (1 - commissionPercent / 100),
       );
+      const creditedTeacherEarnings = teacherPayoutSkipped ? 0 : teacherEarnings;
 
       if (transaction.status === "COMPLETED") {
         result = {
@@ -134,7 +134,8 @@ export async function completeCoursePurchase({
           courseId: course._id.toString(),
           courseName: metadata.courseName ?? course.title,
           enrollmentId: existingEnrollment?._id?.toString() ?? null,
-          teacherEarnings,
+          teacherEarnings: creditedTeacherEarnings,
+          teacherPayoutSkipped,
         };
         return;
       }
@@ -156,15 +157,19 @@ export async function completeCoursePurchase({
       transaction.metadata = {
         courseId: course._id.toString(),
         courseName: metadata.courseName ?? course.title,
-        instructorId: metadata.instructorId,
+        instructorId,
         pricingModel: metadata.pricingModel ?? course.pricingModel,
         grossAmount,
         commissionPercent,
-        netAmount: teacherEarnings,
+        netAmount: creditedTeacherEarnings,
       };
       transaction.meta = {
         ...(transaction.meta ?? {}),
         ...metaPatch,
+        teacherPayoutSkipped,
+        teacherPayoutSkipReason: teacherPayoutSkipped
+          ? "INSTRUCTOR_NOT_FOUND"
+          : null,
       };
       await transaction.save({ session: dbSession });
 
@@ -200,23 +205,28 @@ export async function completeCoursePurchase({
         enrollmentId = createdEnrollment._id.toString();
       }
 
-      instructor.pointBalance = roundCurrency(
-        (instructor.pointBalance ?? 0) + teacherEarnings,
-      );
-      await instructor.save({ session: dbSession });
+      if (instructor) {
+        instructor.pointBalance = roundCurrency(
+          (instructor.pointBalance ?? 0) + teacherEarnings,
+        );
+        await instructor.save({ session: dbSession });
+      }
 
-      const existingCreditTransaction = await Transaction.findOne({
-        userId: metadata.instructorId,
-        type: "COURSE_SALE_CREDIT",
-        "metadata.courseId": course._id.toString(),
-        "metadata.studentId": transaction.userId.toString(),
-      }).session(dbSession);
+      const existingCreditTransaction =
+        instructorId && instructor
+          ? await Transaction.findOne({
+              userId: instructorId,
+              type: "COURSE_SALE_CREDIT",
+              "metadata.courseId": course._id.toString(),
+              "metadata.studentId": transaction.userId.toString(),
+            }).session(dbSession)
+          : null;
 
-      if (!existingCreditTransaction) {
+      if (instructorId && instructor && !existingCreditTransaction) {
         await Transaction.create(
           [
             {
-              userId: metadata.instructorId,
+              userId: instructorId,
               type: "COURSE_SALE_CREDIT",
               amount: teacherEarnings,
               status: "COMPLETED",
@@ -229,7 +239,7 @@ export async function completeCoursePurchase({
                 commissionPercent,
                 netAmount: teacherEarnings,
                 studentId: transaction.userId.toString(),
-                instructorId: metadata.instructorId,
+                instructorId,
               },
             },
           ],
@@ -242,7 +252,8 @@ export async function completeCoursePurchase({
         courseId: course._id.toString(),
         courseName: metadata.courseName ?? course.title,
         enrollmentId,
-        teacherEarnings,
+        teacherEarnings: creditedTeacherEarnings,
+        teacherPayoutSkipped,
       };
     });
   } finally {

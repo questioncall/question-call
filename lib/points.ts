@@ -1,5 +1,4 @@
 import type { PlatformConfigDocument } from "@/models/PlatformConfig";
-import { getPrimaryAnswerFormat } from "@/lib/question-types";
 
 export function roundPoints(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -15,33 +14,37 @@ export function formatPoints(value: number) {
   return rounded.toFixed(2);
 }
 
-/**
- * Calculate base points earned for submitting an answer.
- * Call this when a channel is closed by the asker.
- */
-export function calcBasePoints(
-  answerFormat: string,
+export type TeacherPayoutBreakdown = {
+  rating: number;
+  ratingPoints: number;
+  bonusPoints: number;
+  grossPoints: number;
+  commissionPercent: number;
+  commissionPoints: number;
+  finalPoints: number;
+  penaltyPoints: number;
+  isPenalty: boolean;
+};
+
+function getRatingPoints(
+  rating: number,
   config: PlatformConfigDocument,
 ): number {
-  switch (getPrimaryAnswerFormat(answerFormat)) {
-    case "TEXT":
-      return config.pointsPerTextAnswer;
-    case "PHOTO":
-      return config.pointsPerPhotoAnswer;
-    case "VIDEO":
-      return config.pointsPerVideoAnswer;
+  switch (rating) {
+    case 5:
+      return config.ratingPointsFor5Star ?? 5;
+    case 4:
+      return config.ratingPointsFor4Star ?? 4;
+    case 3:
+      return config.ratingPointsFor3Star ?? 3;
+    case 2:
+      return config.ratingPointsFor2Star ?? 2;
     default:
-      // ANY defaults to PHOTO points
-      return config.pointsPerPhotoAnswer;
+      return 0;
   }
 }
 
-/**
- * Calculate bonus/penalty points based on rating given by student.
- * rating: 1–5
- * Returns a positive number (bonus) or negative number (penalty).
- */
-export function calcRatingAdjustment(
+function getRatingBonusPoints(
   rating: number,
   config: PlatformConfigDocument,
 ): number {
@@ -53,19 +56,54 @@ export function calcRatingAdjustment(
   return 0;
 }
 
+export function calcTeacherPayoutBreakdown(
+  rating: number,
+  config: PlatformConfigDocument,
+): TeacherPayoutBreakdown {
+  if (rating === 1) {
+    return {
+      rating,
+      ratingPoints: 0,
+      bonusPoints: 0,
+      grossPoints: 0,
+      commissionPercent: config.commissionPercent ?? 0,
+      commissionPoints: 0,
+      finalPoints: 0,
+      penaltyPoints: roundPoints(config.penaltyPointsForLowRating ?? 0),
+      isPenalty: true,
+    };
+  }
+
+  const ratingPoints = roundPoints(getRatingPoints(rating, config));
+  const bonusPoints = roundPoints(Math.max(0, getRatingBonusPoints(rating, config)));
+  const grossPoints = roundPoints(ratingPoints + bonusPoints);
+  const commissionPercent = roundPoints(Math.max(0, config.commissionPercent ?? 0));
+  const commissionPoints = roundPoints((grossPoints * commissionPercent) / 100);
+  const finalPoints = roundPoints(Math.max(0, grossPoints - commissionPoints));
+
+  return {
+    rating,
+    ratingPoints,
+    bonusPoints,
+    grossPoints,
+    commissionPercent,
+    commissionPoints,
+    finalPoints,
+    penaltyPoints: 0,
+    isPenalty: false,
+  };
+}
+
 /**
  * Total points earned for one completed answer.
  * Use this as the single source of truth.
  */
 export function calcTotalPointsEarned(
-  answerFormat: string,
+  _answerFormat: string,
   rating: number,
   config: PlatformConfigDocument,
 ): number {
-  const base = calcBasePoints(answerFormat, config);
-  const adjustment = calcRatingAdjustment(rating, config);
-  // Never go below 0 for a single transaction
-  return Math.max(0, base + adjustment);
+  return calcTeacherPayoutBreakdown(rating, config).finalPoints;
 }
 
 /**

@@ -55,6 +55,20 @@ type WalletEarningHistoryItem = {
   occurredAt: string;
 };
 
+type QuestionPayoutHistoryItem = {
+  id: string;
+  type: string;
+  questionTitle: string | null;
+  rating: number | null;
+  ratingPoints: number;
+  bonusPoints: number;
+  commissionPercent: number;
+  commissionPoints: number;
+  penaltyPoints: number;
+  finalPoints: number;
+  occurredAt: string;
+};
+
 type WalletData = {
   role: string;
   userName?: string;
@@ -80,6 +94,7 @@ type WalletData = {
   totalPenaltyPoints: number;
   creditablePoints: number;
   earningHistory: WalletEarningHistoryItem[];
+  questionPayoutHistory: QuestionPayoutHistoryItem[];
 };
 
 function getErrorMessage(error: unknown): string {
@@ -100,6 +115,18 @@ function formatWalletHistoryDate(value: string) {
 function formatSignedPoints(value: number) {
   const prefix = value >= 0 ? "+" : "-";
   return `${prefix}${formatPoints(Math.abs(value))} pts`;
+}
+
+function truncateQuestionTitle(value: string | null, maxLength = 52) {
+  if (!value) {
+    return "Question";
+  }
+
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 export function WalletClient() {
@@ -225,6 +252,14 @@ export function WalletClient() {
         : wallet.subscriptionStatus === "EXPIRED"
           ? "Expired"
           : "Not active";
+  const subscriptionDetailMessage =
+    wallet.subscriptionStatus === "TRIAL"
+      ? wallet.subscriptionEnd
+        ? `Free trial runs until ${new Date(wallet.subscriptionEnd).toLocaleDateString()}.`
+        : "Your free trial is currently active."
+      : wallet.subscriptionEnd
+        ? `Access runs until ${new Date(wallet.subscriptionEnd).toLocaleDateString()}.`
+        : "Choose a plan when you are ready to renew or upgrade.";
 
   return (
     <div className="space-y-6">
@@ -385,18 +420,113 @@ export function WalletClient() {
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUpIcon className="size-5 text-primary" />
-              Earning History
+              <StarIcon className="size-5 text-primary" />
+              Question Payout Ledger
             </CardTitle>
             <CardDescription>
-              Detailed wallet activity for answer rewards, penalties, bonuses, and
-              course sale credits.
+              Per-question payout details with rating points, bonus points, platform commission, and the final credited total.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {wallet.questionPayoutHistory.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No question payout entries yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[860px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-3">Date</th>
+                      <th className="px-3 py-3">Question</th>
+                      <th className="px-3 py-3">Rating</th>
+                      <th className="px-3 py-3">Rating Pts</th>
+                      <th className="px-3 py-3">Bonus</th>
+                      <th className="px-3 py-3">Commission</th>
+                      <th className="px-3 py-3">Final</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wallet.questionPayoutHistory.map((entry) => {
+                      const isPenalty = entry.finalPoints < 0 || entry.penaltyPoints > 0;
+
+                      return (
+                        <tr
+                          key={entry.id}
+                          className="border-b border-border/50 transition-colors hover:bg-muted/30"
+                        >
+                          <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
+                            {formatWalletHistoryDate(entry.occurredAt)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="max-w-[320px]">
+                              <p className="font-medium text-foreground">
+                                {truncateQuestionTitle(entry.questionTitle)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {entry.type === "AUTO_CLOSE_REWARD"
+                                  ? "Auto-closed rating"
+                                  : entry.type === "TIMEOUT_PENALTY"
+                                    ? "Missed deadline"
+                                    : entry.type === "LOW_RATING_PENALTY"
+                                      ? "1-star penalty"
+                                      : "Student rating"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-foreground">
+                            {typeof entry.rating === "number" ? `${entry.rating}/5` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-foreground">
+                            {entry.ratingPoints > 0 ? `${formatPoints(entry.ratingPoints)} pts` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-foreground">
+                            {entry.bonusPoints > 0 ? `+${formatPoints(entry.bonusPoints)} pts` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted-foreground">
+                            {entry.commissionPoints > 0
+                              ? `-${formatPoints(entry.commissionPoints)} pts (${formatPoints(entry.commissionPercent)}%)`
+                              : "—"}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                isPenalty
+                                  ? "bg-red-500/10 text-red-700 dark:text-red-400"
+                                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              }`}
+                            >
+                              {isPenalty
+                                ? `-${formatPoints(Math.abs(entry.finalPoints || entry.penaltyPoints))} pts`
+                                : `+${formatPoints(entry.finalPoints)} pts`}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {isTeacher && (
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUpIcon className="size-5 text-primary" />
+              Other Wallet Activity
+            </CardTitle>
+            <CardDescription>
+              Course sale credits and non-question wallet activity.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {wallet.earningHistory.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No wallet activity has been recorded yet.
+                No additional wallet activity has been recorded yet.
               </p>
             ) : (
               <div className="space-y-3">
@@ -493,9 +623,7 @@ export function WalletClient() {
                 Status: {subscriptionStatusLabel}
               </p>
               <p className="text-sm text-muted-foreground">
-                {wallet.subscriptionEnd
-                  ? `Access runs until ${new Date(wallet.subscriptionEnd).toLocaleDateString()}.`
-                  : "Choose a plan when you are ready to renew or upgrade."}
+                {subscriptionDetailMessage}
               </p>
             </div>
             <Button asChild>

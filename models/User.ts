@@ -223,6 +223,15 @@ const userSchema = new Schema(
         ref: "Notice",
       },
     ],
+    seenOnboardingRoles: {
+      type: [String],
+      enum: ["STUDENT", "TEACHER", "ADMIN"],
+      default: [],
+    },
+    seenAdminNotifications: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

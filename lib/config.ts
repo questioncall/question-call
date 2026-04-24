@@ -198,6 +198,18 @@ export const TEACHER = {
   /** Platform commission percentage deducted from teacher earnings */
   COMMISSION_PERCENT: 15,
 
+  /** Rating-based base payout points for a 2-star answer */
+  RATING_POINTS_2_STAR: 2,
+
+  /** Rating-based base payout points for a 3-star answer */
+  RATING_POINTS_3_STAR: 3,
+
+  /** Rating-based base payout points for a 4-star answer */
+  RATING_POINTS_4_STAR: 4,
+
+  /** Rating-based base payout points for a 5-star answer */
+  RATING_POINTS_5_STAR: 5,
+
   /** Score points deducted from teacher when they fail to answer in time */
   TIMEOUT_SCORE_DEDUCTION: 1,
 
@@ -312,6 +324,14 @@ export const QUIZ = {
   FREE_POINT_REWARD: 0.2,
   /** Same-day premium quiz session cap (Asia/Kathmandu day boundary) */
   PREMIUM_DAILY_SESSION_LIMIT: 3,
+  /** Same-day premium quiz session cap for the GO plan */
+  PREMIUM_DAILY_SESSION_LIMIT_GO: 3,
+  /** Same-day premium quiz session cap for the Plus plan */
+  PREMIUM_DAILY_SESSION_LIMIT_PLUS: 5,
+  /** Same-day premium quiz session cap for the Pro plan */
+  PREMIUM_DAILY_SESSION_LIMIT_PRO: 7,
+  /** Same-day premium quiz session cap for the Max plan */
+  PREMIUM_DAILY_SESSION_LIMIT_MAX: 10,
   /** Minimum score required to earn the premium-quiz reward */
   PREMIUM_PASS_PERCENT: 90,
   /** Decimal points awarded for passing the premium quiz */
