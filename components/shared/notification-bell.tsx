@@ -58,6 +58,46 @@ function formatTimeAgo(date: string) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+async function getPushRegistration() {
+  const existingRegistration = await navigator.serviceWorker.getRegistration();
+  if (existingRegistration) {
+    return existingRegistration;
+  }
+
+  try {
+    const readyRegistration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), 3000);
+      }),
+    ]);
+
+    return readyRegistration;
+  } catch {
+    return null;
+  }
+}
+
+function hasMatchingApplicationServerKey(
+  subscription: PushSubscription,
+  publicKey: string,
+) {
+  const currentKey = subscription.options.applicationServerKey;
+
+  if (!currentKey) {
+    return true;
+  }
+
+  const currentBytes = new Uint8Array(currentKey);
+  const expectedBytes = urlBase64ToUint8Array(publicKey);
+
+  if (currentBytes.length !== expectedBytes.length) {
+    return false;
+  }
+
+  return currentBytes.every((value, index) => value === expectedBytes[index]);
+}
+
 type NotificationBellProps = {
   userId: string;
 };
@@ -73,8 +113,38 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const [isPushLoading, setIsPushLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const isMarkingAllReadRef = useRef(false);
+  const subscriptionSyncRef = useRef<string | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const syncSubscriptionWithServer = useCallback(
+    async (subscription: PushSubscription) => {
+      const syncKey = subscription.endpoint;
+
+      if (subscriptionSyncRef.current === syncKey) {
+        return true;
+      }
+
+      const response = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+        }),
+      });
+
+      if (!response.ok) {
+        subscriptionSyncRef.current = null;
+        return false;
+      }
+
+      subscriptionSyncRef.current = syncKey;
+      return true;
+    },
+    [],
+  );
 
   const refreshPushState = useCallback(async () => {
     const supported = supportsPushNotifications();
@@ -82,24 +152,36 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
     if (!supported) {
       setPushEnabled(false);
+      subscriptionSyncRef.current = null;
       return;
     }
 
     setPushPermission(Notification.permission);
 
     try {
-      const registration = await navigator.serviceWorker.getRegistration();
+      const registration = await getPushRegistration();
       if (!registration) {
         setPushEnabled(false);
         return;
       }
 
       const subscription = await registration.pushManager.getSubscription();
-      setPushEnabled(Boolean(subscription));
+      if (!subscription) {
+        subscriptionSyncRef.current = null;
+        setPushEnabled(false);
+        return;
+      }
+
+      const synced =
+        Notification.permission === "granted"
+          ? await syncSubscriptionWithServer(subscription).catch(() => false)
+          : false;
+
+      setPushEnabled(Boolean(subscription) && (Notification.permission !== "granted" || synced));
     } catch {
       setPushEnabled(false);
     }
-  }, []);
+  }, [syncSubscriptionWithServer]);
 
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -116,6 +198,34 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   useEffect(() => {
     void refreshPushState();
+  }, [refreshPushState]);
+
+  useEffect(() => {
+    if (!supportsPushNotifications()) {
+      return;
+    }
+
+    const handleVisibilityOrFocus = () => {
+      void refreshPushState();
+    };
+
+    const handleControllerChange = () => {
+      void refreshPushState();
+    };
+
+    void navigator.serviceWorker.ready.then(() => {
+      void refreshPushState();
+    });
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+
+    return () => {
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
   }, [refreshPushState]);
 
   // Subscribe to real-time notifications via Pusher
@@ -235,8 +345,21 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         throw new Error(keyData.error || "Push notifications are not configured yet.");
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getPushRegistration();
+      if (!registration) {
+        throw new Error("Push service is still starting. Please try again.");
+      }
+
       let subscription = await registration.pushManager.getSubscription();
+
+      if (
+        subscription &&
+        !hasMatchingApplicationServerKey(subscription, keyData.publicKey)
+      ) {
+        await subscription.unsubscribe().catch(() => {});
+        subscriptionSyncRef.current = null;
+        subscription = null;
+      }
 
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
@@ -245,19 +368,9 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         });
       }
 
-      const response = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-        }),
-      });
-      const responseData = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Failed to enable push notifications.");
+      const synced = await syncSubscriptionWithServer(subscription);
+      if (!synced) {
+        throw new Error("Failed to enable push notifications.");
       }
 
       setPushEnabled(true);
@@ -298,6 +411,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         await subscription.unsubscribe();
       }
 
+      subscriptionSyncRef.current = null;
       setPushEnabled(false);
       toast.success("Device notifications are turned off.");
     } catch (error) {
