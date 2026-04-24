@@ -51,15 +51,11 @@ export default async function SettingsProfilePage() {
         <CardHeader>
           <CardDescription className="flex items-center gap-2">
             <UserIcon className="size-4 text-primary" />
-            Public Profile
+            Profile
           </CardDescription>
-          <CardTitle>Edit Profile Information</CardTitle>
+          <CardTitle>Edit Profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-6 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Update your public profile, add a bio, and upload a custom avatar. This is how other peers and educators see you across the platform.
-          </p>
-          
           <div className="rounded-xl border border-border p-6 shadow-sm bg-card">
             <ProfileForm user={serializedUser} />
           </div>

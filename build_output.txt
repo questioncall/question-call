@@ -1,0 +1,212 @@
+
+> listeners@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.2.2 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 19.8s
+  Running TypeScript ...
+  Finished TypeScript in 25.0s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/101) ...
+  Generating static pages using 7 workers (25/101) 
+  Generating static pages using 7 workers (50/101) 
+  Generating static pages using 7 workers (75/101) 
+(node:19112) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"expiresAt":1} for model "ApiRequestLog". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Γ£ô Generating static pages using 7 workers (101/101) in 3.3s
+  Finalizing page optimization ...
+
+Route (app)                                                Revalidate  Expire
+Γöî ╞Æ /
+Γö£ Γùï /_not-found
+Γö£ ╞Æ /[username]
+Γö£ ╞Æ /admin
+Γö£ ╞Æ /admin/ai-keys
+Γö£ ╞Æ /admin/courses
+Γö£ ╞Æ /admin/courses/[id]
+Γö£ ╞Æ /admin/courses/coupons
+Γö£ ╞Æ /admin/developer
+Γö£ ╞Æ /admin/format-config
+Γö£ ╞Æ /admin/legal
+Γö£ ╞Æ /admin/live-sessions
+Γö£ ╞Æ /admin/notices
+Γö£ ╞Æ /admin/notifications
+Γö£ ╞Æ /admin/onboarding-videos
+Γö£ ╞Æ /admin/payment-config
+Γö£ ╞Æ /admin/pricing
+Γö£ ╞Æ /admin/quiz-management
+Γö£ ╞Æ /admin/services
+Γö£ ╞Æ /admin/settings
+Γö£ ╞Æ /admin/social
+Γö£ ╞Æ /admin/transactions
+Γö£ ╞Æ /admin/users
+Γö£ ╞Æ /admin/withdrawals
+Γö£ ╞Æ /api/admin/admins
+Γö£ ╞Æ /api/admin/admins/[id]
+Γö£ ╞Æ /api/admin/admins/password
+Γö£ ╞Æ /api/admin/ai-keys
+Γö£ ╞Æ /api/admin/ai-keys/[provider]
+Γö£ ╞Æ /api/admin/ai-keys/[provider]/[keyIndex]
+Γö£ ╞Æ /api/admin/ai-keys/[provider]/[keyIndex]/reset
+Γö£ ╞Æ /api/admin/config
+Γö£ ╞Æ /api/admin/config/manual-payment
+Γö£ ╞Æ /api/admin/counts
+Γö£ ╞Æ /api/admin/developer
+Γö£ ╞Æ /api/admin/developer/send-alert
+Γö£ ╞Æ /api/admin/developer/test-alert
+Γö£ ╞Æ /api/admin/errors/log
+Γö£ ╞Æ /api/admin/notices
+Γö£ ╞Æ /api/admin/notices/[id]
+Γö£ ╞Æ /api/admin/notices/[id]/seen
+Γö£ ╞Æ /api/admin/notifications
+Γö£ ╞Æ /api/admin/notifications/read
+Γö£ ╞Æ /api/admin/onboarding-videos
+Γö£ ╞Æ /api/admin/quiz-topics
+Γö£ ╞Æ /api/admin/quiz-topics/[id]
+Γö£ ╞Æ /api/admin/quiz-topics/[id]/seed
+Γö£ ╞Æ /api/admin/quiz-topics/seed
+Γö£ ╞Æ /api/admin/services
+Γö£ ╞Æ /api/admin/transactions
+Γö£ ╞Æ /api/admin/transactions/[id]/approve
+Γö£ ╞Æ /api/admin/transactions/[id]/refund
+Γö£ ╞Æ /api/admin/users
+Γö£ ╞Æ /api/admin/users/[id]/suspend
+Γö£ ╞Æ /api/admin/withdrawals
+Γö£ ╞Æ /api/admin/withdrawals/[id]/complete
+Γö£ ╞Æ /api/admin/withdrawals/[id]/reject
+Γö£ ╞Æ /api/answers
+Γö£ ╞Æ /api/auth/[...nextauth]
+Γö£ ╞Æ /api/auth/register
+Γö£ ╞Æ /api/auth/verify-email/confirm
+Γö£ ╞Æ /api/auth/verify-email/send
+Γö£ ╞Æ /api/calls/[id]/accept
+Γö£ ╞Æ /api/calls/[id]/cancel
+Γö£ ╞Æ /api/calls/[id]/end
+Γö£ ╞Æ /api/calls/[id]/missed
+Γö£ ╞Æ /api/calls/[id]/reject
+Γö£ ╞Æ /api/calls/[id]/token
+Γö£ ╞Æ /api/calls/create
+Γö£ ╞Æ /api/channels
+Γö£ ╞Æ /api/channels/[id]
+Γö£ ╞Æ /api/channels/[id]/close
+Γö£ ╞Æ /api/channels/[id]/extend
+Γö£ ╞Æ /api/channels/[id]/mark-answer
+Γö£ ╞Æ /api/channels/[id]/messages
+Γö£ ╞Æ /api/channels/[id]/messages/[messageId]
+Γö£ ╞Æ /api/channels/[id]/messages/[messageId]/mark-answer
+Γö£ ╞Æ /api/channels/[id]/read
+Γö£ ╞Æ /api/courses
+Γö£ ╞Æ /api/courses/[id]
+Γö£ ╞Æ /api/courses/[id]/enroll
+Γö£ ╞Æ /api/courses/[id]/enrollments
+Γö£ ╞Æ /api/courses/[id]/live-sessions
+Γö£ ╞Æ /api/courses/[id]/live-sessions/[sessionId]
+Γö£ ╞Æ /api/courses/[id]/live-sessions/[sessionId]/notify
+Γö£ ╞Æ /api/courses/[id]/live-sessions/[sessionId]/recording
+Γö£ ╞Æ /api/courses/[id]/progress
+Γö£ ╞Æ /api/courses/[id]/purchase/initiate
+Γö£ ╞Æ /api/courses/[id]/sections
+Γö£ ╞Æ /api/courses/[id]/sections/[sectionId]
+Γö£ ╞Æ /api/courses/[id]/sections/[sectionId]/reorder
+Γö£ ╞Æ /api/courses/[id]/videos
+Γö£ ╞Æ /api/courses/[id]/videos/[videoId]
+Γö£ ╞Æ /api/courses/[id]/videos/[videoId]/progress
+Γö£ ╞Æ /api/courses/[id]/videos/[videoId]/status
+Γö£ ╞Æ /api/courses/[id]/videos/sign
+Γö£ ╞Æ /api/courses/coupons
+Γö£ ╞Æ /api/courses/coupons/[id]
+Γö£ ╞Æ /api/courses/coupons/validate
+Γö£ ╞Æ /api/cron/expire-calls
+Γö£ ╞Æ /api/cron/expire-channels
+Γö£ ╞Æ /api/cron/monthly-rewards
+Γö£ Γùï /api/filters/options                                           1h      1y
+Γö£ ╞Æ /api/legal
+Γö£ ╞Æ /api/notices
+Γö£ ╞Æ /api/notices/[id]/dismiss
+Γö£ ╞Æ /api/notifications
+Γö£ ╞Æ /api/notifications/[id]
+Γö£ ╞Æ /api/onboarding-video
+Γö£ ╞Æ /api/onboarding-video/dismiss
+Γö£ ╞Æ /api/payments/esewa/course-verify
+Γö£ ╞Æ /api/payments/esewa/initiate
+Γö£ ╞Æ /api/payments/esewa/verify
+Γö£ ╞Æ /api/payments/khalti/course-verify
+Γö£ ╞Æ /api/payments/manual
+Γö£ ╞Æ /api/platform/config
+Γö£ ╞Æ /api/push/public-key
+Γö£ ╞Æ /api/push/subscribe
+Γö£ ╞Æ /api/push/unsubscribe
+Γö£ ╞Æ /api/questions
+Γö£ ╞Æ /api/questions/[id]/accept
+Γö£ ╞Æ /api/questions/[id]/comments
+Γö£ ╞Æ /api/questions/[id]/react
+Γö£ ╞Æ /api/questions/feed
+Γö£ ╞Æ /api/quiz/[sessionId]
+Γö£ ╞Æ /api/quiz/[sessionId]/auto-submit
+Γö£ ╞Æ /api/quiz/[sessionId]/progress
+Γö£ ╞Æ /api/quiz/[sessionId]/submit
+Γö£ ╞Æ /api/quiz/history
+Γö£ ╞Æ /api/quiz/start
+Γö£ ╞Æ /api/quiz/topics
+Γö£ ╞Æ /api/referral/invite
+Γö£ ╞Æ /api/search
+Γö£ ╞Æ /api/teachers/top-rated
+Γö£ ╞Æ /api/upload
+Γö£ ╞Æ /api/user/referral
+Γö£ ╞Æ /api/user/subscription
+Γö£ ╞Æ /api/users/call-settings
+Γö£ ╞Æ /api/users/profile
+Γö£ ╞Æ /api/wallet
+Γö£ ╞Æ /api/wallet/withdraw
+Γö£ Γùï /apple-icon.png
+Γö£ ╞Æ /ask/question
+Γö£ ╞Æ /auth/register
+Γö£ ╞Æ /auth/register/[role]
+Γö£ ╞Æ /auth/signin
+Γö£ ╞Æ /auth/signout
+Γö£ ╞Æ /auth/signup
+Γö£ ╞Æ /auth/signup/student
+Γö£ ╞Æ /auth/signup/teacher
+Γö£ ╞Æ /calls/[callId]
+Γö£ ╞Æ /channel/[id]
+Γö£ ╞Æ /courses
+Γö£ ╞Æ /courses/[slug]
+Γö£ ╞Æ /courses/[slug]/buy
+Γö£ ╞Æ /courses/[slug]/manage
+Γö£ ╞Æ /courses/[slug]/watch/[videoId]
+Γö£ ╞Æ /courses/my
+Γö£ Γùï /icon.png
+Γö£ ╞Æ /leaderboard
+Γö£ ╞Æ /leaderboard/[username]
+Γö£ ╞Æ /legal
+Γö£ Γùï /manifest.webmanifest
+Γö£ ╞Æ /message
+Γö£ Γùï /payment/esewa/failure
+Γö£ Γùï /payment/esewa/success
+Γö£ ╞Æ /question/[id]
+Γö£ ╞Æ /quiz
+Γö£ ╞Æ /quiz/[sessionId]
+Γö£ ╞Æ /register
+Γö£ ╞Æ /register/[role]
+Γö£ Γùï /robots.txt
+Γö£ ╞Æ /search/results
+Γö£ ╞Æ /settings
+Γö£ ╞Æ /settings/calls
+Γö£ ╞Æ /settings/profile
+Γö£ Γùï /sitemap.xml
+Γö£ ╞Æ /studio
+Γö£ ╞Æ /subscription
+Γö£ ╞Æ /subscription/payment
+Γö£ Γùï /subscription/payment/success
+Γö£ ╞Æ /upload-course
+Γöö ╞Æ /wallet
+
+
+╞Æ Proxy (Middleware)
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

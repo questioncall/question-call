@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: ['http://[IP_ADDRESS]', 'http://[IP_ADDRESS]'],
 };
+
+module.exports = {
+  allowedDevOrigins: ['192.168.1.69'],
+}
 
 export default nextConfig;

@@ -2,7 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
-import { Loader2Icon, SparklesIcon, XIcon, ImageIcon, PlusIcon } from "lucide-react";
+import {
+  CameraIcon,
+  Loader2Icon,
+  SparklesIcon,
+  XIcon,
+  ImageIcon,
+  PlusIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -76,10 +83,13 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const [subject, setSubject] = useState("");
   const [stream, setStream] = useState("");
   const [level, setLevel] = useState("");
-  
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isOpeningCamera, setIsOpeningCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   // Image attachments
   const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([]);
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{
     value: number;
@@ -88,6 +98,10 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const pendingImagesRef = useRef<{ file: File; preview: string }[]>([]);
 
   const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
@@ -96,12 +110,80 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
 
+  const stopCamera = (resetState = true) => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+
+    if (resetState) {
+      setIsCameraOpen(false);
+      setCameraError(null);
+    }
+  };
+
   useEffect(() => {
-    // Cleanup preview URLs on unmount
-    return () => {
-      pendingImages.forEach((pi) => URL.revokeObjectURL(pi.preview));
-    };
+    pendingImagesRef.current = pendingImages;
   }, [pendingImages]);
+
+  useEffect(() => {
+    return () => {
+      pendingImagesRef.current.forEach((pi) => URL.revokeObjectURL(pi.preview));
+      stopCamera(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      stopCamera();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const video = cameraVideoRef.current;
+    const stream = cameraStreamRef.current;
+
+    if (!video || !stream || !isCameraOpen) {
+      return;
+    }
+
+    video.srcObject = stream;
+    void video.play().catch(() => null);
+  }, [isCameraOpen]);
+
+  const addPendingFiles = (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const remainingSlots = 4 - pendingImagesRef.current.length;
+    if (remainingSlots <= 0) {
+      toast.error("You can only attach up to 4 images per question.");
+      return;
+    }
+
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (validFiles.length === 0) {
+      toast.error("Only image files can be attached to a question.");
+      return;
+    }
+
+    const acceptedFiles = validFiles.slice(0, remainingSlots);
+    if (acceptedFiles.length < validFiles.length) {
+      toast.error("Only the first few images were added because the question is full.");
+    }
+
+    const newPending = acceptedFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setPendingImages((prev) => [...prev, ...newPending]);
+  };
 
   const resetForm = () => {
     setTitle("");
@@ -111,27 +193,24 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
     setSubject("");
     setStream("");
     setLevel("");
+    stopCamera();
     setError(null);
-    pendingImages.forEach((pi) => URL.revokeObjectURL(pi.preview));
+    pendingImagesRef.current.forEach((pi) => URL.revokeObjectURL(pi.preview));
     setPendingImages([]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    if (pendingImages.length + files.length > 4) {
-      toast.error("You can only attach up to 4 images per question.");
-      return;
-    }
-
-    const newPending = files.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file), // create local preview
-    }));
-
-    setPendingImages((prev) => [...prev, ...newPending]);
+    addPendingFiles(files);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCameraCaptureSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    addPendingFiles(files);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = "";
+    }
   };
 
   const removeImage = (indexToRemove: number) => {
@@ -141,6 +220,81 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
       newArr.splice(indexToRemove, 1);
       return newArr;
     });
+  };
+
+  const openCamera = async () => {
+    if (pendingImagesRef.current.length >= 4) {
+      toast.error("You can only attach up to 4 images per question.");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    setIsOpeningCamera(true);
+    setCameraError(null);
+
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+        },
+        audio: false,
+      });
+
+      cameraStreamRef.current = stream;
+      setIsCameraOpen(true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not open the camera on this device.";
+      setCameraError(message);
+      toast.error(message);
+    } finally {
+      setIsOpeningCamera(false);
+    }
+  };
+
+  const capturePhoto = async () => {
+    const video = cameraVideoRef.current;
+
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error("Camera preview is not ready yet.");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Could not capture a photo from the camera.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.92);
+    });
+
+    if (!blob) {
+      toast.error("Could not capture a photo from the camera.");
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const file = new File([blob], `question-camera-${timestamp}.jpg`, {
+      type: "image/jpeg",
+    });
+
+    addPendingFiles([file]);
+    toast.success("Photo added to your question.");
   };
 
   // Upload sequential helper
@@ -292,17 +446,36 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
           <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Label className="text-sm font-medium">Attached Images ({pendingImages.length}/4)</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5"
-                disabled={pendingImages.length >= 4 || isSubmitting}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <ImageIcon className="size-3.5" />
-                Add Image
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={pendingImages.length >= 4 || isSubmitting}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImageIcon className="size-3.5" />
+                  Add Image
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={pendingImages.length >= 4 || isSubmitting || isOpeningCamera}
+                  onClick={() => {
+                    void openCamera();
+                  }}
+                >
+                  {isOpeningCamera ? (
+                    <Loader2Icon className="size-3.5 animate-spin" />
+                  ) : (
+                    <CameraIcon className="size-3.5" />
+                  )}
+                  Use Camera
+                </Button>
+              </div>
             </div>
             
             <input 
@@ -313,6 +486,64 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
               multiple
               onChange={handleFileSelect}
             />
+            <input
+              type="file"
+              ref={cameraInputRef}
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCaptureSelect}
+            />
+
+            {isCameraOpen && (
+              <div className="space-y-3 rounded-xl border border-primary/20 bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-foreground">Live Camera Preview</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => stopCamera()}
+                  >
+                    Close camera
+                  </Button>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border border-border bg-black/90">
+                  <video
+                    ref={cameraVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="aspect-[4/3] w-full object-cover"
+                  />
+                </div>
+
+                {cameraError ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                    {cameraError}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      void capturePhoto();
+                    }}
+                  >
+                    <CameraIcon className="size-3.5" />
+                    Capture Photo
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Camera opens only after you tap the button, and it stops when you close it.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {pendingImages.length > 0 && (
               <div className="flex flex-wrap gap-3 pt-2 sm:gap-4">

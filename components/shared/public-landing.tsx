@@ -30,6 +30,7 @@ import {
   CalendarIcon,
   BookOpenIcon,
   MailIcon,
+  MoreHorizontalIcon,
   PhoneIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -313,6 +314,8 @@ function Nav() {
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
   const [scrolled, setScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setMounted(true), 0);
@@ -324,6 +327,21 @@ function Nav() {
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isMenuOpen]);
 
   return (
     <header
@@ -361,12 +379,14 @@ function Nav() {
             alignItems: "center",
             gap: 10,
             textDecoration: "none",
+            minWidth: 0,
+            flexShrink: 1,
           }}
         >
           <div
             style={{
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               borderRadius: 10,
               display: "flex",
               alignItems: "center",
@@ -377,102 +397,178 @@ function Nav() {
             <Image
               src="/logo.png"
               alt="Question Call logo"
-              width={26}
-              height={26}
+              width={38}
+              height={38}
               priority
-              style={{ width: "72%", height: "72%", objectFit: "contain" }}
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </div>
           <span
             style={{
-              fontSize: 17,
+              fontSize: 15,
               fontWeight: 700,
               letterSpacing: "-0.03em",
               color: isDark ? "#e8f5f3" : "#0f3d38",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {APP_NAME}
           </span>
         </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {[
-            ["#how-it-works", "How it works"],
-            ["#for-students", "Students"],
-            ["#for-teachers", "Teachers"],
-            ["#quiz", "Quiz"],
-            ["/courses", "Courses"],
-          ].map(([href, label]) => (
-            <a
-              key={href}
-              href={href}
-              style={{
-                display: "none",
-                padding: "0.35rem 0.7rem",
-                fontSize: 13,
-                fontWeight: 500,
-                color: isDark ? "#9dc8c3" : "#2a6b64",
-                textDecoration: "none",
-                borderRadius: 8,
-              }}
-              className="nav-link lpb-nav-chip"
-            >
-              {label}
-            </a>
-          ))}
-
-          <button
-            className="lpb-mobile-btn"
-            onClick={() => setTheme(isDark ? "light" : "dark")}
+        <nav
+          ref={menuRef}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
+          <Link
+            href={getSignUpPath("STUDENT")}
+            className="lpb-btn lpb-btn-primary lpb-mobile-btn"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 6,
+              padding: "0.45rem 0.9rem",
+              fontSize: 12,
+              fontWeight: 600,
+              borderRadius: 10,
+              color: "#fff",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Free Trial
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((current) => !current)}
+            aria-label="Open navigation menu"
+            className="lpb-mobile-btn"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
               border: "1px solid rgba(31,118,110,0.25)",
-              background: "transparent",
+              background: isDark ? "rgba(15,35,30,0.72)" : "rgba(255,255,255,0.82)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: isDark ? "#9dc8c3" : "#2a6b64",
+              boxShadow: scrolled ? "0 12px 28px rgba(15,50,46,0.12)" : "none",
             }}
           >
-            {mounted && (isDark ? <SunIcon size={14} /> : <MoonIcon size={14} />)}
+            <MoreHorizontalIcon size={16} />
           </button>
 
-          <Link
-            href={getSignInPath()}
-            className="lpb-btn lpb-btn-ghost lpb-mobile-btn"
-            style={{
-              padding: "0.35rem 0.75rem",
-              fontSize: 12,
-              fontWeight: 600,
-              borderRadius: 6,
-              border: "1px solid rgba(31,118,110,0.3)",
-              color: isDark ? "#9dc8c3" : "#1f766e",
-              textDecoration: "none",
-              background: "transparent",
-            }}
-          >
-            Sign in
-          </Link>
-          <Link
-            href={getSignUpPath("STUDENT")}
-            className="lpb-btn lpb-btn-primary lpb-mobile-btn"
-            style={{
-              padding: "0.35rem 0.85rem",
-              fontSize: 12,
-              fontWeight: 600,
-              borderRadius: 6,
-              color: "#fff",
-              textDecoration: "none",
-            }}
-          >
-            Start Free Trial
-          </Link>
+          {isMenuOpen ? (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 10px)",
+                minWidth: 220,
+                borderRadius: 18,
+                border: `1px solid ${isDark ? "rgba(31,118,110,0.25)" : "rgba(31,118,110,0.18)"}`,
+                background: isDark ? "rgba(8,20,18,0.94)" : "rgba(255,255,255,0.96)",
+                backdropFilter: "blur(18px)",
+                boxShadow: "0 24px 60px rgba(0,0,0,0.16)",
+                padding: 10,
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              {[
+                { href: getSignInPath(), label: "Sign in" },
+                { href: getSignUpPath("TEACHER"), label: "Teacher signup" },
+                { href: "/courses", label: "Courses" },
+                { href: "#how-it-works", label: "How it works" },
+                { href: "#for-students", label: "Students" },
+                { href: "#for-teachers", label: "Teachers" },
+                { href: "#quiz", label: "Quiz" },
+              ].map((item) =>
+                item.href.startsWith("#") ? (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      padding: "0.7rem 0.8rem",
+                      borderRadius: 12,
+                      textDecoration: "none",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: isDark ? "#d2f2ed" : "#154a44",
+                      background: "transparent",
+                    }}
+                    className="lpb-nav-chip"
+                  >
+                    <span>{item.label}</span>
+                    <ArrowRightIcon size={14} />
+                  </a>
+                ) : (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      padding: "0.7rem 0.8rem",
+                      borderRadius: 12,
+                      textDecoration: "none",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: isDark ? "#d2f2ed" : "#154a44",
+                      background: "transparent",
+                    }}
+                    className="lpb-nav-chip"
+                  >
+                    <span>{item.label}</span>
+                    <ArrowRightIcon size={14} />
+                  </Link>
+                ),
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTheme(isDark ? "light" : "dark");
+                  setIsMenuOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "0.7rem 0.8rem",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: isDark ? "#d2f2ed" : "#154a44",
+                }}
+                className="lpb-nav-chip"
+              >
+                <span>{isDark ? "Light mode" : "Dark mode"}</span>
+                {mounted && (isDark ? <SunIcon size={14} /> : <MoonIcon size={14} />)}
+              </button>
+            </div>
+          ) : null}
         </nav>
       </div>
-      <style>{`.nav-link{display:none!important}@media(min-width:768px){.nav-link{display:block!important}}`}</style>
     </header>
   );
 }
@@ -2677,9 +2773,9 @@ function Footer({
             <Image
               src="/logo.png"
               alt="Question Call logo"
-              width={20}
-              height={20}
-              style={{ width: "72%", height: "72%", objectFit: "contain" }}
+              width={28}
+              height={28}
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </div>
           <span

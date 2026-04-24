@@ -113,6 +113,7 @@ export async function POST(request: Request) {
         userId: teacher._id,
         type: "PAYMENT",
         message: `🎉 Monthly bonus! You earned ${bonusPoints} bonus point(s) for maintaining a high rating (${avgRating.toFixed(1)}★). Keep it up!`,
+        href: "/wallet",
         isRead: false,
       }).catch(() => null);
 

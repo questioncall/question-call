@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { emails, message, referralLink, referrerName } = body;
+    const { emails, message, referralLink } = body;
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     let successCount = 0;
-    let failedEmails: string[] = [];
+    const failedEmails: string[] = [];
 
     for (const email of validEmails) {
       const result = await sendReferralInviteEmail({
@@ -86,6 +86,7 @@ export async function POST(request: Request) {
         userId: user._id,
         type: "PAYMENT",
         message: `You invited ${successCount} friend${successCount > 1 ? "s" : ""}! When they join, you'll both get bonus questions.`,
+        href: "/subscription",
         isRead: false,
       }).catch(() => null);
 

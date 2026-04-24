@@ -5,6 +5,7 @@ export const NOTIFICATION_TYPES = [
   "QUESTION_ACCEPTED",
   "QUESTION_RESET",
   "CHANNEL_CLOSED",
+  "CHANNEL_EXPIRED",
   "PAYMENT",
   "ANSWER_SUBMITTED",
   "DEADLINE_WARNING",
@@ -27,6 +28,11 @@ const notificationSchema = new Schema(
     message: {
       type: String,
       required: true,
+    },
+    href: {
+      type: String,
+      default: null,
+      trim: true,
     },
     isRead: {
       type: Boolean,

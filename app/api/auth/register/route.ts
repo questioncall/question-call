@@ -129,6 +129,7 @@ if (referrerUser) {
         userId: referrerUser._id,
         type: "SYSTEM",
         message: `🎉 Someone joined using your referral link! You've been awarded ${referrerBonus} bonus questions!`,
+        href: "/subscription",
         isRead: false,
       }).catch(() => null);
 
@@ -167,6 +168,7 @@ if (referrerUser) {
         userId: user._id,
         type: "SYSTEM",
         message: `🎉 Welcome! You received ${refereeBonus} bonus questions for signing up with a referral link!`,
+        href: "/subscription",
         isRead: false,
       }).catch(() => null);
 

@@ -488,10 +488,7 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
             >
               {isUploadingImage ? "Preparing..." : "Change Avatar"}
             </Button>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Choose an image up to 5MB. You will be able to crop and reposition it
-              before posting.
-            </p>
+            <p className="mt-2 text-xs text-muted-foreground">Up to 5MB</p>
           </div>
         </div>
 
@@ -517,9 +514,6 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
             className="resize-none"
             {...register("bio")}
           />
-          <p className="text-[0.8rem] text-muted-foreground">
-            Brief description for your profile. URLs are hyperlinked.
-          </p>
           {errors.bio ? (
             <p className="text-[0.8rem] font-medium text-destructive">
               {errors.bio.message}
@@ -535,9 +529,6 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
               placeholder="Physics, Calculus, Algorithms..."
               {...register("skills")}
             />
-            <p className="text-[0.8rem] text-muted-foreground">
-              Comma-separated list of tags.
-            </p>
             {errors.skills ? (
               <p className="text-[0.8rem] font-medium text-destructive">
                 {errors.skills.message}
@@ -552,9 +543,6 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
               placeholder="AI, Board Games, Literature..."
               {...register("interests")}
             />
-            <p className="text-[0.8rem] text-muted-foreground">
-              Comma-separated list of tags.
-            </p>
             {errors.interests ? (
               <p className="text-[0.8rem] font-medium text-destructive">
                 {errors.interests.message}
@@ -578,11 +566,8 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
         >
           <div className="border-b border-border/70 bg-muted/15 px-6 py-5">
             <DialogHeader>
-              <DialogTitle>Preview and crop your profile photo</DialogTitle>
-              <DialogDescription>
-                Move the image until it fits naturally inside the circle, then post
-                it as your new avatar.
-              </DialogDescription>
+              <DialogTitle>Profile Photo</DialogTitle>
+              <DialogDescription>Adjust and save.</DialogDescription>
             </DialogHeader>
           </div>
 
@@ -614,10 +599,6 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
                       </div>
                     )}
                   </div>
-                  <p className="max-w-[260px] text-center text-xs leading-5 text-muted-foreground">
-                    This circular preview shows exactly how your profile photo will
-                    appear in the app.
-                  </p>
                 </div>
               </div>
 
@@ -661,10 +642,6 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">Move Image</p>
-                    <p className="text-xs text-muted-foreground">
-                      Adjust left, right, top, and bottom to center the photo inside
-                      the circle.
-                    </p>
                   </div>
                   <Button
                     type="button"
@@ -780,21 +757,10 @@ export function ProfileForm({ user }: { user: Partial<UserRecord> }) {
                   </div>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-                Clicking <span className="font-medium text-foreground">Post Avatar</span>{" "}
-                uploads the cropped image and saves it to your profile immediately, so
-                it stays after a refresh.
-              </div>
             </div>
           </div>
 
-          <DialogFooter className="border-t border-border/70 bg-background px-6 py-5 sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {isUploadingImage
-                ? "Uploading and saving your new avatar..."
-                : "You can still edit your name, bio, and tags separately with Save changes."}
-            </p>
+          <DialogFooter className="border-t border-border/70 bg-background px-6 py-5 sm:justify-end">
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 type="button"

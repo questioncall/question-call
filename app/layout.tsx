@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
+import { PWAProvider } from "@/components/providers/pwa-provider";
 import { StoreProvider } from "@/components/providers/store-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -20,11 +21,18 @@ const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  applicationName: APP_NAME,
+  manifest: "/manifest.webmanifest",
   title: {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
   icons: {
     icon: [
       { url: "/icon.png", sizes: "512x512", type: "image/png" },
@@ -82,6 +90,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#1f766e" },
+    { media: "(prefers-color-scheme: dark)", color: "#16211d" },
+  ],
+  colorScheme: "light dark",
+};
+
 const organizationStructuredData = {
   "@context": "https://schema.org",
   "@type": "EducationalOrganization",
@@ -108,6 +124,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <PWAProvider />
           <StoreProvider>
             <TooltipProvider delayDuration={0}>
               {children}

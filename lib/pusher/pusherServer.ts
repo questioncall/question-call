@@ -20,12 +20,15 @@ import {
   NOTIFICATION_EVENT,
   SUBSCRIPTION_UPDATED_EVENT,
 } from "@/lib/pusher/events";
+import { resolveNotificationHref } from "@/lib/notifications/metadata";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 type PusherPayload = Record<string, unknown>;
 type RealtimeNotification = {
   _id: { toString(): string };
   type: string;
   message: string;
+  href?: string | null;
   isRead: boolean;
   createdAt: Date | string;
 };
@@ -107,15 +110,30 @@ export async function emitNotification(
   notification: RealtimeNotification,
 ) {
   const pusherChannel = getUserPusherName(userId);
-  await pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
-    notification: {
-      id: notification._id.toString(),
+  const payload = {
+    id: notification._id.toString(),
+    type: notification.type,
+    message: notification.message,
+    href: resolveNotificationHref(notification),
+    isRead: notification.isRead,
+    createdAt: new Date(notification.createdAt).toISOString(),
+  };
+
+  const settled = await Promise.allSettled([
+    pusherServer.trigger(pusherChannel, NOTIFICATION_EVENT, {
+      notification: payload,
+    }),
+    sendPushNotificationToUser(userId, {
       type: notification.type,
       message: notification.message,
-      isRead: notification.isRead,
-      createdAt: new Date(notification.createdAt).toISOString(),
-    },
-  });
+      href: payload.href,
+    }),
+  ]);
+
+  const rejected = settled.find((result) => result.status === "rejected");
+  if (rejected?.status === "rejected") {
+    throw rejected.reason;
+  }
 }
 
 /** Broadcast a new channel to a specific user */

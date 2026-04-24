@@ -205,6 +205,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         type: "CHANNEL_CLOSED",
         message: `🎉 Congratulations! You've completed ${threshold} answers. You can now earn points for every answer!`,
+        href: "/wallet",
       }).catch(() => null);
 
       if (monetizationNotif) {
@@ -229,6 +230,7 @@ export async function POST(req: Request) {
       userId: channel.askerId,
       type: "ANSWER_SUBMITTED",
       message: "The teacher has submitted an answer to your question. Please review and rate it.",
+      href: `/channel/${channelId}`,
     }).catch(() => null);
     if (askerNotif) {
       await emitNotification(channel.askerId.toString(), askerNotif);

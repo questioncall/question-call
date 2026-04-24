@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { resolveNotificationHref } from "@/lib/notifications/metadata";
 import { connectToDatabase } from "@/lib/mongodb";
 import Notification from "@/models/Notification";
 
@@ -27,6 +28,7 @@ export async function GET() {
         type: n.type,
         message: n.message,
         isRead: n.isRead,
+        href: resolveNotificationHref(n),
         createdAt: new Date(n.createdAt).toISOString(),
       }))
     );

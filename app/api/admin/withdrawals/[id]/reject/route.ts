@@ -88,6 +88,7 @@ export async function POST(
         userId: requesterId,
         type: "PAYMENT",
         message: `Your withdrawal request of ${requestedPoints} pts was rejected. Reason: ${adminNote || "No reason given."}`,
+        href: "/wallet",
         isRead: false,
       }).catch(() => null);
 

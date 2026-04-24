@@ -2,13 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  BellIcon,
-  Loader2Icon,
-  PhoneIcon,
-  PlayIcon,
-  VolumeXIcon,
-} from "lucide-react";
+import { BellIcon, Loader2Icon, PhoneIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -33,7 +27,6 @@ type PreviewTarget = "incoming" | "outgoing" | null;
 
 type RingtoneSectionProps = {
   title: string;
-  description: string;
   fieldId: string;
   value: UserCallSettings["incomingRingtone"];
   onChange: (value: UserCallSettings["incomingRingtone"]) => void;
@@ -43,7 +36,6 @@ type RingtoneSectionProps = {
 
 function RingtoneSection({
   title,
-  description,
   fieldId,
   value,
   onChange,
@@ -55,10 +47,7 @@ function RingtoneSection({
   return (
     <div className="grid gap-4 rounded-2xl border border-border/70 bg-background p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
       <div className="space-y-3">
-        <div className="space-y-1">
-          <Label htmlFor={fieldId}>{title}</Label>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
+        <Label htmlFor={fieldId}>{title}</Label>
 
         <Select
           id={fieldId}
@@ -73,7 +62,7 @@ function RingtoneSection({
           className="w-full"
         />
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {selectedRingtone.description}
         </p>
       </div>
@@ -194,30 +183,8 @@ export function CallSettingsForm({
   };
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-border/70 bg-muted/15 p-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-full bg-primary/10 p-2 text-primary">
-            {silentIncomingCalls ? (
-              <VolumeXIcon className="size-4" />
-            ) : (
-              <BellIcon className="size-4" />
-            )}
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              Call tones
-            </p>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Choose from 10 call tones with glassy and droplet-style character,
-              and keep incoming and outgoing call audio separate. Incoming controls
-              the alert other people trigger for you. Outgoing controls the ringback
-              you hear while waiting.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-3">
+    <div className="space-y-6">
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-background px-4 py-3">
           <Checkbox
             id="silentIncomingCalls"
             checked={silentIncomingCalls}
@@ -230,12 +197,9 @@ export function CallSettingsForm({
             <Label htmlFor="silentIncomingCalls" className="cursor-pointer">
               Silent incoming calls
             </Label>
-            <p className="text-sm text-muted-foreground">
-              Show the incoming call overlay without playing the incoming ringtone.
-            </p>
+            <p className="text-xs text-muted-foreground">Show calls without sound.</p>
           </div>
         </div>
-      </div>
 
       <div className="space-y-4 rounded-2xl border border-border/70 bg-card/60 p-5">
         <div className="flex items-start gap-3">
@@ -246,15 +210,11 @@ export function CallSettingsForm({
             <p className="text-sm font-medium text-foreground">
               Incoming call ringtone
             </p>
-            <p className="text-sm text-muted-foreground">
-              This tone plays when someone is calling you.
-            </p>
           </div>
         </div>
 
         <RingtoneSection
           title="Incoming ringtone"
-          description="Pick the glassy or droplet-style sound that should play on new incoming calls."
           fieldId="incomingRingtone"
           value={incomingRingtone}
           onChange={setIncomingRingtone}
@@ -272,28 +232,17 @@ export function CallSettingsForm({
             <p className="text-sm font-medium text-foreground">
               Outgoing call ringback
             </p>
-            <p className="text-sm text-muted-foreground">
-              This is the sound you hear after you start a call and while the other
-              person has not answered yet.
-            </p>
           </div>
         </div>
 
         <RingtoneSection
           title="Outgoing ringback"
-          description="Pick a separate ringback tone for your outgoing calling state."
           fieldId="outgoingRingtone"
           value={outgoingRingtone}
           onChange={setOutgoingRingtone}
           isPreviewing={previewingTarget === "outgoing"}
           onPreviewToggle={() => handlePreviewToggle("outgoing")}
         />
-      </div>
-
-      <div className="rounded-2xl border border-dashed border-border bg-muted/10 p-4 text-sm text-muted-foreground">
-        {silentIncomingCalls
-          ? "Incoming calls will stay visible but silent. Your outgoing ringback tone will still play when you place a call."
-          : `Incoming calls will use "${getCallRingtoneOption(incomingRingtone).label}" and outgoing calls will use "${getCallRingtoneOption(outgoingRingtone).label}".`}
       </div>
 
       <Button

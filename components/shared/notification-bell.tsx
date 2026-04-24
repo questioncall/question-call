@@ -1,9 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BellIcon, CheckCheckIcon, XIcon } from "lucide-react";
+import {
+  BellIcon,
+  BellOffIcon,
+  BellRingIcon,
+  CheckCheckIcon,
+  Loader2Icon,
+  XIcon,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { supportsPushNotifications, urlBase64ToUint8Array } from "@/lib/push/client";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { getUserPusherName, NOTIFICATION_EVENT } from "@/lib/pusher/events";
 
@@ -12,14 +21,17 @@ type NotificationType =
   | "QUESTION_ACCEPTED"
   | "QUESTION_RESET"
   | "CHANNEL_CLOSED"
+  | "CHANNEL_EXPIRED"
   | "PAYMENT"
   | "ANSWER_SUBMITTED"
-  | "DEADLINE_WARNING";
+  | "DEADLINE_WARNING"
+  | "SYSTEM";
 
 type Notification = {
   id: string;
   type: NotificationType;
   message: string;
+  href?: string;
   isRead: boolean;
   createdAt: string;
 };
@@ -29,9 +41,11 @@ const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   QUESTION_ACCEPTED: "✅",
   QUESTION_RESET: "🔄",
   CHANNEL_CLOSED: "🔒",
+  CHANNEL_EXPIRED: "⌛",
   PAYMENT: "💳",
   ANSWER_SUBMITTED: "📝",
   DEADLINE_WARNING: "⏰",
+  SYSTEM: "🔔",
 };
 
 function formatTimeAgo(date: string) {
@@ -49,13 +63,43 @@ type NotificationBellProps = {
 };
 
 export function NotificationBell({ userId }: NotificationBellProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>("default");
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const isMarkingAllReadRef = useRef(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const refreshPushState = useCallback(async () => {
+    const supported = supportsPushNotifications();
+    setPushSupported(supported);
+
+    if (!supported) {
+      setPushEnabled(false);
+      return;
+    }
+
+    setPushPermission(Notification.permission);
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        setPushEnabled(false);
+        return;
+      }
+
+      const subscription = await registration.pushManager.getSubscription();
+      setPushEnabled(Boolean(subscription));
+    } catch {
+      setPushEnabled(false);
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -69,6 +113,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    void refreshPushState();
+  }, [refreshPushState]);
 
   // Subscribe to real-time notifications via Pusher
   useEffect(() => {
@@ -116,6 +164,15 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     await fetch(`/api/notifications/${id}`, { method: "PATCH" });
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    setIsOpen(false);
+    await markRead(notification.id);
+
+    if (notification.href) {
+      router.push(notification.href);
+    }
+  };
+
   const markAllRead = useCallback(async () => {
     if (isMarkingAllReadRef.current || !notifications.some((n) => !n.isRead)) {
       return;
@@ -142,6 +199,119 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     void markAllRead();
   }, [isLoading, isOpen, markAllRead, unreadCount]);
 
+  const enablePushNotifications = async () => {
+    if (!supportsPushNotifications()) {
+      toast.error("This browser does not support push notifications here.");
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      setPushPermission("denied");
+      toast.error("Notifications are blocked in your browser settings.");
+      return;
+    }
+
+    setIsPushLoading(true);
+
+    try {
+      const permission =
+        Notification.permission === "granted"
+          ? "granted"
+          : await Notification.requestPermission();
+
+      setPushPermission(permission);
+
+      if (permission !== "granted") {
+        toast.error("Notification permission was not granted.");
+        return;
+      }
+
+      const keyResponse = await fetch("/api/push/public-key", {
+        cache: "no-store",
+      });
+      const keyData = await keyResponse.json().catch(() => ({}));
+
+      if (!keyResponse.ok || !keyData.publicKey) {
+        throw new Error(keyData.error || "Push notifications are not configured yet.");
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+        });
+      }
+
+      const response = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+        }),
+      });
+      const responseData = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(responseData.error || "Failed to enable push notifications.");
+      }
+
+      setPushEnabled(true);
+      toast.success("Real device notifications are enabled.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to enable push notifications.",
+      );
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
+  const disablePushNotifications = async () => {
+    if (!supportsPushNotifications()) {
+      return;
+    }
+
+    setIsPushLoading(true);
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+          }),
+        });
+
+        await subscription.unsubscribe();
+      }
+
+      setPushEnabled(false);
+      toast.success("Device notifications are turned off.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to disable push notifications.",
+      );
+    } finally {
+      setIsPushLoading(false);
+      void refreshPushState();
+    }
+  };
+
   return (
     <div className="relative" ref={panelRef}>
       <button
@@ -164,6 +334,32 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
             <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
+              {pushSupported ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 gap-1 px-2 text-xs text-muted-foreground"
+                  disabled={isPushLoading}
+                  onClick={() => {
+                    void (pushEnabled
+                      ? disablePushNotifications()
+                      : enablePushNotifications());
+                  }}
+                >
+                  {isPushLoading ? (
+                    <Loader2Icon className="size-3.5 animate-spin" />
+                  ) : pushEnabled ? (
+                    <BellOffIcon className="size-3.5" />
+                  ) : (
+                    <BellRingIcon className="size-3.5" />
+                  )}
+                  {pushEnabled
+                    ? "Disable alerts"
+                    : pushPermission === "denied"
+                      ? "Alerts blocked"
+                      : "Enable alerts"}
+                </Button>
+              ) : null}
               <Button
                 size="sm"
                 variant="ghost"
@@ -200,7 +396,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                 <button
                   key={n.id}
                   type="button"
-                  onClick={() => { void markRead(n.id); }}
+                  onClick={() => { void handleNotificationClick(n); }}
                   className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/50 ${
                     !n.isRead ? "bg-primary/5" : "bg-transparent"
                   }`}

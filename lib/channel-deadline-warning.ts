@@ -63,6 +63,7 @@ export async function emitDeadlineWarningIfNeeded({
       warningMinutes === 1
         ? "Only 1 minute is left to finish this answer."
         : `Only ${warningMinutes} minutes are left to finish this answer.`,
+    href: `/channel/${channelId}`,
   }).catch(() => null);
 
   if (notification) {

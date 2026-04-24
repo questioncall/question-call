@@ -160,6 +160,7 @@ export async function POST(
         userId: requesterId,
         type: "PAYMENT",
         message: `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`,
+        href: "/wallet",
         isRead: false,
       }).catch(() => null);
 

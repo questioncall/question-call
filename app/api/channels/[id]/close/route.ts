@@ -188,6 +188,7 @@ export async function POST(
         userId: teacher._id,
         type: "RATING_RECEIVED",
         message: `Student rated 1 star. ${penalty} point(s) deducted.`,
+        href: `/channel/${channel._id.toString()}`,
       }).catch(() => null);
       if (penaltyNotif) await emitNotification(teacher._id.toString(), penaltyNotif);
 
@@ -264,6 +265,7 @@ export async function POST(
             userId: channel.askerId,
             type: "QUESTION_RESET",
             message: `Your question received a low rating and has been re-opened for other teachers. (${(question.resetCount)}/${maxResets} attempts)`,
+            href: `/question/${question._id.toString()}`,
           }).catch(() => null);
           if (resetNotif) await emitNotification(channel.askerId.toString(), resetNotif);
         } else {
@@ -277,6 +279,7 @@ export async function POST(
             userId: channel.askerId,
             type: "CHANNEL_CLOSED",
             message: `Question auto-marked as solved after ${maxResets} attempts.`,
+            href: `/question/${question._id.toString()}`,
           }).catch(() => null);
           if (maxReachedNotif) await emitNotification(channel.askerId.toString(), maxReachedNotif);
         }
@@ -375,6 +378,7 @@ export async function POST(
         userId: teacher._id,
         type: "RATING_RECEIVED",
         message: notifMessage,
+        href: `/channel/${channel._id.toString()}`,
       }).catch(() => null);
       if (notif) await emitNotification(teacher._id.toString(), notif);
     }

@@ -46,17 +46,11 @@ export default async function SettingsCallsPage() {
         <CardHeader>
           <CardDescription className="flex items-center gap-2">
             <BellIcon className="size-4 text-primary" />
-            Call preferences
+            Calls
           </CardDescription>
           <CardTitle>Call Settings</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-6 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Control both sides of your calling audio here. You can keep incoming
-            calls silent, choose a dedicated incoming ringtone, and pick a separate
-            outgoing ringback tone from the built-in sound set.
-          </p>
-
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <CallSettingsForm initialSettings={serializedSettings} />
           </div>

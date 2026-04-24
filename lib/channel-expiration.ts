@@ -322,6 +322,7 @@ export async function processExpiredChannels(
             pointsEarned > 0
               ? `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time). Points credited automatically.`
               : `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time).`,
+          href: `/channel/${channelId}`,
         }).catch(() => null);
 
         if (teacherNotif) {
@@ -335,6 +336,7 @@ export async function processExpiredChannels(
           userId: askerId,
           type: "CHANNEL_CLOSED",
           message: `Your channel was auto-closed. The teacher's answer was rated ${AUTO_CLOSE_RATING}/5 automatically.`,
+          href: question ? `/question/${question._id.toString()}` : "/",
         }).catch(() => null);
 
         if (askerNotif) {
@@ -372,6 +374,7 @@ export async function processExpiredChannels(
         userId: teacherId,
         type: "QUESTION_RESET",
         message: `You did not submit an answer in time. ${penalty} point(s) deducted.`,
+        href: `/channel/${channelId}`,
       }).catch(() => null);
 
       if (penaltyNotif) {
@@ -460,6 +463,7 @@ export async function processExpiredChannels(
             userId: askerId,
             type: "QUESTION_RESET",
             message: `Teacher didn't answer in time. Your question has been re-opened. (${question.resetCount}/${maxResets} attempts)`,
+            href: `/question/${question._id.toString()}`,
           }).catch(() => null);
 
           if (reopenNotif) {
@@ -477,6 +481,7 @@ export async function processExpiredChannels(
             userId: askerId,
             type: "CHANNEL_EXPIRED",
             message: `Question auto-marked as solved after ${maxResets} attempts.`,
+            href: `/question/${question._id.toString()}`,
           }).catch(() => null);
 
           if (maxReachedNotif) {

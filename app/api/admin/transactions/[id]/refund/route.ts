@@ -83,6 +83,7 @@ export async function POST(
       userId: transaction.userId,
       type: "PAYMENT",
       message: notificationMessage,
+      href: "/subscription",
       isRead: false,
     }).catch(() => null);
 

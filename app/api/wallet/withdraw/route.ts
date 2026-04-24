@@ -183,6 +183,7 @@ export async function POST(req: Request) {
       userId: admin._id,
       type: "PAYMENT",
       message: `${requesterLabel} ${finalizedRequester.name} requested a withdrawal of ${finalizedRequest.pointsRequested} pts (NPR ${finalizedRequest.nprEquivalent}). eSewa: ${finalizedRequest.esewaNumber}`,
+      href: "/admin/withdrawals",
       isRead: false,
     }));
 
