@@ -418,14 +418,141 @@ function Nav() {
           </span>
         </Link>
 
+{/* Desktop nav - shown on md+ (768px+) */}
         <nav
           ref={menuRef}
+          className="lpb-desktop-nav"
+          style={{
+            display: "none",
+            alignItems: "center",
+            gap: 6,
+            flexShrink: 0,
+            justifyContent: "flex-end",
+            marginLeft: 16,
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          {[
+            { href: "/courses", label: "Courses" },
+            { href: "#how-it-works", label: "How it works" },
+            { href: "#for-students", label: "Students" },
+            { href: "#for-teachers", label: "Teachers" },
+            { href: "#quiz", label: "Quiz" },
+          ].map((item) =>
+            item.href.startsWith("#") ? (
+              <a
+                key={item.label}
+                href={item.href}
+                style={{
+                  padding: "0.45rem 0.7rem",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: isDark ? "#9dc8c3" : "#2a6b64",
+                }}
+                className="lpb-btn"
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.label}
+                href={item.href}
+                style={{
+                  padding: "0.45rem 0.7rem",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: isDark ? "#9dc8c3" : "#2a6b64",
+                }}
+                className="lpb-btn"
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
+          <button
+            type="button"
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            style={{
+              padding: "0.45rem 0.7rem",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              color: isDark ? "#9dc8c3" : "#2a6b64",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+            className="lpb-btn"
+          >
+            {mounted && (isDark ? <SunIcon size={14} /> : <MoonIcon size={14} />)}
+            <span>{isDark ? "Light" : "Dark"}</span>
+          </button>
+          <Link
+            href={getSignInPath()}
+            style={{
+              padding: "0.45rem 0.8rem",
+              fontSize: 12,
+              fontWeight: 600,
+              borderRadius: 10,
+              textDecoration: "none",
+              color: isDark ? "#9dc8c3" : "#2a6b64",
+            }}
+            className="lpb-btn"
+          >
+            Sign in
+          </Link>
+          <Link
+            href={getSignUpPath("TEACHER")}
+            style={{
+              padding: "0.45rem 0.8rem",
+              fontSize: 12,
+              fontWeight: 600,
+              borderRadius: 10,
+              border: "1px solid rgba(31,118,110,0.35)",
+              textDecoration: "none",
+              color: isDark ? "#9dc8c3" : "#1f766e",
+            }}
+            className="lpb-btn"
+          >
+            Teacher
+          </Link>
+          <Link
+            href={getSignUpPath("STUDENT")}
+            className="lpb-btn lpb-btn-primary"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              padding: "0.5rem 0.95rem",
+              fontSize: 12,
+              fontWeight: 700,
+              borderRadius: 10,
+              color: "#fff",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Free Trial
+          </Link>
+        </nav>
+
+        {/* Mobile nav - shown below md (below 768px) */}
+        <div
+          className="lpb-mobile-nav"
           style={{
             display: "flex",
             alignItems: "center",
             gap: 8,
             position: "relative",
-            flexShrink: 0,
           }}
         >
           <Link
@@ -567,8 +694,18 @@ function Nav() {
               </button>
             </div>
           ) : null}
-        </nav>
+        </div>
       </div>
+      <style>{`
+        @media (min-width: 768px) {
+          .lpb-desktop-nav { display: flex !important; }
+          .lpb-mobile-nav { display: none !important; }
+        }
+        @media (max-width: 767px) {
+          .lpb-desktop-nav { display: none !important; }
+          .lpb-mobile-nav { display: flex !important; }
+        }
+      `}</style>
     </header>
   );
 }

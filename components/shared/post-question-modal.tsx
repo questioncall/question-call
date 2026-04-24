@@ -107,7 +107,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const bodyLen = body.trim().length;
   const answerFormat = buildAnswerFormatFromSelection(selectedFormats);
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
-  const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
+  const isBodyValid = bodyLen === 0 || (bodyLen >= 12 && bodyLen <= 5000);
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
 
   const stopCamera = (resetState = true) => {
@@ -538,9 +538,6 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
                     <CameraIcon className="size-3.5" />
                     Capture Photo
                   </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Camera opens only after you tap the button, and it stops when you close it.
-                  </p>
                 </div>
               </div>
             )}
