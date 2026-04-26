@@ -276,6 +276,7 @@ export function CreateCourseModal({
           body: JSON.stringify({
             courseId: data._id,
             code: coupon.code,
+            scope: "COURSE",
             type: "FULL_ACCESS",
             discount: coupon.discount,
             discountType: coupon.discountType,

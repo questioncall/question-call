@@ -182,7 +182,7 @@ export function CoursesBrowseClient({
                       <img
                         src={course.thumbnailUrl}
                         alt={course.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
@@ -263,7 +263,7 @@ export function CoursesBrowseClient({
                       <img
                         src={course.thumbnailUrl}
                         alt={course.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
@@ -390,12 +390,12 @@ export function CoursesBrowseClient({
                 href={`/courses/${course.slug}`}
                 className="group overflow-hidden rounded-3xl border border-border bg-background shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-lg"
               >
-                <div className="aspect-[16/9] overflow-hidden">
+                <div className="relative aspect-[16/9] overflow-hidden">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
@@ -502,12 +502,12 @@ export function CoursesBrowseClient({
                 href={`/courses/${course.slug}`}
                 className="group flex flex-col gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-emerald-500/40 hover:shadow-md sm:flex-row sm:items-center sm:p-5"
               >
-                <div className="aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-48">
+                <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl sm:h-28 sm:w-48">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">

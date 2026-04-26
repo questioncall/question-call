@@ -24,20 +24,11 @@ function normalizeUsageLimit(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : Number.NaN;
 }
 
-async function requireAdmin() {
+async function requireAuthAndReturnSession() {
   const session = await getSafeServerSession();
 
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  if (session.user.role !== "ADMIN") {
-    return {
-      error: NextResponse.json(
-        { error: "Only admins can manage course coupons." },
-        { status: 403 },
-      ),
-    };
   }
 
   return { session };
@@ -48,9 +39,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireAuthAndReturnSession();
     if (auth.error) {
       return auth.error;
+    }
+
+    const { session } = auth;
+    if (session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
     }
 
     const { id } = await params;
@@ -63,6 +59,17 @@ export async function PATCH(
     const coupon = await CourseCoupon.findById(id);
     if (!coupon) {
       return NextResponse.json({ error: "Coupon not found." }, { status: 404 });
+    }
+
+    if (session.user.role === "TEACHER") {
+      if (coupon.scope !== "COURSE" || !coupon.courseId) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+      }
+      const Course = (await import("@/models/Course")).default;
+      const course = await Course.findById(coupon.courseId).select("instructorId").lean();
+      if (!course || course.instructorId.toString() !== session.user.id) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+      }
     }
 
     const body = await request.json();
@@ -168,9 +175,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireAuthAndReturnSession();
     if (auth.error) {
       return auth.error;
+    }
+
+    const { session } = auth;
+    if (session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
     }
 
     const { id } = await params;
@@ -180,9 +192,20 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const coupon = await CourseCoupon.findById(id).select("_id").lean();
+    const coupon = await CourseCoupon.findById(id).select("_id scope courseId").lean();
     if (!coupon) {
       return NextResponse.json({ error: "Coupon not found." }, { status: 404 });
+    }
+
+    if (session.user.role === "TEACHER") {
+      if (coupon.scope !== "COURSE" || !coupon.courseId) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+      }
+      const Course = (await import("@/models/Course")).default;
+      const course = await Course.findById(coupon.courseId).select("instructorId").lean();
+      if (!course || course.instructorId.toString() !== session.user.id) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 403 });
+      }
     }
 
     await CourseCouponRedemption.deleteMany({ couponId: id });

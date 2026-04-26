@@ -72,13 +72,13 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
               {course.title}
             </h1>
 
-            <div className="mt-6 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 to-emerald-900">
+            <div className="mt-6 relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 to-emerald-900">
               {course.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={course.thumbnailUrl}
                   alt={course.title}
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">

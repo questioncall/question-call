@@ -61,13 +61,6 @@ export async function POST(
       );
     }
 
-    if (course.pricingModel === "PAID") {
-      return NextResponse.json(
-        { error: "PAID_COURSE_USE_PURCHASE_FLOW" },
-        { status: 400 },
-      );
-    }
-
     const body = await request.json().catch(() => ({}));
     const couponCode =
       typeof body.couponCode === "string" ? body.couponCode.trim() : "";
@@ -90,6 +83,11 @@ export async function POST(
 
       accessType = "COUPON";
       couponId = validation.couponId;
+    } else if (course.pricingModel === "PAID") {
+      return NextResponse.json(
+        { error: "PAID_COURSE_USE_PURCHASE_FLOW" },
+        { status: 400 },
+      );
     } else if (course.pricingModel === "FREE") {
       accessType = "FREE";
     } else {

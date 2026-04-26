@@ -37,20 +37,11 @@ function normalizeUsageLimit(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : Number.NaN;
 }
 
-async function requireAdmin() {
+async function requireAuthAndReturnSession() {
   const session = await getSafeServerSession();
 
   if (!session?.user?.id) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  if (session.user.role !== "ADMIN") {
-    return {
-      error: NextResponse.json(
-        { error: "Only admins can manage course coupons." },
-        { status: 403 },
-      ),
-    };
   }
 
   return { session };
@@ -58,9 +49,17 @@ async function requireAdmin() {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireAuthAndReturnSession();
     if (auth.error) {
       return auth.error;
+    }
+
+    const { session } = auth;
+    if (session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
+      return NextResponse.json(
+        { error: "Only admins or teachers can manage coupons." },
+        { status: 403 },
+      );
     }
 
     await connectToDatabase();
@@ -82,6 +81,20 @@ export async function GET(request: NextRequest) {
 
     if (courseId && Types.ObjectId.isValid(courseId)) {
       query.courseId = courseId;
+    }
+
+    if (session.user.role === "TEACHER") {
+      const teacherCourses = await Course.find({ instructorId: session.user.id }).select("_id").lean();
+      const teacherCourseIds = teacherCourses.map((c) => c._id.toString());
+      
+      if (courseId && !teacherCourseIds.includes(courseId)) {
+        return NextResponse.json({ coupons: [] });
+      }
+
+      query.scope = "COURSE";
+      if (!courseId) {
+        query.courseId = { $in: teacherCourseIds };
+      }
     }
 
     const coupons = await CourseCoupon.find(query)
@@ -126,9 +139,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
+    const auth = await requireAuthAndReturnSession();
     if (auth.error) {
       return auth.error;
+    }
+
+    const { session } = auth;
+    if (session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
+      return NextResponse.json(
+        { error: "Only admins or teachers can manage coupons." },
+        { status: 403 },
+      );
     }
 
     await connectToDatabase();
@@ -169,10 +190,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const course = await Course.findById(courseId).select("_id").lean();
+      const course = await Course.findById(courseId).select("_id instructorId").lean();
       if (!course) {
         return NextResponse.json({ error: "Course not found." }, { status: 404 });
       }
+      
+      if (session.user.role === "TEACHER" && course.instructorId.toString() !== session.user.id) {
+        return NextResponse.json({ error: "You can only create coupons for your own courses." }, { status: 403 });
+      }
+    } else if (session.user.role === "TEACHER") {
+      return NextResponse.json({ error: "Teachers can only create course-scoped coupons." }, { status: 403 });
     }
 
     const existingCoupon = await CourseCoupon.findOne({ code }).collation({

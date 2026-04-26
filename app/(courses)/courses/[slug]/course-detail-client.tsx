@@ -215,13 +215,13 @@ export function CourseDetailClient({
           <div className="w-full shrink-0 lg:w-[360px]">
             <div className="sticky top-20">
               <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-lg">
-                <div className="aspect-[16/10] w-full bg-gradient-to-br from-slate-800 to-emerald-900">
+                <div className="relative aspect-[16/10] w-full bg-gradient-to-br from-slate-800 to-emerald-900">
                   {course.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">

@@ -38,15 +38,18 @@ import {
 } from "@/components/ui/dialog";
 import { LiveSessionManager } from "@/components/course/LiveSessionManager";
 import { AddContentModal } from "@/components/course/AddContentModal";
+import { CourseCouponsManager } from "@/components/course/CourseCouponsManager";
+import { TicketIcon } from "lucide-react";
 import type { ManageCourseData } from "@/lib/course-page-data";
 
-type Tab = "content" | "details" | "live" | "analytics";
+type Tab = "content" | "details" | "live" | "analytics" | "coupons";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutGridIcon }[] = [
   { id: "content", label: "Curriculum", icon: LayoutGridIcon },
   { id: "details", label: "Settings", icon: SettingsIcon },
   { id: "live", label: "Live Sessions", icon: CalendarIcon },
   { id: "analytics", label: "Analytics", icon: BarChart3Icon },
+  { id: "coupons", label: "Coupons", icon: TicketIcon },
 ];
 
 type EnrolledUser = {
@@ -876,6 +879,12 @@ export function ManageCourseClient({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === "coupons" && (
+              <div className="rounded-3xl border border-border bg-background p-8 shadow-sm">
+                <CourseCouponsManager courseId={course._id} />
               </div>
             )}
           </main>

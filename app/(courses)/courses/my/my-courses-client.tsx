@@ -70,7 +70,7 @@ export function MyCoursesClient({ userName, courses }: Props) {
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
@@ -129,13 +129,13 @@ export function MyCoursesClient({ userName, courses }: Props) {
                 href={`/courses/${course.slug}`}
                 className="group flex items-center gap-4 rounded-2xl border border-border bg-background p-4 transition-all hover:border-emerald-500/30"
               >
-                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-emerald-900">
+                <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-emerald-900">
                   {course.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (
                     <BookOpenIcon className="size-7 text-emerald-500/40" />
