@@ -280,15 +280,12 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
     const handleMessage = (payload: { message?: ChatMessage }) => {
       if (!payload.message) return;
-      
-      // Don't add our own user messages (we already have them optimistically)
-      if (payload.message.senderId === userId && !payload.message.isSystemMessage) return;
-      
-      const isOwnMessage = payload.message.senderId === userId;
-      dispatch(addMessage({ ...payload.message, isOwn: isOwnMessage }));
+      // Don't add our own messages (we already have them optimistically)
+      if (payload.message.senderId === userId) return;
+      dispatch(addMessage({ ...payload.message, isOwn: false }));
 
-      // Ignore sounds and notifications for system messages (e.g. call logs)
-      if (isOwnMessage || payload.message.isSystemMessage) return;
+      // Skip sound/notification for system messages (call logs etc)
+      if (payload.message.isSystemMessage) return;
 
       // Always play notification sound for incoming user messages
       try {
@@ -304,7 +301,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             const notifOptions = {
               body: payload.message.content || (payload.message.mediaType ? `Sent a ${payload.message.mediaType.toLowerCase()}` : "You received a new message."),
               icon: "/logo.png",
-              tag: `msg-${channelId}`,
+              tag: `msg-${payload.message.id}`,
+              renotify: true,
               data: { url: `/channel/${channelId}` }
             };
 

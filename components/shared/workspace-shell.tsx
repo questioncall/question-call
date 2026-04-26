@@ -234,12 +234,16 @@ export function WorkspaceShell({
   }, [channelsHydrated]);
 
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
+    if (
+      "Notification" in window &&
+      Notification.permission === "default" &&
+      !localStorage.getItem("qc_notif_asked")
+    ) {
       const handleInteraction = () => {
+        localStorage.setItem("qc_notif_asked", "1");
         Notification.requestPermission().catch(() => {});
-        document.removeEventListener("click", handleInteraction);
       };
-      document.addEventListener("click", handleInteraction);
+      document.addEventListener("click", handleInteraction, { once: true });
       return () => document.removeEventListener("click", handleInteraction);
     }
   }, []);
@@ -304,7 +308,8 @@ export function WorkspaceShell({
               const notifOptions = {
                 body: data.lastMessagePreview || "You received a new message.",
                 icon: "/logo.png",
-                tag: `msg-${data.channelId}`,
+                tag: `msg-${Date.now()}`,
+                renotify: true,
                 data: { url: targetUrl }
               };
 
