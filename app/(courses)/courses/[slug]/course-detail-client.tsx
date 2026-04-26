@@ -104,7 +104,7 @@ export function CourseDetailClient({
             <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
               {course.title}
             </h1>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base whitespace-pre-wrap">
               {course.description}
             </p>
 

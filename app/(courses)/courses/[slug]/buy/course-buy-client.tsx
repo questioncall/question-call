@@ -94,7 +94,7 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
                   ? "Included in subscription"
                   : `NPR ${(course.price ?? 0).toLocaleString()}`}
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
               {course.description}
             </p>
 

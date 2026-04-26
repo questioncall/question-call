@@ -420,7 +420,7 @@ export function CoursesBrowseClient({
                   <h3 className="text-lg font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                     {course.title}
                   </h3>
-                  <p className="line-clamp-2 text-sm text-muted-foreground">
+                  <p className="line-clamp-2 text-sm text-muted-foreground whitespace-pre-wrap">
                     {course.description}
                   </p>
                 </div>
@@ -523,7 +523,7 @@ export function CoursesBrowseClient({
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {course.lessonsCount} lessons
                   </p>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground whitespace-pre-wrap">
                     {course.description}
                   </p>
 

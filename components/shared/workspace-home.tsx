@@ -25,6 +25,7 @@ import {
   MedalIcon,
   MoreHorizontalIcon,
   ImageIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -773,7 +774,7 @@ export function WorkspaceHome({
                       </div>
 
                       <div className="space-y-3 p-4">
-                        <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+                        <p className="line-clamp-3 text-sm leading-6 text-muted-foreground whitespace-pre-wrap">
                           {course.description ||
                             "Structured lessons and guided practice from the course library."}
                         </p>
@@ -1094,6 +1095,22 @@ export function WorkspaceHome({
                     None
                   </span>
                 )}
+
+                <div className="mx-1 h-5 w-px bg-border/80" />
+                <button
+                  type="button"
+                  onClick={fetchFeed}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Refresh feed manually"
+                >
+                  {isLoading ? (
+                    <Loader2Icon className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCwIcon className="size-3" />
+                  )}
+                  Refresh
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -1136,6 +1153,20 @@ export function WorkspaceHome({
                     ? 'Be the first to post a question! Click "Post Question" in the header to get started.'
                     : "Try a different filter or sort to bring more questions back into the stream."}
                 </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-6 gap-2" 
+                  onClick={fetchFeed} 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCwIcon className="size-4" />
+                  )}
+                  Load Questions
+                </Button>
               </CardContent>
             </Card>
           )}
