@@ -25,9 +25,17 @@ type CouponData = {
   courseId: string | null;
   usageLimit: number | null;
   usedCount: number;
+  discountPercentage: number;
   expiryDate: string | null;
   isActive: boolean;
   createdAt: string;
+};
+
+type RedemptionUser = {
+  _id: string;
+  redeemedAt: string;
+  student: { id: string; name: string; email: string; image?: string } | null;
+  course: { id: string; title: string; slug: string } | null;
 };
 
 type CourseCouponsManagerProps = {
@@ -48,9 +56,13 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
     code: "",
     usageLimit: "",
     expiryDate: "",
+    discountPercentage: "100",
   });
 
   const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
+  const [viewingRedemptionsId, setViewingRedemptionsId] = useState<string | null>(null);
+  const [redemptionsList, setRedemptionsList] = useState<RedemptionUser[]>([]);
+  const [isLoadingRedemptions, setIsLoadingRedemptions] = useState(false);
 
   useEffect(() => {
     async function fetchCoupons() {
@@ -81,6 +93,7 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
           courseId,
           usageLimit: newCoupon.usageLimit ? Number(newCoupon.usageLimit) : null,
           expiryDate: newCoupon.expiryDate || null,
+          discountPercentage: Number(newCoupon.discountPercentage),
         }),
       });
 
@@ -91,11 +104,12 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
         {
           _id: data._id,
           code: newCoupon.code.trim().toUpperCase(),
-          type: "FULL_ACCESS",
+          type: "PERCENTAGE",
           scope: "COURSE",
           courseId,
           usageLimit: newCoupon.usageLimit ? Number(newCoupon.usageLimit) : null,
           usedCount: 0,
+          discountPercentage: Number(newCoupon.discountPercentage),
           expiryDate: newCoupon.expiryDate || null,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -107,12 +121,29 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
         code: "",
         usageLimit: "",
         expiryDate: "",
+        discountPercentage: "100",
       });
       toast.success("Coupon created.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create.");
     } finally {
       setIsWorking(false);
+    }
+  }
+
+  async function viewRedemptions(couponId: string) {
+    setViewingRedemptionsId(couponId);
+    setIsLoadingRedemptions(true);
+    try {
+      const res = await fetch(`/api/courses/coupons/${couponId}/redemptions`);
+      if (!res.ok) throw new Error("Failed to fetch redemptions");
+      const data = await res.json();
+      setRedemptionsList(data.redemptions || []);
+    } catch (error) {
+      toast.error("Could not load redemptions.");
+      setViewingRedemptionsId(null);
+    } finally {
+      setIsLoadingRedemptions(false);
     }
   }
 
@@ -218,6 +249,21 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Discount Percentage (%)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={newCoupon.discountPercentage}
+                  onChange={(e) =>
+                    setNewCoupon((prev) => ({
+                      ...prev,
+                      discountPercentage: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Expiry date</Label>
                 <Input
                   type="date"
@@ -248,6 +294,7 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
             <thead>
               <tr className="border-b text-left text-sm text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Discount</th>
                 <th className="px-4 py-3 font-medium">Usage</th>
                 <th className="px-4 py-3 font-medium">Expiry</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -269,9 +316,26 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
                         {coupon.code}
                       </code>
                     </td>
+                    <td className="px-4 py-3 text-sm font-medium">
+                      {coupon.discountPercentage}%
+                    </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {coupon.usedCount}
-                      {coupon.usageLimit ? ` / ${coupon.usageLimit}` : " / ∞"}
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {coupon.usedCount}
+                          {coupon.usageLimit ? ` / ${coupon.usageLimit}` : " / ∞"}
+                        </span>
+                        {coupon.usedCount > 0 ? (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-emerald-600 dark:text-emerald-400"
+                            onClick={() => viewRedemptions(coupon._id)}
+                          >
+                            See all
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {coupon.expiryDate
@@ -329,6 +393,38 @@ export function CourseCouponsManager({ courseId }: CourseCouponsManagerProps) {
             <Button variant="destructive" onClick={deleteCoupon} disabled={isWorking}>
               Delete
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingRedemptionsId} onOpenChange={(open) => !open && setViewingRedemptionsId(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-md">
+          <DialogHeader>
+            <DialogTitle>Coupon Uses</DialogTitle>
+            <DialogDescription>
+              Students who have used this coupon.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {isLoadingRedemptions ? (
+              <div className="text-center text-sm text-muted-foreground py-4">Loading...</div>
+            ) : redemptionsList.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">No uses recorded yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {redemptionsList.map((r) => (
+                  <div key={r._id} className="flex items-start justify-between rounded-lg border p-3 text-sm">
+                    <div>
+                      <div className="font-medium text-foreground">{r.student?.name || "Unknown User"}</div>
+                      <div className="text-muted-foreground">{r.student?.email || "No email"}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(r.redeemedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

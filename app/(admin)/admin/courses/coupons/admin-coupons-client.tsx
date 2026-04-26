@@ -61,6 +61,13 @@ type AdminCouponsClientProps = {
   redemptionHistory: RedemptionHistoryData[];
 };
 
+type RedemptionUser = {
+  _id: string;
+  redeemedAt: string;
+  student: { id: string; name: string; email: string; image?: string } | null;
+  course: { id: string; title: string; slug: string } | null;
+};
+
 function generateCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
@@ -86,6 +93,9 @@ export function AdminCouponsClient({
   });
 
   const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
+  const [viewingRedemptionsId, setViewingRedemptionsId] = useState<string | null>(null);
+  const [redemptionsList, setRedemptionsList] = useState<RedemptionUser[]>([]);
+  const [isLoadingRedemptions, setIsLoadingRedemptions] = useState(false);
 
   const filteredCourses = courses.filter(c => 
     c.title.toLowerCase().includes(newCoupon.courseSearch.toLowerCase()) ||
@@ -184,6 +194,22 @@ export function AdminCouponsClient({
       toast.error("Failed to delete.");
     } finally {
       setIsWorking(false);
+    }
+  }
+
+  async function viewRedemptions(couponId: string) {
+    setViewingRedemptionsId(couponId);
+    setIsLoadingRedemptions(true);
+    try {
+      const res = await fetch(`/api/courses/coupons/${couponId}/redemptions`);
+      if (!res.ok) throw new Error("Failed to fetch redemptions");
+      const data = await res.json();
+      setRedemptionsList(data.redemptions || []);
+    } catch (error) {
+      toast.error("Could not load redemptions.");
+      setViewingRedemptionsId(null);
+    } finally {
+      setIsLoadingRedemptions(false);
     }
   }
 
@@ -395,8 +421,22 @@ export function AdminCouponsClient({
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {coupon.usedCount}
-                    {coupon.usageLimit ? ` / ${coupon.usageLimit}` : " / ∞"}
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {coupon.usedCount}
+                        {coupon.usageLimit ? ` / ${coupon.usageLimit}` : " / ∞"}
+                      </span>
+                      {coupon.usedCount > 0 ? (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-emerald-600 dark:text-emerald-400"
+                          onClick={() => viewRedemptions(coupon._id)}
+                        >
+                          See all
+                        </Button>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {coupon.expiryDate
@@ -496,6 +536,41 @@ export function AdminCouponsClient({
               </tbody>
             </table>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingRedemptionsId} onOpenChange={(open) => !open && setViewingRedemptionsId(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-md">
+          <DialogHeader>
+            <DialogTitle>Coupon Uses</DialogTitle>
+            <DialogDescription>
+              Students who have used this coupon.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {isLoadingRedemptions ? (
+              <div className="text-center text-sm text-muted-foreground py-4">Loading...</div>
+            ) : redemptionsList.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">No uses recorded yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {redemptionsList.map((r) => (
+                  <div key={r._id} className="flex items-start justify-between rounded-lg border p-3 text-sm">
+                    <div>
+                      <div className="font-medium text-foreground">{r.student?.name || "Unknown User"}</div>
+                      <div className="text-muted-foreground">{r.student?.email || "No email"}</div>
+                      {r.course && (
+                        <div className="mt-1 text-xs text-muted-foreground">Course: {r.course.title}</div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(r.redeemedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
