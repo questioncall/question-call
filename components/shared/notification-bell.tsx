@@ -259,7 +259,11 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
     return () => {
       userChannel.unbind(NOTIFICATION_EVENT);
-      client.unsubscribe(getUserPusherName(userId));
+      // NOTE: Do NOT call client.unsubscribe() here.
+      // workspace-shell owns the user channel lifecycle and binds call events
+      // (CALL_INCOMING, CALL_ACCEPTED, etc.) to it. Pusher's unsubscribe()
+      // is not reference-counted — it destroys the entire channel, killing
+      // all call signaling for the user.
     };
   }, [userId]);
 

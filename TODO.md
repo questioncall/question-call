@@ -1,3 +1,1 @@
-1. Call is not reaching to the others phone .
-2. Admin Panel sidebar is nor scrolling.
-4. Packages description changes - extra free questions
+1. Make sure when there is call then if the app is not opened then we emit real notififcations -- also if someone accepts the question. also right now the same global message is emitting twice.. fix that too. 
