@@ -107,6 +107,7 @@ const userSlice = createSlice({
           ...action.payload.callSettings,
         };
       }
+      state.isHydrated = true;
     },
     clearProfile(state) {
       state.id = "";

@@ -24,27 +24,32 @@ export async function GET() {
     console.log("[GET /api/notices] User:", user.email, "Role:", user.role, "Seen:", user.seenNotices);
 
     const seenNotices = user.seenNotices || [];
-    const joinedAt =
-      user.createdAt instanceof Date
-        ? user.createdAt
-        : user.createdAt
-          ? new Date(user.createdAt)
-          : null;
 
-    // Base query: isActive, not expired
+    // Determine when the user joined. If createdAt is missing or invalid,
+    // fall back to the current moment so no old notices leak to new accounts.
+    let joinedAt: Date;
+    if (user.createdAt instanceof Date && !Number.isNaN(user.createdAt.getTime())) {
+      joinedAt = user.createdAt;
+    } else if (user.createdAt) {
+      const parsed = new Date(user.createdAt);
+      joinedAt = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    } else {
+      joinedAt = new Date();
+    }
+
+    console.log("[GET /api/notices] joinedAt:", joinedAt.toISOString());
+
+    // Base query: isActive, not expired, created after user joined
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {
       isActive: true,
       _id: { $nin: seenNotices },
+      createdAt: { $gte: joinedAt },
       $or: [
         { expiresAt: { $gt: new Date() } },
         { expiresAt: null },
       ]
     };
-
-    if (joinedAt && !Number.isNaN(joinedAt.getTime())) {
-      query.createdAt = { $gte: joinedAt };
-    }
 
     // Audience matching logic: "ALL", or User's exact role, or "SPECIFIC" with email match
     query.$and = [

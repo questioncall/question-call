@@ -205,7 +205,6 @@ export function WorkspaceShell({
     0
   );
 
-  // Fetch channels from API (global)
   const fetchChannels = useCallback(async () => {
     dispatch(setChannelsLoading());
     try {
@@ -221,11 +220,41 @@ export function WorkspaceShell({
     }
   }, [dispatch]);
 
+  const fetchSubscriptionStatus = useCallback(async () => {
+    if (user.role !== "STUDENT") return;
+    try {
+      const res = await fetch("/api/user/subscription");
+      if (res.ok) {
+        const data = await res.json();
+        dispatch(
+          updateProfile({
+            subscriptionStatus: data.subscriptionStatus,
+            subscriptionEnd: data.subscriptionEnd,
+            planSlug: data.planSlug,
+            pendingManualPayment: data.pendingManualPayment,
+            questionsAsked: data.questionsAsked,
+            questionsRemaining: data.questionsRemaining,
+            maxQuestions: data.maxQuestions,
+            baseMaxQuestions: data.baseMaxQuestions,
+            bonusQuestions: data.bonusQuestions,
+            referralCode: data.referralCode,
+          })
+        );
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [user.role, dispatch]);
+
   useEffect(() => {
     if (!channelsHydrated) {
       fetchChannels();
     }
   }, [fetchChannels, channelsHydrated]);
+
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, [fetchSubscriptionStatus]);
 
   useEffect(() => {
     if (channelsHydrated) {
@@ -415,7 +444,10 @@ export function WorkspaceShell({
   }, []);
 
   useEffect(() => {
-    dispatch(setProfile({
+    // Only hydrate base info from the layout here. 
+    // Subscription state is fetched asynchronously in fetchSubscriptionStatus 
+    // so we use updateProfile to avoid overwriting it with hardcoded 'NONE' if the fetch finishes first.
+    dispatch(updateProfile({
       id: user.id,
       name: user.name || "",
       email: user.email || "",
@@ -424,16 +456,6 @@ export function WorkspaceShell({
       teacherModeVerified: user.teacherModeVerified ?? false,
       totalAnswered: user.totalAnswered ?? 0,
       userImage: user.userImage ?? "",
-      subscriptionStatus: "NONE",
-      subscriptionEnd: null,
-      planSlug: "free",
-      pendingManualPayment: false,
-      questionsAsked: 0,
-      questionsRemaining: null,
-      maxQuestions: 0,
-      baseMaxQuestions: 0,
-      bonusQuestions: 0,
-      referralCode: null,
       callSettings: user.callSettings || DEFAULT_CALL_SETTINGS,
     }));
   }, [

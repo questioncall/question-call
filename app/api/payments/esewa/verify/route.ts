@@ -4,6 +4,8 @@ import { generateEsewaSignature } from "@/lib/payment/esewa";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { connectToDatabase } from "@/lib/mongodb";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { getMasterAdminEmails } from "@/lib/user-directory";
 
 interface EsewaResponseData {
   transaction_code: string;
@@ -128,6 +130,19 @@ export async function POST(req: NextRequest) {
     trialUsed: true,
     questionsAsked: 0,
   });
+
+  // Notify all master admins about the successful eSewa payment
+  const masterAdminEmails = await getMasterAdminEmails();
+  if (masterAdminEmails.length > 0) {
+    void sendTransactionEmail(
+      masterAdminEmails,
+      "eSewa Subscription Payment Verified",
+      `A user has completed an eSewa payment for subscription plan "${planSlug}". Subscription activated until ${subscriptionEnd.toLocaleDateString()}.`,
+      decoded.transaction_code || decoded.transaction_uuid,
+      `NPR ${decoded.total_amount}`,
+      session.user.email ?? "Unknown"
+    ).catch(console.error);
+  }
 
   return NextResponse.json({ success: true, planSlug });
 }

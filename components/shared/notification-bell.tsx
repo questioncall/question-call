@@ -244,7 +244,13 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
     userChannel.bind(NOTIFICATION_EVENT, (payload: { notification: Notification }) => {
       if (payload.notification) {
-        setNotifications((prev) => [payload.notification, ...prev]);
+        setNotifications((prev) => {
+          // Prevent duplicates — skip if this notification ID already exists
+          if (prev.some((n) => n.id === payload.notification.id)) {
+            return prev;
+          }
+          return [payload.notification, ...prev];
+        });
         toast(payload.notification.message, {
           icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
         });

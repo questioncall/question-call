@@ -7,6 +7,7 @@ import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { pusherServer } from "@/lib/pusher/pusherServer";
 import { ADMIN_UPDATES_CHANNEL } from "@/lib/pusher/events";
+import { getMasterAdminEmails } from "@/lib/user-directory";
 
 cloudinary.config({
   secure: true,
@@ -87,9 +88,10 @@ export async function POST(req: NextRequest) {
       }
       await existingPendingAccount.save();
 
-      if (process.env.ADMIN_EMAIL) {
+      const masterEmails = await getMasterAdminEmails();
+      if (masterEmails.length > 0) {
         void sendTransactionEmail(
-          process.env.ADMIN_EMAIL,
+          masterEmails,
           "Manual Subscription Updated",
           `A user has submitted an update for an existing pending manual subscription for plan "${plan.name}".`,
           existingPendingAccount._id.toString(),
@@ -127,9 +129,10 @@ export async function POST(req: NextRequest) {
       }).catch(console.error);
     }
 
-    if (process.env.ADMIN_EMAIL) {
+    const masterEmailsNew = await getMasterAdminEmails();
+    if (masterEmailsNew.length > 0) {
       void sendTransactionEmail(
-        process.env.ADMIN_EMAIL,
+        masterEmailsNew,
         "New Manual Subscription Initiated",
         `A user has initiated a manual payment for subscription plan "${plan.name}".`,
         transactionId,
