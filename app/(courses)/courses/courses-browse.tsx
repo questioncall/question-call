@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { COURSE_UPDATED_EVENT, COURSE_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { APP_NAME } from "@/lib/constants";
+import { useTheme } from "next-themes";
 
 type CoursesBrowseClientProps = {
   courses: CourseCardData[];
@@ -99,11 +100,13 @@ export function CoursesBrowseClient({
   userRole,
 }: CoursesBrowseClientProps) {
   const router = useRouter();
+  const { theme } = useTheme();
   const [search, setSearch] = useState("");
   const [pricingFilter, setPricingFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
 
+  const isDark = theme === "dark";
   const isStudent = userRole === "STUDENT";
   const canManageCourses = userRole === "TEACHER" || userRole === "ADMIN";
 
@@ -296,42 +299,42 @@ export function CoursesBrowseClient({
         </section>
       ) : null}
 
-      {!isAuthenticated ? (
-        <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950">
+{!isAuthenticated ? (
+        <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950">
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-24 right-0 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[100px]" />
-            <div className="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full bg-blue-500/8 blur-[80px]" />
+            <div className={`absolute -top-24 right-0 h-[500px] w-[500px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/15" : "bg-blue-300/15"}`} />
+            <div className={`absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full blur-[80px] ${isDark ? "bg-indigo-500/10" : "bg-indigo-300/10"}`} />
             <div
-              className="absolute inset-0 opacity-[0.03]"
+              className={`absolute inset-0 ${isDark ? "opacity-[0.03]" : "opacity-[0.15]"}`}
               style={{
                 backgroundImage:
-                  "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+                  "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
               }}
             />
           </div>
 
           <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
             <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5">
-                <GraduationCapIcon className="size-4 text-emerald-400" />
-                <span className="text-xs font-semibold tracking-wide text-emerald-400">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 dark:border-blue-500/30 dark:bg-blue-500/10">
+                <GraduationCapIcon className={`size-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
+                <span className={`text-xs font-semibold tracking-wide ${isDark ? "text-blue-400" : "text-blue-700"}`}>
                   ONLINE COURSES
                 </span>
               </div>
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className={`text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? "text-white" : "text-slate-900"}`}>
                 Sharpen Your Skills With{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                <span className={`bg-gradient-to-r bg-clip-text text-transparent ${isDark ? "from-blue-400 to-indigo-300" : "from-blue-600 to-indigo-500"}`}>
                   {APP_NAME} Courses
                 </span>
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+              <p className={`mt-5 max-w-xl text-base leading-relaxed sm:text-lg ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                 Learn from structured lessons, live classes, and recordings across
                 free, subscription-included, and paid courses.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="bg-emerald-600 px-8 text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-700"
+                  className={`bg-blue-600 px-8 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 ${isDark ? "" : "bg-blue-500 hover:bg-blue-600"}`}
                   asChild
                 >
                   <a href="#browse">
@@ -343,14 +346,14 @@ export function CoursesBrowseClient({
                   asChild
                   size="lg"
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  className={isDark ? "border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"}
                 >
                   <Link href="/auth/signup/student">Create Free Account</Link>
                 </Button>
               </div>
             </div>
 
-            <div className="mt-14 grid grid-cols-3 gap-6 border-t border-slate-700/50 pt-8 sm:max-w-lg">
+            <div className={`mt-14 grid grid-cols-3 gap-6 border-t pt-8 sm:max-w-lg ${isDark ? "border-slate-700/50" : "border-slate-200"}`}>
               {[
                 { value: `${stats.totalCourses}+`, label: "Courses" },
                 {
@@ -360,8 +363,8 @@ export function CoursesBrowseClient({
                 { value: `${stats.totalInstructors}+`, label: "Instructors" },
               ].map((stat) => (
                 <div key={stat.label}>
-                  <div className="text-2xl font-bold text-white">{stat.value}</div>
-                  <div className="text-xs text-slate-500">{stat.label}</div>
+                  <div className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{stat.value}</div>
+                  <div className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"}`}>{stat.label}</div>
                 </div>
               ))}
             </div>

@@ -5,6 +5,7 @@ import { getSafeServerSession, getProfilePath } from "@/lib/auth";
 import { AdminHeaderClient } from "@/components/admin/admin-header-client";
 import { AdminSearchClient } from "@/components/admin/admin-search-client";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminLayoutClient } from "@/components/admin/admin-layout-client";
 import { OnboardingVideoModal } from "@/components/shared/onboarding-video-modal";
 import { getAdminNotificationCounts } from "@/lib/admin-notifications";
 import { createNoIndexMetadata } from "@/lib/seo";
@@ -38,22 +39,35 @@ export default async function AdminPortalLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <OnboardingVideoModal />
-      <AdminSidebar />
+      <AdminLayoutClient />
+      
+      {/* Desktop Sidebar - hidden on mobile, visible on lg+ */}
+      <div className="hidden lg:block">
+        <AdminSidebar />
+      </div>
+      
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-20 shrink-0 items-center justify-between border-b gap-8 border-border bg-background px-8">
-          <div className="flex flex-1 max-w-xl items-center">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b gap-4 border-border bg-background px-4 md:px-8">
+          <div className="flex flex-1 max-w-xl items-center pl-10 lg:pl-0">
             <div className="w-full">
               <AdminSearchClient />
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          
+          <div className="flex items-center gap-2 md:gap-4">
             <AdminHeaderClient initialCounts={counts} />
-            <div className="h-6 w-px bg-border" />
-            <SignOutButton />
+            <div className="hidden md:block h-6 w-px bg-border" />
+            <div className="hidden md:block">
+              <SignOutButton />
+            </div>
+            {/* Mobile sign out - visible only on mobile */}
+            <div className="md:hidden">
+              <SignOutButton />
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-8">
+        <main className="flex-1 overflow-y-auto bg-muted/30 p-4 md:p-8">
           <div className="mx-auto max-w-[1600px]">
             {children}
           </div>

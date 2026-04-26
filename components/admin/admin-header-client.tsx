@@ -80,7 +80,7 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
   }, []);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 md:gap-3">
       <div className="relative">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/admin/notifications">
@@ -94,7 +94,8 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
         )}
       </div>
 
-      <div className="flex items-center gap-1 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs">
+      {/* Desktop: horizontal layout, Mobile: vertical/smaller layout */}
+      <div className="hidden sm:flex items-center gap-1 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs">
         {loading ? (
           <Loader2Icon className="size-3 animate-spin" />
         ) : (
@@ -136,6 +137,31 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
           disabled={loading}
         >
           <Loader2Icon className={`size-3 ${loading ? "animate-spin" : ""}`} />
+        </Button>
+      </div>
+
+      {/* Mobile: compact display - just show count as badge */}
+      <div className="sm:hidden flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs">
+        {loading ? (
+          <Loader2Icon className="size-3 animate-spin" />
+        ) : (
+          <>
+            <span className="flex items-center gap-1">
+              <span className="font-medium text-foreground">
+                {counts.pendingWithdrawals + counts.expiredSubscriptions + counts.pendingManualSubscriptions + counts.pendingCoursePurchases}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Pending</span>
+            </span>
+          </>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-1 size-5"
+          onClick={fetchCounts}
+          disabled={loading}
+        >
+          <Loader2Icon className={`size-2.5 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
