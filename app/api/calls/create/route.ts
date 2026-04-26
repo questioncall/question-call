@@ -7,6 +7,7 @@ import { CALL_RATE_LIMITS } from "@/lib/call-policies";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { enforceRequestRateLimit } from "@/lib/request-rate-limit";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 import Channel from "@/models/Channel";
 import CallSession from "@/models/CallSession";
 import User from "@/models/User";
@@ -118,6 +119,14 @@ export async function POST(request: Request) {
       callerId: userId,
       mode: mode as "AUDIO" | "VIDEO",
     }).catch(console.error);
+
+    // Fire a device push notification so the callee is alerted even when the
+    // app is closed or backgrounded (Pusher alone won't wake the device).
+    void sendPushNotificationToUser(otherUserId, {
+      type: "SYSTEM",
+      message: `${session.user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
+      href: `/calls/${newCall._id.toString()}`,
+    }).catch(() => {/* non-fatal */});
 
     logCallLifecycle("created", {
       callSessionId: newCall._id.toString(),

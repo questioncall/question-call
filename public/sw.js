@@ -173,9 +173,16 @@ function isAppleWebPushEnvironment() {
 
 async function handlePush(event) {
   const payload = getPushPayload(event);
-  const title = payload.title || "Question Call";
   const body = payload.body || "You have a new update.";
   const targetUrl = payload.url || "/";
+
+  // Detect incoming call pushes by their body text and give them a clear title.
+  const isCallNotification =
+    typeof body === "string" && body.toLowerCase().includes("calling you");
+
+  const title = isCallNotification
+    ? "📞 Incoming Call"
+    : (payload.title || "Question Call");
 
   await self.registration.showNotification(title, {
     body,
@@ -183,7 +190,8 @@ async function handlePush(event) {
     badge: payload.badge || "/icon.png",
     tag: payload.tag,
     renotify: Boolean(payload.tag),
-    requireInteraction: Boolean(payload.requireInteraction),
+    requireInteraction: isCallNotification ? true : Boolean(payload.requireInteraction),
+    vibrate: isCallNotification ? [300, 100, 300, 100, 300] : undefined,
     data: {
       url: targetUrl,
     },

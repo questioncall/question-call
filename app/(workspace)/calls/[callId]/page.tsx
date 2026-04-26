@@ -312,88 +312,79 @@ export default function CallSessionPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] isolate flex h-[100dvh] w-[100dvw] overflow-hidden flex-col bg-black text-white">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-center px-4 py-4">
-        <div className="pointer-events-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 rounded-[2rem] border border-white/10 bg-black/55 px-3 py-2.5 backdrop-blur-sm">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.22em] text-white/60">
-              Live Call
-            </p>
-            <p className="truncate text-sm font-medium text-white">
-              Secure call room
-            </p>
+    <div className="fixed inset-0 z-[9999] isolate flex h-[100dvh] w-[100dvw] flex-col overflow-hidden bg-black text-white">
+      {/* ── Top HUD bar ─────────────────────────────────────────── */}
+      <div className="relative z-20 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-black/80 px-3 py-2.5 backdrop-blur-sm">
+        {/* Left: call label */}
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-white/50">Live Call</p>
+          <p className="truncate text-sm font-semibold text-white">Secure call room</p>
+        </div>
+
+        {/* Right: timer + actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Timer */}
+          <div
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+              countdown > 0 && countdown <= CHANNEL_WARNING_THRESHOLD_MS
+                ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
+                : "border-white/10 bg-white/5 text-white/70",
+            )}
+          >
+            <ClockIcon className="size-3.5" />
+            {formatCountdown(countdown)}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div
-              className={cn(
-                "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm sm:text-sm",
-                countdown > 0 && countdown <= CHANNEL_WARNING_THRESHOLD_MS
-                  ? "border-amber-400/50 bg-amber-400/10 text-amber-200"
-                  : "border-white/10 bg-white/5 text-white/85",
-              )}
-            >
-              <ClockIcon className="size-4" />
-              {formatCountdown(countdown)}
-            </div>
-
-            {canExtendTime ? (
-              <Button
-                variant="outline"
-                className="rounded-full border-amber-300/40 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20 hover:text-amber-50"
-                onClick={() => {
-                  void handleExtendTime();
-                }}
-                disabled={isExtendingTime}
-              >
-                {isExtendingTime ? (
-                  <>
-                    <Loader2Icon className="size-4 animate-spin" />
-                    Adding time
-                  </>
-                ) : (
-                  <>
-                    +{CHANNEL_EXTENSION_MINUTES} min
-                    <span className="text-[11px] text-current/80">
-                      {timeExtensionsRemaining} left
-                    </span>
-                  </>
-                )}
-              </Button>
-            ) : null}
-
+          {/* Add time */}
+          {canExtendTime ? (
             <Button
-              variant="destructive"
-              onClick={handleEndCall}
-              disabled={isEnding}
-              className="gap-2 rounded-full px-4 shadow-lg"
+              size="sm"
+              variant="outline"
+              className="rounded-full border-amber-300/40 bg-amber-300/10 px-2.5 text-xs text-amber-100 hover:bg-amber-300/20 hover:text-amber-50"
+              onClick={() => { void handleExtendTime(); }}
+              disabled={isExtendingTime}
             >
-              {isEnding ? (
-                <Loader2Icon className="size-4 animate-spin" />
+              {isExtendingTime ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
               ) : (
-                <PhoneOffIcon className="size-4" />
+                <>+{CHANNEL_EXTENSION_MINUTES}m</>
               )}
-              {isEnding ? "Leaving..." : "End"}
             </Button>
-          </div>
+          ) : null}
+
+          {/* End call */}
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleEndCall}
+            disabled={isEnding}
+            className="gap-1.5 rounded-full px-3 shadow-lg"
+          >
+            {isEnding ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <PhoneOffIcon className="size-3.5" />
+            )}
+            {isEnding ? "Leaving…" : "End"}
+          </Button>
         </div>
       </div>
 
+      {/* ── Extension prompt ────────────────────────────────────── */}
       {showExtensionPrompt ? (
-        <div className="pointer-events-none absolute inset-x-0 top-24 z-50 flex justify-center px-4">
-          <div className="pointer-events-auto w-full max-w-md rounded-3xl border border-amber-300/30 bg-[#201404]/95 p-4 shadow-2xl backdrop-blur-md">
-            <p className="text-sm font-semibold text-amber-100">
-              Time is almost over
-            </p>
+        <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center px-4">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-amber-300/30 bg-[#201404]/95 p-4 shadow-2xl backdrop-blur-md">
+            <p className="text-sm font-semibold text-amber-100">Time is almost over</p>
             <p className="mt-1 text-sm text-amber-50/80">
               Add {CHANNEL_EXTENSION_MINUTES} more minutes for both participants?
             </p>
-            <p className="mt-2 text-xs text-amber-100/70">
-              {timeExtensionsRemaining} extension
-              {timeExtensionsRemaining === 1 ? "" : "s"} remaining
+            <p className="mt-1 text-xs text-amber-100/60">
+              {timeExtensionsRemaining} extension{timeExtensionsRemaining === 1 ? "" : "s"} remaining
             </p>
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
               <Button
+                size="sm"
                 variant="ghost"
                 className="rounded-full text-amber-50 hover:bg-white/10 hover:text-white"
                 onClick={handleDismissExtensionPrompt}
@@ -401,31 +392,57 @@ export default function CallSessionPage() {
                 Later
               </Button>
               <Button
+                size="sm"
                 className="rounded-full bg-amber-300 text-amber-950 hover:bg-amber-200"
-                onClick={() => {
-                  void handleExtendTime();
-                }}
+                onClick={() => { void handleExtendTime(); }}
                 disabled={isExtendingTime}
               >
-                {isExtendingTime ? "Adding..." : `Increase ${CHANNEL_EXTENSION_MINUTES} min`}
+                {isExtendingTime ? "Adding…" : `+${CHANNEL_EXTENSION_MINUTES} min`}
               </Button>
             </div>
           </div>
         </div>
       ) : null}
 
-      <LiveKitRoom
-        video={true}
-        audio={true}
-        token={token}
-        serverUrl={serverUrl}
-        className="relative flex-1 w-full [&_.lk-button-group]:gap-1 [&_.lk-control-bar]:mb-4 [&_.lk-control-bar]:w-[calc(100%-1rem)] [&_.lk-control-bar]:max-w-[22rem] [&_.lk-control-bar]:rounded-3xl [&_.lk-control-bar]:border [&_.lk-control-bar]:border-white/10 [&_.lk-control-bar]:bg-black/70 [&_.lk-control-bar]:px-2 [&_.lk-control-bar]:py-2 [&_.lk-control-bar]:backdrop-blur-md [&_.lk-disconnect-button]:hidden sm:[&_.lk-control-bar]:w-auto sm:[&_.lk-control-bar]:max-w-none [&_.lk-grid-layout]:!flex [&_.lk-grid-layout]:!h-full [&_.lk-grid-layout]:!w-full [&_.lk-grid-layout]:!flex-col sm:[&_.lk-grid-layout]:!grid [&_.lk-participant-tile]:!absolute [&_.lk-participant-tile]:!inset-0 [&_.lk-participant-tile]:!w-full [&_.lk-participant-tile]:!h-full [&_.lk-participant-tile[data-lk-local-participant='true']]:!w-[100px] [&_.lk-participant-tile[data-lk-local-participant='true']]:!h-[140px] [&_.lk-participant-tile[data-lk-local-participant='true']]:!top-auto [&_.lk-participant-tile[data-lk-local-participant='true']]:!bottom-28 [&_.lk-participant-tile[data-lk-local-participant='true']]:!left-auto [&_.lk-participant-tile[data-lk-local-participant='true']]:!right-4 [&_.lk-participant-tile[data-lk-local-participant='true']]:!z-10 [&_.lk-participant-tile[data-lk-local-participant='true']]:!rounded-xl [&_.lk-participant-tile[data-lk-local-participant='true']]:!border [&_.lk-participant-tile[data-lk-local-participant='true']]:!border-white/20 [&_.lk-participant-tile[data-lk-local-participant='true']]:!shadow-xl sm:[&_.lk-participant-tile]:!relative sm:[&_.lk-participant-tile]:!inset-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!w-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!h-auto sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!rounded-none sm:[&_.lk-participant-tile[data-lk-local-participant='true']]:!border-none"
-        data-lk-theme="default"
-        onDisconnected={handleDisconnected}
-      >
-        <VideoConference />
-        <RoomAudioRenderer />
-      </LiveKitRoom>
+      {/* ── LiveKit room — fills remaining space ─────────────────── */}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <LiveKitRoom
+          video={true}
+          audio={true}
+          token={token}
+          serverUrl={serverUrl}
+          data-lk-theme="default"
+          onDisconnected={handleDisconnected}
+          className={cn(
+            "h-full w-full",
+            // Control bar: pill floating above bottom safe area
+            "[&_.lk-control-bar]:fixed [&_.lk-control-bar]:bottom-6 [&_.lk-control-bar]:left-1/2 [&_.lk-control-bar]:-translate-x-1/2",
+            "[&_.lk-control-bar]:z-40",
+            "[&_.lk-control-bar]:flex [&_.lk-control-bar]:items-center [&_.lk-control-bar]:gap-1",
+            "[&_.lk-control-bar]:rounded-[2rem] [&_.lk-control-bar]:border [&_.lk-control-bar]:border-white/15",
+            "[&_.lk-control-bar]:bg-black/75 [&_.lk-control-bar]:px-3 [&_.lk-control-bar]:py-2",
+            "[&_.lk-control-bar]:backdrop-blur-xl [&_.lk-control-bar]:shadow-xl",
+            // Give control bar buttons a min tap target on mobile
+            "[&_.lk-control-bar_.lk-button]:min-h-[44px] [&_.lk-control-bar_.lk-button]:min-w-[44px]",
+            // Dropdown/popover menus: appear ABOVE the bar, high z-index
+            "[&_.lk-media-device-menu]:z-50",
+            "[&_.lk-button-group-menu]:z-50",
+            "[&_.lk-button-group-menu]:bottom-full [&_.lk-button-group-menu]:top-auto",
+            // Hide LiveKit's own disconnect button — we provide our own End button
+            "[&_.lk-disconnect-button]:!hidden",
+            // Video grid fills the room
+            "[&_.lk-video-conference]:h-full [&_.lk-video-conference]:w-full",
+            "[&_.lk-grid-layout]:h-full [&_.lk-grid-layout]:w-full",
+            // On mobile: stack tiles vertically, full-bleed
+            "[&_.lk-participant-tile]:w-full",
+            // Add bottom padding so videos aren't hidden behind the control bar
+            "[&_.lk-grid-layout]:pb-24",
+          )}
+        >
+          <VideoConference />
+          <RoomAudioRenderer />
+        </LiveKitRoom>
+      </div>
     </div>
   );
 }

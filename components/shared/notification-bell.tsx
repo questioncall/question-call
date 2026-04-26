@@ -1,5 +1,10 @@
 "use client";
 
+// Module-level dedup set — shared across all mounted instances of NotificationBell.
+// This prevents double-toasts when the component is mounted in both the sidebar
+// footer (mobile) and the authenticated header (desktop) simultaneously.
+const _toastedNotificationIds = new Set<string>();
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BellIcon,
@@ -251,9 +256,18 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           }
           return [payload.notification, ...prev];
         });
-        toast(payload.notification.message, {
-          icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
-        });
+        // Only toast once per notification ID across all mounted instances.
+        if (!_toastedNotificationIds.has(payload.notification.id)) {
+          _toastedNotificationIds.add(payload.notification.id);
+          // Evict old IDs to avoid unbounded growth (keep last 50)
+          if (_toastedNotificationIds.size > 50) {
+            const first = _toastedNotificationIds.values().next().value;
+            if (first) _toastedNotificationIds.delete(first);
+          }
+          toast(payload.notification.message, {
+            icon: NOTIFICATION_ICONS[payload.notification.type] ?? "🔔",
+          });
+        }
       }
     });
 
