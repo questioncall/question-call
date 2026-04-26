@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Clock, CalendarDays, HelpCircle, Play, BookOpen, UserCheck, Zap, Star, Info } from "lucide-react";
+import { Leaf, Clock, CalendarDays, HelpCircle, Play, BookOpen, UserCheck, Zap, Star, Info, CheckCircle2 } from "lucide-react";
 import { LegalDialog } from "@/components/shared/legal-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -507,37 +507,35 @@ const fetchReferralStats = async () => {
                 </div>
               </div>
 
-              <ul className="mb-10 flex-1 space-y-4 text-[13px] font-semibold text-neutral-700 dark:text-neutral-300">
+                            <ul className="mb-10 flex-1 space-y-5 text-[14px] font-medium text-neutral-700 dark:text-neutral-300">
                 {plan.features.map((feature, fIndex) => {
                   const tooltip = findFeatureTooltip(feature);
-                  if (tooltip) {
-                    return (
-                      <li key={fIndex} className="flex items-center gap-3">
-                        <HoverCard openDelay={150} closeDelay={100}>
-                          <HoverCardTrigger asChild>
-                            <span className="flex items-center gap-3 cursor-help group">
-                              <span className="text-base font-medium text-[#FF9E2A]">
-                                +
-                              </span>
-                              <span className="group-hover:text-[#1B7258] dark:group-hover:text-[#27A883] transition-colors">
-                                {feature}
-                              </span>
-                              <Info className="size-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-hover:text-[#1B7258] dark:group-hover:text-[#27A883] transition-all" />
-                            </span>
-                          </HoverCardTrigger>
-                          <HoverCardContent align="start" side="right" className="w-56">
-                            <p className="text-xs text-muted-foreground">{tooltip.description}</p>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                    );
-                  }
+                  
+                  const highlightText = (text: string) => {
+                    const parts = text.split(/(\+\s*\d+\s*[Ff]ree|\d+x?)/g);
+                    return parts.map((part, i) => {
+                      if (part.match(/(\+\s*\d+\s*[Ff]ree|\d+x?)/)) {
+                        return <span key={i} className="font-bold text-[#FF9E2A] dark:text-[#FFA03A]">{part}</span>;
+                      }
+                      return <span key={i}>{part}</span>;
+                    });
+                  };
+
                   return (
-                    <li key={fIndex} className="flex items-center gap-4">
-                      <span className="text-base font-medium text-[#FF9E2A]">
-                        +
-                      </span>
-                      <span>{feature}</span>
+                    <li key={fIndex} className="flex items-start gap-3">
+                      <div className="mt-0.5 min-w-5 flex items-center justify-center">
+                        <CheckCircle2 className="w-[18px] h-[18px] text-[#1B7258] dark:text-[#27A883]" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-neutral-900 dark:text-white leading-tight">
+                          {highlightText(feature)}
+                        </span>
+                        {tooltip && (
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5 leading-snug">
+                            {tooltip.description}
+                          </span>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

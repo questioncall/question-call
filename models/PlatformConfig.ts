@@ -740,39 +740,97 @@ export function getFormatPoints(
  * Merges UI subscription configurations with the live database pricing.
  */
 export function getHydratedPlans(config: PlatformConfigDocument) {
+  const formatDuration = (days: number) => {
+    if (days < 30) return `${days} days valid`;
+    const months = Math.round(days / 30);
+    return `${days} days (${months} month${months > 1 ? 's' : ''}) valid`;
+  };
+
   return SUBSCRIPTION_PLANS.map((plan) => {
     if (plan.slug === "free") {
+      const durationDays = config.trialDays ?? TRIAL.DURATION_DAYS;
+      const maxQ = config.trialMaxQuestions ?? TRIAL.MAX_QUESTIONS;
+      const freeDailyQuizzes = config.freeQuizDailySessionLimit ?? QUIZ.FREE_DAILY_SESSION_LIMIT;
       return {
         ...plan,
-        maxQuestions: config.trialMaxQuestions ?? TRIAL.MAX_QUESTIONS,
+        maxQuestions: maxQ,
+        durationDays: durationDays,
+        features: [
+          formatDuration(durationDays),
+          `Ask up to ${maxQ} questions`,
+          `Play ${freeDailyQuizzes} Free Quiz daily`,
+          "Attend Free Courses",
+        ],
       };
     } else if (plan.slug === "go") {
+      const durationDays = config.planGoDays ?? 30;
+      const maxQ = config.planGoMaxQuestions ?? plan.maxQuestions;
+      const premiumQuizzes = config.premiumQuizDailySessionLimitGo ?? QUIZ.PREMIUM_DAILY_SESSION_LIMIT_GO;
       return {
         ...plan,
         price: config.planGoPrice ?? plan.price,
-        maxQuestions: config.planGoMaxQuestions ?? plan.maxQuestions,
-        durationDays: config.planGoDays ?? 30,
+        maxQuestions: maxQ,
+        durationDays: durationDays,
+        features: [
+          formatDuration(durationDays),
+          `Ask up to ${maxQ} questions`,
+          "Get answers from top 10% teachers",
+          `Play ${premiumQuizzes} Premium Quizzes daily`,
+          "Unlock Subscription Courses",
+        ],
       };
     } else if (plan.slug === "plus") {
+      const durationDays = config.planPlusDays ?? 60;
+      const maxQ = config.planPlusMaxQuestions ?? plan.maxQuestions;
+      const premiumQuizzes = config.premiumQuizDailySessionLimitPlus ?? QUIZ.PREMIUM_DAILY_SESSION_LIMIT_PLUS;
       return {
         ...plan,
         price: config.planPlusPrice ?? plan.price,
-        maxQuestions: config.planPlusMaxQuestions ?? plan.maxQuestions,
-        durationDays: config.planPlusDays ?? 60,
+        maxQuestions: maxQ,
+        durationDays: durationDays,
+        features: [
+          formatDuration(durationDays),
+          `Ask up to ${maxQ} questions (+ 10 Free)`,
+          "Get answers from top 10% teachers",
+          `Play ${premiumQuizzes} Premium Quizzes daily`,
+          "Unlock Subscription Courses",
+        ],
       };
     } else if (plan.slug === "pro") {
+      const durationDays = config.planProDays ?? 90;
+      const maxQ = config.planProMaxQuestions ?? plan.maxQuestions;
+      const premiumQuizzes = config.premiumQuizDailySessionLimitPro ?? QUIZ.PREMIUM_DAILY_SESSION_LIMIT_PRO;
       return {
         ...plan,
         price: config.planProPrice ?? plan.price,
-        maxQuestions: config.planProMaxQuestions ?? plan.maxQuestions,
-        durationDays: config.planProDays ?? 90,
+        maxQuestions: maxQ,
+        durationDays: durationDays,
+        features: [
+          formatDuration(durationDays),
+          `Ask up to ${maxQ} questions (+ 20 Free)`,
+          "Get answers from top 10% teachers",
+          `Play ${premiumQuizzes} Premium Quizzes daily`,
+          "Unlock Subscription Courses",
+          "Priority Teacher Matching",
+        ],
       };
     } else if (plan.slug === "max") {
+      const durationDays = config.planMaxDays ?? 120;
+      const maxQ = config.planMaxMaxQuestions ?? plan.maxQuestions;
+      const premiumQuizzes = config.premiumQuizDailySessionLimitMax ?? QUIZ.PREMIUM_DAILY_SESSION_LIMIT_MAX;
       return {
         ...plan,
         price: config.planMaxPrice ?? plan.price,
-        maxQuestions: config.planMaxMaxQuestions ?? plan.maxQuestions,
-        durationDays: config.planMaxDays ?? 120,
+        maxQuestions: maxQ,
+        durationDays: durationDays,
+        features: [
+          formatDuration(durationDays),
+          `Ask up to ${maxQ} questions (+ 50 Free)`,
+          "Get answers from top 10% teachers",
+          `Play ${premiumQuizzes} Premium Quizzes daily`,
+          "Unlock Subscription Courses",
+          "Top Priority & Live sessions",
+        ],
       };
     }
     return plan;

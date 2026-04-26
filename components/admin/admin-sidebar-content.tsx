@@ -78,7 +78,7 @@ export function AdminSidebarContent({ onLinkClick, className }: AdminSidebarCont
   const pathname = usePathname();
 
   return (
-    <aside className={cn("no-scrollbar flex flex-col overflow-y-auto border-r border-border bg-background py-6", className)}>
+    <aside className={cn("no-scrollbar flex h-full flex-col overflow-y-auto border-r border-border bg-background py-6", className)}>
       <div className="px-6 mb-8">
         <Logo href="/admin/transactions" prefetch={false} showTagline={false} />
       </div>

@@ -42,7 +42,7 @@ export default async function AdminPortalLayout({
       <AdminLayoutClient />
       
       {/* Desktop Sidebar - hidden on mobile, visible on lg+ */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block h-full">
         <AdminSidebar />
       </div>
       
