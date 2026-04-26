@@ -37,6 +37,7 @@ type CouponData = {
   usedCount: number;
   expiryDate: string | null;
   isActive: boolean;
+  discountPercentage: number;
   createdAt: string;
 };
 
@@ -81,6 +82,7 @@ export function AdminCouponsClient({
     courseSearch: "",
     usageLimit: "",
     expiryDate: "",
+    discountPercentage: "100",
   });
 
   const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
@@ -103,6 +105,7 @@ export function AdminCouponsClient({
           courseId: newCoupon.scope === "COURSE" && newCoupon.courseId ? newCoupon.courseId : null,
           usageLimit: newCoupon.usageLimit ? Number(newCoupon.usageLimit) : null,
           expiryDate: newCoupon.expiryDate || null,
+          discountPercentage: Number(newCoupon.discountPercentage),
         }),
       });
 
@@ -123,6 +126,7 @@ export function AdminCouponsClient({
           courseTitle,
           usageLimit: newCoupon.usageLimit ? Number(newCoupon.usageLimit) : null,
           usedCount: 0,
+          discountPercentage: Number(newCoupon.discountPercentage),
           expiryDate: newCoupon.expiryDate || null,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -137,6 +141,7 @@ export function AdminCouponsClient({
         courseSearch: "",
         usageLimit: "",
         expiryDate: "",
+        discountPercentage: "100",
       });
       toast.success("Coupon created.");
     } catch (error) {
@@ -301,6 +306,21 @@ export function AdminCouponsClient({
                   </div>
                 )}
                 <div className="space-y-2">
+                  <Label>Discount Percentage (%)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={newCoupon.discountPercentage}
+                    onChange={(e) =>
+                      setNewCoupon((prev) => ({
+                        ...prev,
+                        discountPercentage: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Usage limit</Label>
                   <Input
                     type="number"
@@ -346,6 +366,7 @@ export function AdminCouponsClient({
             <thead>
               <tr className="border-b text-left text-sm text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Discount</th>
                 <th className="px-4 py-3 font-medium">Scope</th>
                 <th className="px-4 py-3 font-medium">Usage</th>
                 <th className="px-4 py-3 font-medium">Expiry</th>
@@ -360,6 +381,9 @@ export function AdminCouponsClient({
                     <code className="rounded bg-muted px-2 py-1 text-sm font-mono">
                       {coupon.code}
                     </code>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium">
+                    {coupon.discountPercentage}%
                   </td>
                   <td className="px-4 py-3">
                     {coupon.scope === "GLOBAL" ? (

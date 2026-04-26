@@ -108,6 +108,7 @@ export type CourseDetailData = {
   accessType: string | null;
   nextVideoId: string | null;
   pendingPurchase: boolean;
+  appliedCoupon: { code: string; discountPercentage: number } | null;
   manualPayment: {
     recipientName: string;
     esewaNumber: string;
@@ -463,9 +464,10 @@ export async function getCourseDetailPageData(input: {
   }> = [];
   let hasActiveSubscription = false;
   let pendingPurchase = false;
+  let pendingTransaction: { _id: unknown; metadata?: Record<string, unknown> } | null = null;
 
   if (input.userId && input.role === "STUDENT") {
-    const [enrollmentDoc, subscription, pendingTransaction] = await Promise.all([
+    const [enrollmentDoc, subscription, pendingTxn] = await Promise.all([
       CourseEnrollment.findOne({
         courseId: course._id,
         studentId: input.userId,
@@ -479,12 +481,13 @@ export async function getCourseDetailPageData(input: {
         status: "PENDING",
         "metadata.courseId": course._id.toString(),
       })
-        .select("_id")
+        .select("_id metadata")
         .lean(),
     ]);
 
     enrollment = enrollmentDoc;
     hasActiveSubscription = subscription.subscriptionStatus === "ACTIVE";
+    pendingTransaction = pendingTxn as typeof pendingTransaction;
     pendingPurchase = Boolean(pendingTransaction);
 
     if (enrollmentDoc) {
@@ -559,6 +562,14 @@ export async function getCourseDetailPageData(input: {
     accessType: canManage ? "MANAGE" : enrollment?.accessType ?? null,
     nextVideoId,
     pendingPurchase,
+    appliedCoupon: (() => {
+      if (!pendingTransaction) return null;
+      const meta = (pendingTransaction as { metadata?: Record<string, unknown> }).metadata;
+      const code = typeof meta?.couponCode === "string" ? meta.couponCode : null;
+      const pct = typeof meta?.discountPercentage === "number" ? meta.discountPercentage : null;
+      if (code && pct && pct > 0) return { code, discountPercentage: pct };
+      return null;
+    })(),
     manualPayment: getManualPaymentDetails(config),
   };
 }

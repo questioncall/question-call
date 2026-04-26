@@ -87,13 +87,16 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
               )}
             </div>
 
-            <div className="mt-6 text-2xl font-bold text-foreground">
-              {course.pricingModel === "FREE"
-                ? "Free"
-                : course.pricingModel === "SUBSCRIPTION_INCLUDED"
-                  ? "Included in subscription"
-                  : `NPR ${(course.price ?? 0).toLocaleString()}`}
-            </div>
+            {/* Show static price only when PricingGate is NOT rendered */}
+            {(course.hasAccess || !isAuthenticated) ? (
+              <div className="mt-6 text-2xl font-bold text-foreground">
+                {course.pricingModel === "FREE"
+                  ? "Free"
+                  : course.pricingModel === "SUBSCRIPTION_INCLUDED"
+                    ? "Included in subscription"
+                    : `NPR ${(course.price ?? 0).toLocaleString()}`}
+              </div>
+            ) : null}
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
               {course.description}
             </p>
@@ -128,11 +131,10 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
                   <TicketIcon className="mt-0.5 size-4 text-emerald-600" />
                   <div>
                     <div className="font-medium text-foreground">
-                      Full access unlock
+                      Coupon discounts
                     </div>
                     <div className="text-muted-foreground">
-                      Valid course coupons can unlock this course without separate
-                      payment.
+                      Valid course coupons can be applied to get a discount on the course price, or unlock it entirely if it is a 100% discount.
                     </div>
                   </div>
                 </div>
@@ -177,6 +179,7 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
                     price={course.price}
                     hasActiveSubscription={course.hasActiveSubscription}
                     redirectToAfterAccess={continueHref}
+                    initialCoupon={course.appliedCoupon}
                     manualPayment={course.manualPayment}
                   />
                 )}

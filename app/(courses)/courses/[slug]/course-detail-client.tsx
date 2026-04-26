@@ -236,13 +236,16 @@ export function CourseDetailClient({
                     <span>{formatDuration(course.totalDurationMinutes)} of content</span>
                   </div>
 
-                  <div className="text-2xl font-bold text-foreground">
-                    {course.pricingModel === "FREE"
-                      ? "Free"
-                      : course.pricingModel === "SUBSCRIPTION_INCLUDED"
-                        ? "Included in subscription"
-                        : `NPR ${(course.price ?? 0).toLocaleString()}`}
-                  </div>
+                  {/* Show static price only when PricingGate is NOT rendered */}
+                  {(course.canManage || course.hasAccess || !isAuthenticated) ? (
+                    <div className="text-2xl font-bold text-foreground">
+                      {course.pricingModel === "FREE"
+                        ? "Free"
+                        : course.pricingModel === "SUBSCRIPTION_INCLUDED"
+                          ? "Included in subscription"
+                          : `NPR ${(course.price ?? 0).toLocaleString()}`}
+                    </div>
+                  ) : null}
 
                   {course.canManage ? (
                     <div className="space-y-3">
@@ -282,6 +285,7 @@ export function CourseDetailClient({
                       price={course.price}
                       hasActiveSubscription={course.hasActiveSubscription}
                       redirectToAfterAccess={continueHref}
+                      initialCoupon={course.appliedCoupon}
                       manualPayment={course.manualPayment}
                     />
                   )}

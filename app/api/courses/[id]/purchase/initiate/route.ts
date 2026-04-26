@@ -85,6 +85,10 @@ export async function POST(
       typeof formData.get("transactorName") === "string"
         ? String(formData.get("transactorName")).trim()
         : "";
+    const couponCode =
+      typeof formData.get("couponCode") === "string"
+        ? String(formData.get("couponCode")).trim()
+        : "";
     const screenshot = formData.get("screenshot");
 
     if (!transactionId || !transactorName) {
@@ -157,9 +161,71 @@ export async function POST(
       screenshotUrl = await uploadScreenshot(screenshot);
     }
 
+    let grossAmount = roundCurrency(Number(course.price ?? 0));
+    let appliedDiscountPercentage = 0;
+
+    if (couponCode) {
+      const { validateCourseCoupon } = await import("@/lib/course-coupons");
+      const validation = await validateCourseCoupon({
+        code: couponCode,
+        courseId: course._id.toString(),
+        studentId: session.user.id,
+      });
+
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: "Invalid or expired coupon." },
+          { status: 400 },
+        );
+      }
+
+      // Guard: prevent multiple pending transactions with the same coupon
+      const existingPendingWithCoupon = await Transaction.findOne({
+        userId: session.user.id,
+        type: "COURSE_PURCHASE",
+        status: "PENDING",
+        "metadata.couponCode": couponCode,
+        "metadata.courseId": course._id.toString(),
+      })
+        .select("_id transactionId")
+        .lean();
+
+      if (existingPendingWithCoupon) {
+        return NextResponse.json(
+          {
+            error:
+              "You already have a pending payment using this coupon for this course. Please wait for it to be reviewed or contact support.",
+          },
+          { status: 409 },
+        );
+      }
+      
+      const CourseCouponModel = (await import("@/models/CourseCoupon")).default;
+      const couponDoc = await CourseCouponModel.findById(validation.couponId).lean();
+
+      // Also count pending transactions using this coupon towards the usage limit
+      if (couponDoc?.usageLimit) {
+        const pendingCouponUsageCount = await Transaction.countDocuments({
+          type: "COURSE_PURCHASE",
+          status: "PENDING",
+          "metadata.couponCode": couponCode,
+        });
+
+        const totalUsed = (couponDoc.usedCount ?? 0) + pendingCouponUsageCount;
+        if (totalUsed >= couponDoc.usageLimit) {
+          return NextResponse.json(
+            { error: "This coupon has reached its usage limit (including pending payments)." },
+            { status: 400 },
+          );
+        }
+      }
+
+      appliedDiscountPercentage = couponDoc?.discountPercentage || 0;
+      grossAmount = roundCurrency(grossAmount * (1 - appliedDiscountPercentage / 100));
+    }
+
     const config = await getPlatformConfig();
-    const grossAmount = roundCurrency(Number(course.price ?? 0));
-    
+
     const commissionPercent = isAdminCourse 
       ? 0 
       : roundCurrency(config.coursePurchaseCommissionPercent ?? 0);
@@ -208,6 +274,8 @@ export async function POST(
         grossAmount,
         commissionPercent,
         netAmount,
+        couponCode,
+        discountPercentage: appliedDiscountPercentage,
       };
 
       if (screenshotUrl) {
@@ -270,6 +338,8 @@ export async function POST(
         grossAmount,
         commissionPercent,
         netAmount,
+        couponCode,
+        discountPercentage: appliedDiscountPercentage,
       },
     });
 

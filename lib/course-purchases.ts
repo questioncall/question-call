@@ -16,6 +16,8 @@ export type CoursePurchaseMetadata = {
   commissionPercent?: number;
   netAmount?: number;
   studentId?: string;
+  couponCode?: string;
+  discountPercentage?: number;
 };
 
 type CompleteCoursePurchaseInput = {
@@ -63,6 +65,12 @@ export function getCoursePurchaseMetadata(
       typeof metadata?.netAmount === "number" ? metadata.netAmount : undefined,
     studentId:
       typeof metadata?.studentId === "string" ? metadata.studentId : undefined,
+    couponCode:
+      typeof metadata?.couponCode === "string" ? metadata.couponCode : undefined,
+    discountPercentage:
+      typeof metadata?.discountPercentage === "number"
+        ? metadata.discountPercentage
+        : undefined,
   };
 }
 
@@ -162,6 +170,8 @@ export async function completeCoursePurchase({
         grossAmount,
         commissionPercent,
         netAmount: creditedTeacherEarnings,
+        couponCode: metadata.couponCode,
+        discountPercentage: metadata.discountPercentage,
       };
       transaction.meta = {
         ...(transaction.meta ?? {}),
@@ -203,6 +213,33 @@ export async function completeCoursePurchase({
         course.enrollmentCount = (course.enrollmentCount ?? 0) + 1;
         await course.save({ session: dbSession });
         enrollmentId = createdEnrollment._id.toString();
+      }
+
+      if (metadata.couponCode) {
+        const CourseCoupon = (await import("@/models/CourseCoupon")).default;
+        const CourseCouponRedemption = (await import("@/models/CourseCouponRedemption")).default;
+        
+        const coupon = await CourseCoupon.findOne({ code: metadata.couponCode }).session(dbSession);
+        if (coupon) {
+          const existingRedemption = await CourseCouponRedemption.findOne({
+            couponId: coupon._id,
+            studentId: transaction.userId,
+            courseId: course._id,
+          }).session(dbSession);
+          
+          if (!existingRedemption) {
+            await CourseCouponRedemption.create(
+              [{
+                couponId: coupon._id,
+                studentId: transaction.userId,
+                courseId: course._id,
+              }],
+              { session: dbSession },
+            );
+            coupon.usedCount += 1;
+            await coupon.save({ session: dbSession });
+          }
+        }
       }
 
       if (instructor) {

@@ -53,6 +53,7 @@ export default async function AdminCouponsPage() {
         usedCount: redemptionCountByCoupon.get(c._id.toString()) ?? 0,
         expiryDate: c.expiryDate?.toString() ?? null,
         isActive: c.isActive,
+        discountPercentage: c.discountPercentage ?? 100,
         createdAt: c.createdAt.toString(),
       }))}
       courses={courses.map((c) => ({

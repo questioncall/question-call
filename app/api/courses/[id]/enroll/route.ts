@@ -81,6 +81,10 @@ export async function POST(
         return NextResponse.json(validation, { status: 400 });
       }
 
+      if (validation.coupon.discountPercentage !== 100) {
+        return NextResponse.json({ error: "Only 100% discount coupons can bypass payment." }, { status: 400 });
+      }
+
       accessType = "COUPON";
       couponId = validation.couponId;
     } else if (course.pricingModel === "PAID") {

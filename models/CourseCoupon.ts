@@ -11,9 +11,14 @@ const courseCouponSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ["FULL_ACCESS"],
-      default: "FULL_ACCESS",
+      enum: ["FULL_ACCESS", "PERCENTAGE"],
+      default: "PERCENTAGE",
       required: true,
+    },
+    discountPercentage: {
+      type: Number,
+      min: 1,
+      max: 100,
     },
     scope: {
       type: String,

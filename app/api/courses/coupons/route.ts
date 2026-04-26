@@ -160,10 +160,18 @@ export async function POST(request: NextRequest) {
     const courseId = typeof body.courseId === "string" ? body.courseId : null;
     const usageLimit = normalizeUsageLimit(body.usageLimit);
     const expiryDate = normalizeExpiryDate(body.expiryDate);
+    const discountPercentage = typeof body.discountPercentage === "number" ? body.discountPercentage : Number(body.discountPercentage);
 
     if (!code || (scope !== "COURSE" && scope !== "GLOBAL")) {
       return NextResponse.json(
         { error: "code and valid scope are required." },
+        { status: 400 },
+      );
+    }
+
+    if (isNaN(discountPercentage) || discountPercentage < 1 || discountPercentage > 100) {
+      return NextResponse.json(
+        { error: "discountPercentage must be between 1 and 100." },
         { status: 400 },
       );
     }
@@ -216,7 +224,8 @@ export async function POST(request: NextRequest) {
 
     const coupon = await CourseCoupon.create({
       code,
-      type: "FULL_ACCESS",
+      type: "PERCENTAGE",
+      discountPercentage,
       scope,
       courseId: scope === "COURSE" ? courseId : null,
       usageLimit,
