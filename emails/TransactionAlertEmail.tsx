@@ -20,9 +20,9 @@ export function TransactionAlertEmail({
     <div
       style={{
         fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        backgroundColor: "#f9fafb",
-        padding: "40px 0",
-        color: "#111827",
+        backgroundColor: "#f8fafc",
+        padding: "40px 20px",
+        color: "#0f172a",
       }}
     >
       <table
@@ -32,44 +32,54 @@ export function TransactionAlertEmail({
           maxWidth: "500px",
           margin: "0 auto",
           backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+          borderRadius: "16px",
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)",
           overflow: "hidden",
+          width: "100%",
+          border: "1px solid #f1f5f9",
         }}
       >
         <tbody>
           <tr>
-            <td style={{ padding: "32px" }}>
-              <h1 style={{ margin: "0 0 20px 0", fontSize: "24px", fontWeight: "bold" }}>
+            <td
+              style={{
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                padding: "24px 32px",
+              }}
+            >
+              <h1 style={{ margin: "0", fontSize: "20px", fontWeight: "bold", color: "#ffffff" }}>
                 {title}
               </h1>
-              
-              <p style={{ margin: "0 0 24px 0", fontSize: "16px", lineHeight: "1.5", color: "#374151" }}>
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "32px" }}>
+              <p style={{ margin: "0 0 24px 0", fontSize: "16px", lineHeight: "1.6", color: "#334155" }}>
                 {message}
               </p>
 
               {(transactionId || amount || userEmail) && (
-                <div style={{ backgroundColor: "#f3f4f6", padding: "20px", borderRadius: "8px", marginBottom: "24px" }}>
+                <div style={{ backgroundColor: "#f1f5f9", padding: "20px", borderRadius: "8px", marginBottom: "24px", border: "1px solid #e2e8f0" }}>
                   {transactionId && (
-                    <p style={{ margin: "0 0 8px 0", fontSize: "14px", fontFamily: "monospace", color: "#4b5563" }}>
-                      <strong style={{ color: "#111827" }}>Transaction ID:</strong> {transactionId}
+                    <p style={{ margin: "0 0 12px 0", fontSize: "14px", fontFamily: "monospace", color: "#475569" }}>
+                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>Transaction ID:</strong> {transactionId}
                     </p>
                   )}
                   {amount && (
-                    <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#4b5563" }}>
-                      <strong style={{ color: "#111827" }}>Amount:</strong> {amount}
+                    <p style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#475569" }}>
+                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>Amount:</strong> {amount}
                     </p>
                   )}
                   {userEmail && (
-                    <p style={{ margin: "0", fontSize: "14px", color: "#4b5563" }}>
-                      <strong style={{ color: "#111827" }}>User Email:</strong> {userEmail}
+                    <p style={{ margin: "0", fontSize: "14px", color: "#475569" }}>
+                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>User Email:</strong> {userEmail}
                     </p>
                   )}
                 </div>
               )}
 
-              <hr style={{ border: "0", borderTop: "1px solid #e5e7eb", margin: "24px 0", padding: "0" }} />
-              <p style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}>
+              <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "32px 0 24px 0", padding: "0" }} />
+              <p style={{ margin: "0", fontSize: "13px", color: "#64748b", textAlign: "center" }}>
                 This is an automated notification from {APP_NAME}.
               </p>
             </td>

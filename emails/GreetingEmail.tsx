@@ -17,10 +17,10 @@ export function GreetingEmail({
   return (
     <div
       style={{
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        backgroundColor: "#eef8f5",
-        padding: "40px 0",
-        color: "#23403b",
+        fontFamily: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+        backgroundColor: "#f4fcf9",
+        padding: "40px 20px",
+        color: "#0f172a",
       }}
     >
       <table
@@ -30,9 +30,11 @@ export function GreetingEmail({
           maxWidth: "600px",
           margin: "0 auto",
           backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 12px 32px rgba(15, 92, 85, 0.12)",
+          borderRadius: "16px",
+          boxShadow: "0 10px 25px -5px rgba(15, 92, 85, 0.08)",
           overflow: "hidden",
+          width: "100%",
+          border: "1px solid #e2f1ec",
         }}
       >
         <tbody>
@@ -40,27 +42,35 @@ export function GreetingEmail({
           <tr>
             <td
               style={{
-                background: "linear-gradient(135deg, #1f766e, #0f5c55)",
-                color: "#fff",
-                padding: "24px 30px",
+                background: "linear-gradient(135deg, #0d9488, #0f766e)",
+                padding: "32px 40px",
                 textAlign: "center",
-                fontSize: "22px",
-                fontWeight: "bold",
               }}
             >
-              📬 A Special Message for You
+              <h1
+                style={{
+                  color: "#ffffff",
+                  fontSize: "26px",
+                  fontWeight: "bold",
+                  margin: 0,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {APP_NAME}
+              </h1>
             </td>
           </tr>
 
           {/* Body */}
           <tr>
-            <td style={{ padding: "30px" }}>
+            <td style={{ padding: "40px" }}>
               <h2
                 style={{
                   fontWeight: "600",
                   fontSize: "20px",
-                  marginBottom: "16px",
-                  color: "#0f5c55",
+                  marginBottom: "24px",
+                  color: "#115e59",
+                  marginTop: 0,
                 }}
               >
                 Hello {fullName.split(" ")[0]},
@@ -71,55 +81,74 @@ export function GreetingEmail({
                 style={{
                   fontSize: "16px",
                   lineHeight: "1.6",
-                  marginBottom: "20px",
-                  color: "#365d56",
+                  marginBottom: "32px",
+                  color: "#334155",
+                  margin: "0 0 24px",
                 }}
               >
                 {message}
               </p>
 
+              {/* Additional content */}
+              {content && (
+                <div
+                  style={{
+                    backgroundColor: "#f0fdfa",
+                    borderLeft: "4px solid #14b8a6",
+                    borderRadius: "0 8px 8px 0",
+                    padding: "20px",
+                    fontSize: "15px",
+                    lineHeight: "1.6",
+                    color: "#0f766e",
+                    marginBottom: "32px",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              )}
+
               {/* Link section */}
               {link && (
-                <p style={{ marginBottom: "20px" }}>
+                <div style={{ textAlign: "center", margin: "36px 0" }}>
                   <a
                     href={link}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       display: "inline-block",
-                      backgroundColor: "#1f766e",
+                      backgroundColor: "#0d9488",
                       color: "#ffffff",
-                      padding: "12px 20px",
+                      padding: "14px 32px",
                       borderRadius: "8px",
-                      fontWeight: "bold",
+                      fontWeight: "600",
                       textDecoration: "none",
-                      fontSize: "15px",
+                      fontSize: "16px",
+                      boxShadow: "0 4px 6px -1px rgba(13, 148, 136, 0.2)",
                     }}
                   >
-                    Click Here
+                    Take Action Now
                   </a>
-                </p>
+                </div>
               )}
 
-              {/* Additional content */}
-              {content && (
-                <div
-                  style={{
-                    backgroundColor: "#f4fbf8",
-                    border: "1px solid rgba(31, 118, 110, 0.15)",
-                    borderRadius: "10px",
-                    padding: "16px",
-                    fontSize: "15px",
-                    lineHeight: "1.6",
-                    color: "#1a6259",
-                    marginBottom: "24px",
-                  }}
-                  dangerouslySetInnerHTML={{ __html: content }}
-                />
-              )}
+              <hr
+                style={{
+                  borderColor: "#e2e8f0",
+                  borderStyle: "solid",
+                  borderWidth: "1px 0 0 0",
+                  margin: "32px 0",
+                }}
+              />
 
-              <p style={{ fontSize: "14px", color: "#5c7b74" }}>
-                If you have any questions or didn’t request this email, please
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  margin: 0,
+                  lineHeight: "1.5",
+                  textAlign: "center",
+                }}
+              >
+                If you have any questions or didn't request this email, please
                 ignore it or contact our support team.
               </p>
             </td>
@@ -129,14 +158,18 @@ export function GreetingEmail({
           <tr>
             <td
               style={{
-                backgroundColor: "#f6fbfa",
+                backgroundColor: "#f8fafc",
                 textAlign: "center",
-                padding: "14px",
-                fontSize: "12px",
-                color: "#86a8a0",
+                padding: "24px",
+                fontSize: "13px",
+                color: "#94a3b8",
+                borderTop: "1px solid #f1f5f9",
               }}
             >
-              © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+              © {new Date().getFullYear()} {APP_NAME}. All rights reserved.<br />
+              <span style={{ display: "inline-block", marginTop: "8px" }}>
+                Empowering your academic journey.
+              </span>
             </td>
           </tr>
         </tbody>

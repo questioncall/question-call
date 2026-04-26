@@ -24,6 +24,7 @@ import Transaction from "@/models/Transaction";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EnrolledUsersModal } from "@/components/course/EnrolledUsersModal";
 
 type Params = Promise<{ id: string }>;
 
@@ -157,7 +158,14 @@ export default async function AdminCoursePage({ params }: { params: Params }) {
                 <Users2Icon className="size-4 text-emerald-500" />
                 Enrolled
               </div>
-              <div className="text-3xl font-bold text-foreground">{enrollments.length}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold text-foreground">{enrollments.length}</div>
+                <EnrolledUsersModal courseId={course._id.toString()} triggerClassName="ml-2">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/50">
+                    See All
+                  </Button>
+                </EnrolledUsersModal>
+              </div>
             </div>
             
             <div className="rounded-2xl border border-border bg-background p-5 shadow-sm hover:border-blue-500/30 transition-colors flex flex-col gap-2">

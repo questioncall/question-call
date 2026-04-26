@@ -280,9 +280,52 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
     const handleMessage = (payload: { message?: ChatMessage }) => {
       if (!payload.message) return;
-      // Don't add our own messages (we already have them optimistically)
-      if (payload.message.senderId === userId) return;
-      dispatch(addMessage({ ...payload.message, isOwn: false }));
+      
+      // Don't add our own user messages (we already have them optimistically)
+      if (payload.message.senderId === userId && !payload.message.isSystemMessage) return;
+      
+      const isOwnMessage = payload.message.senderId === userId;
+      dispatch(addMessage({ ...payload.message, isOwn: isOwnMessage }));
+
+      // Ignore sounds and notifications for system messages (e.g. call logs)
+      if (isOwnMessage || payload.message.isSystemMessage) return;
+
+      // Always play notification sound for incoming user messages
+      try {
+        const audio = new Audio("/sounds/message-tone.wav");
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      } catch (_) { /* ignore */ }
+
+      // Show desktop notification only when tab is not focused
+      if (document.hidden) {
+        try {
+          if ("Notification" in window && Notification.permission === "granted") {
+            const notifOptions = {
+              body: payload.message.content || (payload.message.mediaType ? `Sent a ${payload.message.mediaType.toLowerCase()}` : "You received a new message."),
+              icon: "/logo.png",
+              tag: `msg-${channelId}`,
+              data: { url: `/channel/${channelId}` }
+            };
+
+            const senderName = payload.message.senderName || "New Message";
+
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.getRegistration().then((registration) => {
+                if (registration && registration.active) {
+                  registration.showNotification(senderName, notifOptions);
+                } else {
+                  const notif = new Notification(senderName, notifOptions);
+                  notif.onclick = () => { window.focus(); };
+                }
+              });
+            } else {
+              const notif = new Notification(senderName, notifOptions);
+              notif.onclick = () => { window.focus(); };
+            }
+          }
+        } catch (_) { /* ignore */ }
+      }
     };
 
     const handleStatus = (payload: {
@@ -386,11 +429,21 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   useEffect(() => {
     if (!channelId || !isLoaded || messages.length === 0) return;
 
-    const hasUnseen = messages.some((m) => !m.isOwn && !m.isSeen);
-    if (hasUnseen) {
-      dispatch(markMessagesAsSeen());
-      fetch(`/api/channels/${channelId}/read`, { method: "POST" }).catch(console.error);
-    }
+    const checkAndMarkSeen = () => {
+      if (document.hidden) return;
+      const hasUnseen = messages.some((m) => !m.isOwn && !m.isSeen);
+      if (hasUnseen) {
+        dispatch(markMessagesAsSeen());
+        fetch(`/api/channels/${channelId}/read`, { method: "POST" }).catch(console.error);
+      }
+    };
+
+    checkAndMarkSeen();
+
+    document.addEventListener("visibilitychange", checkAndMarkSeen);
+    return () => {
+      document.removeEventListener("visibilitychange", checkAndMarkSeen);
+    };
   }, [channelId, isLoaded, messages, dispatch]);
 
   // ─── Cleanup on unmount ───────────────────────────────

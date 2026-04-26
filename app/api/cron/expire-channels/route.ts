@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { validateCronRequest } from "@/lib/cron-auth";
 
+export async function GET(request: Request) {
+  return POST(request);
+}
+
 export async function POST(request: Request) {
   try {
     const authResult = validateCronRequest(request);

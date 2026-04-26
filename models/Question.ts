@@ -40,9 +40,8 @@ const questionSchema = new Schema(
     },
     body: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
-      minlength: 12,
       maxlength: 5000,
     },
     images: {

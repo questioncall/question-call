@@ -13,6 +13,7 @@ import { emitNotification } from "@/lib/pusher/pusherServer";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
 import { getSiteUrl } from "@/lib/site-url";
+import { APP_NAME } from "@/lib/constants";
 
 export const runtime = "nodejs";
 
@@ -142,7 +143,7 @@ if (referrerUser) {
         referrerUser.name,
         "You Earned Bonus Questions! 🎉",
         `${siteUrl}/subscription`,
-        `Someone just joined {APP_NAME} using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
+        `Someone just joined ${APP_NAME} using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
       ).catch(console.error);
     }
 
@@ -179,7 +180,7 @@ if (referrerUser) {
       void sendGreetingEmail(
         email,
         name,
-        "Welcome to {APP_NAME}! (+ Bonus Questions 🎉)",
+        `Welcome to ${APP_NAME}! (+ Bonus Questions 🎉)`,
         siteUrl,
         `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${refereeBonus} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
       ).catch(console.error);
@@ -187,7 +188,7 @@ if (referrerUser) {
       void sendGreetingEmail(
         email,
         name,
-        "Welcome to {APP_NAME}! Your account has been created successfully.",
+        `Welcome to ${APP_NAME}! Your account has been created successfully.`,
         siteUrl,
         "We're excited to have you on board! Explore courses, ask questions, and start your learning journey today."
       ).catch(console.error);

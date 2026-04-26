@@ -12,7 +12,7 @@ import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
 import { recordWalletHistoryEvent } from "@/lib/wallet-history";
 import type { FeedQuestion } from "@/types/question";
-import "@/models/Question";
+import Question from "@/models/Question";
 
 const BAYESIAN_SEED_VOTES = 5;
 const BAYESIAN_SEED_SCORE = 1;
@@ -213,6 +213,22 @@ export async function processExpiredChannels(
     expiredChannelIds: [],
     autoClosedChannelIds: [],
   };
+
+  // Cleanup orphaned questions (stuck in ACCEPTED for > 24 hours)
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const orphanedQuestions = await Question.find({
+    status: "ACCEPTED",
+    acceptedAt: { $lte: oneDayAgo }
+  });
+
+  for (const q of orphanedQuestions) {
+    q.status = "RESET";
+    q.acceptedById = null;
+    q.acceptedAt = null;
+    q.resetCount = (q.resetCount || 0) + 1;
+    await q.save();
+    console.log(`[cron] Reset orphaned question: ${q._id}`);
+  }
 
   for (const channel of overdueChannels) {
     const channelId = channel._id.toString();

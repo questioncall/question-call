@@ -380,7 +380,17 @@ export function ManageCourseClient({
                   <Users2Icon className="size-3.5" />
                   Students
                 </div>
-                <div className="text-lg font-bold">{analytics.enrollmentCount}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-bold">{analytics.enrollmentCount}</div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-[10px] uppercase text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50" 
+                    onClick={() => void openEnrolledUsersModal()}
+                  >
+                    See All
+                  </Button>
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -800,14 +810,24 @@ export function ManageCourseClient({
                 {/* Stats grid */}
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-xl border border-border bg-background p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                        <Users2Icon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                          <Users2Icon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold">{analytics.enrollmentCount}</div>
+                          <div className="text-xs text-muted-foreground">Total Students</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-2xl font-bold">{analytics.enrollmentCount}</div>
-                        <div className="text-xs text-muted-foreground">Total Students</div>
-                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200 dark:border-emerald-900/50 dark:hover:bg-emerald-950/50"
+                        onClick={() => void openEnrolledUsersModal()}
+                      >
+                        See All
+                      </Button>
                     </div>
                   </div>
                   <div className="rounded-xl border border-border bg-background p-5">
@@ -873,7 +893,7 @@ export function ManageCourseClient({
       />
 
       <Dialog open={showEnrolledUsers} onOpenChange={setShowEnrolledUsers}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden p-0">
+        <DialogContent className="max-h-[85vh] w-[95vw] sm:max-w-3xl md:max-w-5xl lg:max-w-6xl overflow-hidden p-0">
           <DialogHeader className="border-b border-border px-6 py-5">
             <DialogTitle>Enrolled Users</DialogTitle>
             <DialogDescription>

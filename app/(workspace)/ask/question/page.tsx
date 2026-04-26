@@ -92,7 +92,7 @@ export default function AskQuestionPage() {
   const bodyLen = body.trim().length;
   const answerFormat = buildAnswerFormatFromSelection(selectedFormats);
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
-  const isBodyValid = bodyLen >= 12 && bodyLen <= 5000;
+  const isBodyValid = bodyLen === 0 || (bodyLen >= 12 && bodyLen <= 5000);
   const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
 
   const handleSubmit = async () => {
@@ -170,7 +170,10 @@ export default function AskQuestionPage() {
             <div className="space-y-2">
               <Label htmlFor="q-body">
                 Details
-                <span className={`ml-2 text-xs ${isBodyValid || bodyLen === 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  (Optional)
+                </span>
+                <span className={`ml-2 text-xs ${isBodyValid ? "text-muted-foreground" : "text-destructive"}`}>
                   {bodyLen}/5000
                 </span>
               </Label>

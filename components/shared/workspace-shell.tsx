@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -180,6 +180,11 @@ export function WorkspaceShell({
     items: channels,
     isHydrated: channelsHydrated,
   } = useAppSelector((state) => state.channels);
+  const channelsRef = useRef(channels);
+  useEffect(() => {
+    channelsRef.current = channels;
+  }, [channels]);
+  
   const [hasCompletedInitialSidebarLoad, setHasCompletedInitialSidebarLoad] =
     useState(channelsHydrated);
   const [liveSocialLinks, setLiveSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
@@ -229,6 +234,17 @@ export function WorkspaceShell({
   }, [channelsHydrated]);
 
   useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      const handleInteraction = () => {
+        Notification.requestPermission().catch(() => {});
+        document.removeEventListener("click", handleInteraction);
+      };
+      document.addEventListener("click", handleInteraction);
+      return () => document.removeEventListener("click", handleInteraction);
+    }
+  }, []);
+
+  useEffect(() => {
     setLiveSocialLinks(socialLinks);
   }, [socialLinks]);
 
@@ -258,9 +274,11 @@ export function WorkspaceShell({
           );
         }
         if (data.unreadCountIncrement) {
-          // Verify we aren't currently viewing this active channel
+          // Only increment unread badge if NOT currently viewing this channel
           const currentViewingId = window.location.pathname.split("/").pop();
-          if (currentViewingId !== data.channelId) {
+          const isViewingChannel = currentViewingId === data.channelId;
+
+          if (!isViewingChannel) {
             dispatch(
               incrementChannelUnread({
                 channelId: data.channelId,
@@ -268,6 +286,50 @@ export function WorkspaceShell({
               })
             );
           }
+
+          // Always play notification sound
+          try {
+            const audio = new Audio("/sounds/message-tone.wav");
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+          } catch (_) { /* ignore */ }
+
+          // Show desktop notification (reliable using service worker)
+          try {
+            if ("Notification" in window && Notification.permission === "granted") {
+              const channelData = channelsRef.current.find(c => c.id === data.channelId);
+              const senderName = channelData ? channelData.counterpartName : "New Message";
+              const targetUrl = `/channel/${data.channelId}`;
+              
+              const notifOptions = {
+                body: data.lastMessagePreview || "You received a new message.",
+                icon: "/logo.png",
+                tag: `msg-${data.channelId}`,
+                data: { url: targetUrl }
+              };
+
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.getRegistration().then((registration) => {
+                  if (registration && registration.active) {
+                    registration.showNotification(senderName, notifOptions);
+                  } else {
+                    // Fallback for dev mode where SW might not be registered
+                    const notif = new Notification(senderName, notifOptions);
+                    notif.onclick = () => {
+                      window.focus();
+                      window.location.href = targetUrl;
+                    };
+                  }
+                });
+              } else {
+                const notif = new Notification(senderName, notifOptions);
+                notif.onclick = () => {
+                  window.focus();
+                  window.location.href = targetUrl;
+                };
+              }
+            }
+          } catch (_) { /* ignore */ }
         }
       }
     });
