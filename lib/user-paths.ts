@@ -135,3 +135,7 @@ export function getSignOutPath() {
 export function getSignUpPath(role: "STUDENT" | "TEACHER") {
   return role === "STUDENT" ? "/auth/signup/student" : "/auth/signup/teacher";
 }
+
+export function getForgotPasswordPath() {
+  return "/auth/forgot-password";
+}

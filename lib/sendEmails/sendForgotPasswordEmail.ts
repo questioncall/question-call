@@ -1,0 +1,42 @@
+import resend from "@/lib/resend/resend";
+import { getResendFrom } from "@/lib/email";
+import { ForgotPasswordEmail } from "@/emails/ForgotPasswordEmail";
+
+export async function sendForgotPasswordEmail(
+  email: string,
+  verificationCode: string,
+  fullName: string
+){
+  try {
+    const { data, error } = await resend.emails.send({
+      from: getResendFrom(),
+      to: email,
+      subject: `Password Reset Request`,
+      react: ForgotPasswordEmail({ fullName, verificationCode }),
+    });
+
+    if (error) {
+      console.error("Resend API returned an error:", error);
+      return {
+        success: false,
+        message: "Failed to send password reset email",
+        error: error.message || "Unknown Resend API error",
+        data: null,
+      };
+    }
+    console.log("Password reset email sent successfully!", data);
+    return {
+      success: true,
+      message: "Password reset email sent successfully",
+      error: null,
+      data: data,
+    };
+  } catch (error) {
+    console.error("Exception during email sending:", error);
+    return {
+      success: false,
+      message: "Failed to send password reset email",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}

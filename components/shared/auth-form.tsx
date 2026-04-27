@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSafeNavigationTarget } from "@/lib/navigation";
-import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
+import { getSignInPath, getSignUpPath, getForgotPasswordPath } from "@/lib/user-paths";
 import {
   clearAuthState,
   registerUser,
@@ -313,9 +313,19 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
         {(!isRegister || isEmailVerified) && (
         <>
           <div className="space-y-1.5">
-          <Label className="text-sm font-semibold text-foreground" htmlFor="auth-password">
-            Password
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold text-foreground" htmlFor="auth-password">
+              Password
+            </Label>
+            {!isRegister && (
+              <Link 
+                href={getForgotPasswordPath()} 
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <div className="relative">
             <Input
               id="auth-password"
