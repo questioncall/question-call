@@ -5,16 +5,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
+        hostname: "res.cloudinary.com", // ← plain string, no markdown
         pathname: "/**",
       },
     ],
   },
-  allowedDevOrigins: ['http://[IP_ADDRESS]', 'http://[IP_ADDRESS]'],
+  allowedDevOrigins: ['http://[IP_ADDRESS]', 'http://[IP_ADDRESS]', 'http://192.168.1.69'],
 };
-
-module.exports = {
-  allowedDevOrigins: ['192.168.1.69'],
-}
 
 export default nextConfig;
