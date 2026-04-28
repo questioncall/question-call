@@ -652,9 +652,6 @@ export function WorkspaceHome({
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Browse courses
           </p>
-          <h3 className="text-sm font-semibold text-foreground">
-            Quick lessons for your next scroll
-          </h3>
         </div>
         <Button asChild size="sm" variant="ghost" className="shrink-0">
           <Link href="/courses">See all</Link>
@@ -1406,10 +1403,10 @@ export function WorkspaceHome({
                         </div>
 
                         <div className="space-y-2.5 pt-1">
-                          <h2 className="line-clamp-1 text-[1.125rem] font-bold leading-snug text-foreground sm:line-clamp-none [overflow-wrap:anywhere] sm:text-[1.25rem]">
+                          <h2 className="text-[1.125rem] font-bold leading-snug text-foreground sm:line-clamp-none sm:text-[1.25rem]">
                             {item.title}
                           </h2>
-                          <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                          <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere] line-clamp-1">
                             {item.body}
                           </p>
                         </div>
