@@ -279,6 +279,7 @@ export function WorkspaceHome({
   const [activeCourseIndex, setActiveCourseIndex] = useState(0);
   const [topTeachers, setTopTeachers] = useState<TopTeacherItem[]>([]);
   const [isTopTeachersLoading, setIsTopTeachersLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const toggleAnswer = (questionId: string) => {
     setExpandedAnswers((prev) => {
@@ -1115,682 +1116,709 @@ export function WorkspaceHome({
             </CardContent>
           </Card>
 
-          <div className="order-2">
-            {mobileCourseRail}
-          </div>
+          <div className="order-2">{mobileCourseRail}</div>
 
           <div className="order-3 space-y-6">
             {/* Loading skeleton */}
-          {isLoading && !isHydrated && (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="border border-border/70 shadow-sm">
-                  <CardHeader>
-                    <Skeleton className="h-3 w-48" />
-                    <Skeleton className="h-5 w-72 mt-2" />
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+            {isLoading && !isHydrated && (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="border border-border/70 shadow-sm">
+                    <CardHeader>
+                      <Skeleton className="h-3 w-48" />
+                      <Skeleton className="h-5 w-72 mt-2" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
-          {/* Empty state */}
-          {isHydrated && visibleFeedItems.length === 0 && (
-            <Card className="border border-dashed border-border/70 shadow-sm">
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <MessageSquareIcon className="size-12 text-muted-foreground/40 mb-4" />
-                <p className="text-lg font-medium text-foreground">
-                  {feedItems.length === 0
-                    ? "No questions yet"
-                    : "No posts match this view"}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-                  {feedItems.length === 0
-                    ? 'Be the first to post a question! Click "Post Question" in the header to get started.'
-                    : "Try a different filter or sort to bring more questions back into the stream."}
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-6 gap-2" 
-                  onClick={fetchFeed} 
-                  disabled={isLoading}
+            {/* Empty state */}
+            {isHydrated && visibleFeedItems.length === 0 && (
+              <Card className="border border-dashed border-border/70 shadow-sm">
+                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                  <MessageSquareIcon className="size-12 text-muted-foreground/40 mb-4" />
+                  <p className="text-lg font-medium text-foreground">
+                    {feedItems.length === 0
+                      ? "No questions yet"
+                      : "No posts match this view"}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+                    {feedItems.length === 0
+                      ? 'Be the first to post a question! Click "Post Question" in the header to get started.'
+                      : "Try a different filter or sort to bring more questions back into the stream."}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-6 gap-2"
+                    onClick={fetchFeed}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2Icon className="size-4 animate-spin" />
+                    ) : (
+                      <RefreshCwIcon className="size-4" />
+                    )}
+                    Load Questions
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Feed cards */}
+            {visibleFeedItems.map((item) => {
+              const isAccepted = item.status === "ACCEPTED";
+              const isSolved = item.status === "SOLVED";
+              const isOwnQuestion = userId === item.askerId;
+              const canAccept =
+                !isOwnQuestion &&
+                (item.status === "OPEN" || item.status === "RESET") &&
+                role === "TEACHER";
+              const canOpenThread = isOwnQuestion && Boolean(item.channelId);
+              const canComment = !isOwnQuestion;
+              const isExpandedComments = expandedComments.has(item.id);
+              const comments = dedupeComments(commentsMap[item.id] || []);
+              const isAcceptLoading = acceptingId === item.id;
+              const totalReactions = item.reactions.length;
+              const askerProfileHref = getProfilePath({
+                id: item.askerId,
+                name: item.askerName,
+                username: item.askerUsername,
+              });
+
+              // Determine which reaction the current user has (if any)
+              const userReaction = userId
+                ? item.reactions.find((r) => r.userId === userId)
+                : undefined;
+              const requiredAnswerFormats = getAnswerFormatRequirements(
+                item.answerFormat,
+              );
+              const questionChips = getQuestionChips(item);
+
+              return (
+                <article
+                  key={item.id}
+                  className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
                 >
-                  {isLoading ? (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
-                    <RefreshCwIcon className="size-4" />
-                  )}
-                  Load Questions
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                  <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
+                    <div className="hidden md:flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
+                      {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
+                        const count = item.reactions.filter(
+                          (reaction) => reaction.type === type,
+                        ).length;
+                        const isActive = userReaction?.type === type;
 
-          {/* Feed cards */}
-          {visibleFeedItems.map((item) => {
-            const isAccepted = item.status === "ACCEPTED";
-            const isSolved = item.status === "SOLVED";
-            const isOwnQuestion = userId === item.askerId;
-            const canAccept =
-              !isOwnQuestion &&
-              (item.status === "OPEN" || item.status === "RESET") &&
-              role === "TEACHER";
-            const canOpenThread = isOwnQuestion && Boolean(item.channelId);
-            const canComment = !isOwnQuestion;
-            const isExpandedComments = expandedComments.has(item.id);
-            const comments = dedupeComments(commentsMap[item.id] || []);
-            const isAcceptLoading = acceptingId === item.id;
-            const totalReactions = item.reactions.length;
-            const askerProfileHref = getProfilePath({
-              id: item.askerId,
-              name: item.askerName,
-              username: item.askerUsername,
-            });
-
-            // Determine which reaction the current user has (if any)
-            const userReaction = userId
-              ? item.reactions.find((r) => r.userId === userId)
-              : undefined;
-            const requiredAnswerFormats = getAnswerFormatRequirements(
-              item.answerFormat,
-            );
-            const questionChips = getQuestionChips(item);
-
-            return (
-              <article
-                key={item.id}
-                className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
-              >
-                <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
-                  <div className="hidden md:flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
-                    {REACTION_CONFIG.map(({ type, icon: Icon, label }) => {
-                      const count = item.reactions.filter(
-                        (reaction) => reaction.type === type,
-                      ).length;
-                      const isActive = userReaction?.type === type;
-
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          title={label}
-                          onClick={() => handleReact(item.id, type)}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors md:min-w-[44px] md:flex-col md:rounded-2xl md:px-2 md:py-2",
-                            isActive
-                              ? "border-primary/40 bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          <Icon className="size-3.5" />
-                          <span>{count}</span>
-                        </button>
-                      );
-                    })}
-
-                    <div className="hidden text-center text-[10px] text-muted-foreground md:block">
-                      <div className="font-semibold text-foreground">
-                        {totalReactions}
-                      </div>
-                      <div>reacts</div>
-                    </div>
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="space-y-4 px-4 py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={askerProfileHref}
-                            className="group/avatar relative z-10 flex shrink-0 items-center justify-center"
-                          >
-                            {item.askerImage ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={item.askerImage}
-                                alt={item.askerName}
-                                className="h-7 w-7 shrink-0 aspect-square rounded-full border border-border/80 object-cover shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md"
-                              />
-                            ) : (
-                              <div className="flex h-9 w-9 shrink-0 aspect-square items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-bold text-primary shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md">
-                                {item.askerName.charAt(0).toUpperCase()}
-                              </div>
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            title={label}
+                            onClick={() => handleReact(item.id, type)}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors md:min-w-[44px] md:flex-col md:rounded-2xl md:px-2 md:py-2",
+                              isActive
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground hover:text-foreground",
                             )}
-                          </Link>
+                          >
+                            <Icon className="size-3.5" />
+                            <span>{count}</span>
+                          </button>
+                        );
+                      })}
 
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
-                              <Link
-                                href={askerProfileHref}
-                                className="text-[15px] font-bold tracking-tight text-foreground transition-colors hover:text-primary hover:underline"
-                              >
-                                {item.askerName}
-                              </Link>
-                              {item.askerUsername && (
-                                <span className="hidden text-[13px] font-medium text-muted-foreground/60 sm:inline-block">
-                                  @{item.askerUsername}
-                                </span>
+                      <div className="hidden text-center text-[10px] text-muted-foreground md:block">
+                        <div className="font-semibold text-foreground">
+                          {totalReactions}
+                        </div>
+                        <div>reacts</div>
+                      </div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="space-y-4 px-4 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={askerProfileHref}
+                              className="group/avatar relative z-10 flex shrink-0 items-center justify-center"
+                            >
+                              {item.askerImage ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={item.askerImage}
+                                  alt={item.askerName}
+                                  className="h-7 w-7 shrink-0 aspect-square rounded-full border border-border/80 object-cover shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md"
+                                />
+                              ) : (
+                                <div className="flex h-9 w-9 shrink-0 aspect-square items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-bold text-primary shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md">
+                                  {item.askerName.charAt(0).toUpperCase()}
+                                </div>
                               )}
+                            </Link>
+
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  href={askerProfileHref}
+                                  className="text-[15px] font-bold tracking-tight text-foreground transition-colors hover:text-primary hover:underline"
+                                >
+                                  {item.askerName}
+                                </Link>
+                                {item.askerUsername && (
+                                  <span className="hidden text-[13px] font-medium text-muted-foreground/60 sm:inline-block">
+                                    @{item.askerUsername}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+                                <span>{formatTimeAgo(item.createdAt)}</span>
+                                <span className="size-1 rounded-full bg-muted-foreground/50" />
+                                <span className="text-foreground/80">
+                                  {item.subject ||
+                                    item.stream ||
+                                    item.level ||
+                                    "General"}
+                                </span>
+                                <span className="hidden size-1 rounded-full bg-muted-foreground/50 sm:block" />
+                                <span className="hidden text-[9px] font-bold uppercase tracking-wider opacity-80 sm:inline-block">
+                                  {item.answerVisibility === "PUBLIC"
+                                    ? "Public"
+                                    : "Private"}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
-                              <span>{formatTimeAgo(item.createdAt)}</span>
-                              <span className="size-1 rounded-full bg-muted-foreground/50" />
-                              <span className="text-foreground/80">
-                                {item.subject ||
-                                  item.stream ||
-                                  item.level ||
-                                  "General"}
-                              </span>
-                              <span className="hidden size-1 rounded-full bg-muted-foreground/50 sm:block" />
-                              <span className="hidden text-[9px] font-bold uppercase tracking-wider opacity-80 sm:inline-block">
-                                {item.answerVisibility === "PUBLIC"
-                                  ? "Public"
-                                  : "Private"}
-                              </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "hidden md:inline-flex rounded-full border border-border/20 px-2.5 py-1 text-[11px] font-semibold shadow-sm",
+                                statusColorMap[item.status],
+                              )}
+                            >
+                              {statusLabelMap[item.status]}
+                            </span>
+
+                            <div className="group/dots relative">
+                              <button
+                                type="button"
+                                aria-label="View question details"
+                                onClick={() =>
+                                  setOpenMenuId(
+                                    openMenuId === item.id ? null : item.id,
+                                  )
+                                }
+                                className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-all duration-200 hover:bg-muted/80 hover:text-foreground hover:shadow-sm"
+                              >
+                                <MoreHorizontalIcon className="size-5" />
+                              </button>
+
+                              <div
+                                className={cn(
+                                  "absolute right-0 top-full z-10 mt-2 w-[280px] origin-top-right rounded-2xl border border-border/60 bg-background/98 p-4 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-200 dark:shadow-black/20 group-hover/dots:visible group-hover/dots:scale-100 group-hover/dots:opacity-100",
+                                  openMenuId === item.id
+                                    ? "visible scale-100 opacity-100"
+                                    : "invisible scale-95 opacity-0",
+                                )}
+                              >
+                                <div className="space-y-4">
+                                  {item.resetCount > 0 && (
+                                    <>
+                                      <div>
+                                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                          Question Status
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                                            Reset {item.resetCount} times
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="h-px w-full bg-border/50" />
+                                    </>
+                                  )}
+
+                                  <div>
+                                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                                      Details & Formats
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {requiredAnswerFormats.length === 0 ? (
+                                        <span
+                                          className={cn(
+                                            "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                            anyFormatColor,
+                                          )}
+                                        >
+                                          {getAnswerFormatLabel(
+                                            item.answerFormat,
+                                          )}
+                                        </span>
+                                      ) : (
+                                        requiredAnswerFormats.map((format) => (
+                                          <span
+                                            key={`${item.id}-${format}`}
+                                            className={cn(
+                                              "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                              formatColorMap[format],
+                                            )}
+                                          >
+                                            {getAnswerFormatLabel(format)}
+                                          </span>
+                                        ))
+                                      )}
+
+                                      <span
+                                        className={cn(
+                                          "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
+                                          visibilityColorMap[
+                                            item.answerVisibility
+                                          ],
+                                        )}
+                                      >
+                                        {
+                                          visibilityLabelMap[
+                                            item.answerVisibility
+                                          ]
+                                        }
+                                      </span>
+
+                                      {questionChips.map((chip) => (
+                                        <span
+                                          key={`${item.id}-${chip}`}
+                                          className="rounded-md border border-border/80 bg-background px-2 py-1 text-[10px] text-muted-foreground shadow-sm"
+                                        >
+                                          {chip}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5 pt-1">
+                          <h2 className="line-clamp-1 text-[1.125rem] font-bold leading-snug text-foreground sm:line-clamp-none [overflow-wrap:anywhere] sm:text-[1.25rem]">
+                            {item.title}
+                          </h2>
+                          <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                            {item.body}
+                          </p>
+                        </div>
+
+                        {item.images && item.images.length > 0 && (
+                          <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
+                            {item.images.map((imgUrl, index) => (
+                              <a
+                                key={index}
+                                href={imgUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imgUrl}
+                                  alt={`Question media ${index + 1}`}
+                                  className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        {isAccepted && (
+                          <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
+                            <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                              {item.acceptedByName
+                                ? `${item.acceptedByName} is already working on this question.`
+                                : "This question is currently being answered."}
+                            </p>
+                            {item.acceptedAt && (
+                              <p className="mt-1 text-xs text-sky-700/70 dark:text-sky-300/70">
+                                Accepted {formatTimeAgo(item.acceptedAt)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {isSolved && (
+                          <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05]">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-500/[0.08]"
+                              onClick={() =>
+                                item.answer && toggleAnswer(item.id)
+                              }
+                            >
+                              <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                  Accepted answer
+                                </p>
+                                <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
+                                  {item.answer?.acceptorName ||
+                                    item.acceptedByName ||
+                                    "Teacher"}{" "}
+                                  solved this question.
+                                </p>
+                              </div>
+                              {item.answer ? (
+                                <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                  <span>
+                                    {expandedAnswers.has(item.id)
+                                      ? "Hide"
+                                      : "View"}
+                                  </span>
+                                  <ChevronDownIcon
+                                    className={cn(
+                                      "size-4 transition-transform duration-200",
+                                      expandedAnswers.has(item.id) &&
+                                        "rotate-180",
+                                    )}
+                                  />
+                                </div>
+                              ) : null}
+                            </button>
+
+                            {item.answer &&
+                              expandedAnswers.has(item.id) &&
+                              (() => {
+                                const answer = item.answer;
+
+                                return (
+                                  <div className="space-y-4 border-t border-emerald-500/15 bg-background/95 px-4 py-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                      <div>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {answer.acceptorName || "Teacher"}
+                                        </p>
+                                        {answer.submittedAt && (
+                                          <p className="text-xs text-muted-foreground">
+                                            Posted{" "}
+                                            {formatTimeAgo(answer.submittedAt)}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {answer.rating != null && (
+                                        <div className="flex items-center gap-0.5">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <StarIcon
+                                              key={star}
+                                              className={cn(
+                                                "size-3.5",
+                                                star <=
+                                                  Math.round(answer.rating ?? 0)
+                                                  ? "fill-amber-400 text-amber-400"
+                                                  : "text-muted-foreground/30",
+                                              )}
+                                            />
+                                          ))}
+                                          <span className="ml-1 text-xs text-muted-foreground">
+                                            {Number(answer.rating).toFixed(1)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {answer.content && (
+                                      <p className="text-sm leading-7 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
+                                        {answer.content}
+                                      </p>
+                                    )}
+
+                                    {answer.mediaUrls &&
+                                      answer.mediaUrls.length > 0 && (
+                                        <div
+                                          className={cn(
+                                            "grid gap-2 overflow-hidden rounded-2xl",
+                                            answer.mediaUrls.length === 1
+                                              ? "grid-cols-1"
+                                              : "grid-cols-1 sm:grid-cols-2",
+                                          )}
+                                        >
+                                          {answer.mediaUrls.map(
+                                            (url, index) => {
+                                              const isVideo =
+                                                url.includes("/video/") ||
+                                                url.endsWith(".mp4") ||
+                                                url.endsWith(".webm");
+
+                                              return isVideo ? (
+                                                <video
+                                                  key={index}
+                                                  src={url}
+                                                  controls
+                                                  className="h-full max-h-80 w-full rounded-xl border border-border bg-muted/30"
+                                                />
+                                              ) : (
+                                                <a
+                                                  key={index}
+                                                  href={url}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  className="group block overflow-hidden rounded-xl border border-border/70 bg-muted/10"
+                                                >
+                                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                  <img
+                                                    src={url}
+                                                    alt={`Answer media ${index + 1}`}
+                                                    className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-48"
+                                                  />
+                                                </a>
+                                              );
+                                            },
+                                          )}
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              })()}
+                          </div>
+                        )}
+
+                        {!isAccepted && !isSolved && (
+                          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              Answer lane
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-foreground">
+                              {item.previewAuthor || "No public answer yet"}
+                            </p>
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+                              {item.previewText ||
+                                "Accept this question and be the first to help with a clear answer."}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/[0.18] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+                          {/* Mobile reactions */}
+                          <div className="flex items-center gap-3 md:hidden">
+                            {REACTION_CONFIG.map(({ type, icon: Icon }) => {
+                              const count = item.reactions.filter(
+                                (r) => r.type === type,
+                              ).length;
+                              const isActive = userReaction?.type === type;
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => handleReact(item.id, type)}
+                                  className={cn(
+                                    "flex items-center gap-1.5 text-xs font-medium transition-colors",
+                                    isActive
+                                      ? "text-primary"
+                                      : "text-muted-foreground hover:text-foreground",
+                                  )}
+                                >
+                                  <Icon
+                                    className={cn(
+                                      "size-4",
+                                      isActive && "fill-current",
+                                    )}
+                                  />
+                                  <span>{count}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Desktop reactions info */}
+                          <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                            <ThumbsUpIcon className="size-3.5" />
+                            {totalReactions} reacts
+                          </span>
+
+                          <div className="flex items-center gap-3 sm:gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleComments(item.id)}
+                              className={cn(
+                                "flex sm:inline-flex items-center gap-1.5 text-xs font-medium transition-colors sm:rounded-full sm:border sm:px-3 sm:py-1.5",
+                                isExpandedComments
+                                  ? "text-primary sm:border-primary/40 sm:bg-primary/10"
+                                  : "text-muted-foreground hover:text-foreground sm:border-border sm:bg-background",
+                              )}
+                            >
+                              <MessageSquareIcon className="size-4 sm:size-3.5" />
+                              <span>{item.commentCount}</span>
+                              <span className="hidden sm:inline">
+                                {" "}
+                                comments
+                              </span>
+                            </button>
+
+                            <span className="flex sm:inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:rounded-full sm:border sm:border-border sm:bg-background sm:px-3 sm:py-1.5">
+                              <CheckCircle2Icon className="size-4 sm:size-3.5" />
+                              <span>{item.answerCount}</span>
+                              <span className="hidden sm:inline"> answers</span>
+                            </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded-full border border-border/20 px-2.5 py-1 text-[11px] font-semibold shadow-sm",
-                              statusColorMap[item.status],
-                            )}
-                          >
-                            {statusLabelMap[item.status]}
-                          </span>
-
-                          <div className="group/dots relative">
-                            <button
-                              type="button"
-                              aria-label="View question details"
-                              className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-all duration-200 hover:bg-muted/80 hover:text-foreground hover:shadow-sm"
-                            >
-                              <MoreHorizontalIcon className="size-5" />
-                            </button>
-
-                            <div className="invisible absolute right-0 top-full z-10 mt-2 w-[280px] origin-top-right scale-95 rounded-2xl border border-border/60 bg-background/98 p-4 opacity-0 shadow-xl shadow-black/5 backdrop-blur-xl transition-all duration-200 group-hover/dots:visible group-hover/dots:scale-100 group-hover/dots:opacity-100 dark:shadow-black/20">
-                              <div className="space-y-4">
-                                {item.resetCount > 0 && (
-                                  <>
-                                    <div>
-                                      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                                        Question Status
-                                      </p>
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                                          Reset {item.resetCount} times
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="h-px w-full bg-border/50" />
-                                  </>
-                                )}
-
-                                <div>
-                                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                                    Details & Formats
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {requiredAnswerFormats.length === 0 ? (
-                                      <span
-                                        className={cn(
-                                          "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
-                                          anyFormatColor,
-                                        )}
-                                      >
-                                        {getAnswerFormatLabel(
-                                          item.answerFormat,
-                                        )}
-                                      </span>
-                                    ) : (
-                                      requiredAnswerFormats.map((format) => (
-                                        <span
-                                          key={`${item.id}-${format}`}
-                                          className={cn(
-                                            "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
-                                            formatColorMap[format],
-                                          )}
-                                        >
-                                          {getAnswerFormatLabel(format)}
-                                        </span>
-                                      ))
-                                    )}
-
-                                    <span
-                                      className={cn(
-                                        "rounded-md px-2 py-1 text-[10px] font-medium shadow-sm",
-                                        visibilityColorMap[
-                                          item.answerVisibility
-                                        ],
-                                      )}
-                                    >
-                                      {
-                                        visibilityLabelMap[
-                                          item.answerVisibility
-                                        ]
-                                      }
-                                    </span>
-
-                                    {questionChips.map((chip) => (
-                                      <span
-                                        key={`${item.id}-${chip}`}
-                                        className="rounded-md border border-border/80 bg-background px-2 py-1 text-[10px] text-muted-foreground shadow-sm"
-                                      >
-                                        {chip}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2.5 pt-1">
-                        <h2 className="text-[1.125rem] font-bold leading-snug text-foreground [overflow-wrap:anywhere] sm:text-[1.25rem]">
-                          {item.title}
-                        </h2>
-                        <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
-                          {item.body}
-                        </p>
-                      </div>
-
-                      {item.images && item.images.length > 0 && (
-                        <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
-                          {item.images.map((imgUrl, index) => (
-                            <a
-                              key={index}
-                              href={imgUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={imgUrl}
-                                alt={`Question media ${index + 1}`}
-                                className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                              />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-
-                      {isAccepted && (
-                        <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
-                          <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
-                            {item.acceptedByName
-                              ? `${item.acceptedByName} is already working on this question.`
-                              : "This question is currently being answered."}
-                          </p>
-                          {item.acceptedAt && (
-                            <p className="mt-1 text-xs text-sky-700/70 dark:text-sky-300/70">
-                              Accepted {formatTimeAgo(item.acceptedAt)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {isSolved && (
-                        <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05]">
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-500/[0.08]"
-                            onClick={() => item.answer && toggleAnswer(item.id)}
-                          >
-                            <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                                Accepted answer
-                              </p>
-                              <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
-                                {item.answer?.acceptorName ||
-                                  item.acceptedByName ||
-                                  "Teacher"}{" "}
-                                solved this question.
-                              </p>
-                            </div>
-                            {item.answer ? (
-                              <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                <span>
-                                  {expandedAnswers.has(item.id)
-                                    ? "Hide"
-                                    : "View"}
-                                </span>
-                                <ChevronDownIcon
-                                  className={cn(
-                                    "size-4 transition-transform duration-200",
-                                    expandedAnswers.has(item.id) &&
-                                      "rotate-180",
-                                  )}
-                                />
-                              </div>
-                            ) : null}
-                          </button>
-
-                          {item.answer &&
-                            expandedAnswers.has(item.id) &&
-                            (() => {
-                              const answer = item.answer;
-
-                              return (
-                                <div className="space-y-4 border-t border-emerald-500/15 bg-background/95 px-4 py-4">
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                      <p className="text-sm font-semibold text-foreground">
-                                        {answer.acceptorName || "Teacher"}
-                                      </p>
-                                      {answer.submittedAt && (
-                                        <p className="text-xs text-muted-foreground">
-                                          Posted{" "}
-                                          {formatTimeAgo(answer.submittedAt)}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {answer.rating != null && (
-                                      <div className="flex items-center gap-0.5">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <StarIcon
-                                            key={star}
-                                            className={cn(
-                                              "size-3.5",
-                                              star <=
-                                                Math.round(answer.rating ?? 0)
-                                                ? "fill-amber-400 text-amber-400"
-                                                : "text-muted-foreground/30",
-                                            )}
-                                          />
-                                        ))}
-                                        <span className="ml-1 text-xs text-muted-foreground">
-                                          {Number(answer.rating).toFixed(1)}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {answer.content && (
-                                    <p className="text-sm leading-7 text-foreground whitespace-pre-wrap [overflow-wrap:anywhere]">
-                                      {answer.content}
-                                    </p>
-                                  )}
-
-                                  {answer.mediaUrls &&
-                                    answer.mediaUrls.length > 0 && (
-                                      <div
-                                        className={cn(
-                                          "grid gap-2 overflow-hidden rounded-2xl",
-                                          answer.mediaUrls.length === 1
-                                            ? "grid-cols-1"
-                                            : "grid-cols-1 sm:grid-cols-2",
-                                        )}
-                                      >
-                                        {answer.mediaUrls.map((url, index) => {
-                                          const isVideo =
-                                            url.includes("/video/") ||
-                                            url.endsWith(".mp4") ||
-                                            url.endsWith(".webm");
-
-                                          return isVideo ? (
-                                            <video
-                                              key={index}
-                                              src={url}
-                                              controls
-                                              className="h-full max-h-80 w-full rounded-xl border border-border bg-muted/30"
-                                            />
-                                          ) : (
-                                            <a
-                                              key={index}
-                                              href={url}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="group block overflow-hidden rounded-xl border border-border/70 bg-muted/10"
-                                            >
-                                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                                              <img
-                                                src={url}
-                                                alt={`Answer media ${index + 1}`}
-                                                className="h-32 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02] sm:h-48"
-                                              />
-                                            </a>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                </div>
-                              );
-                            })()}
-                        </div>
-                      )}
-
-                      {!isAccepted && !isSolved && (
-                        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Answer lane
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-foreground">
-                            {item.previewAuthor || "No public answer yet"}
-                          </p>
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
-                            {item.previewText ||
-                              "Accept this question and be the first to help with a clear answer."}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/[0.18] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center justify-between sm:justify-start sm:gap-2">
-                        {/* Mobile reactions */}
-                        <div className="flex items-center gap-3 md:hidden">
-                          {REACTION_CONFIG.map(({ type, icon: Icon }) => {
-                            const count = item.reactions.filter((r) => r.type === type).length;
-                            const isActive = userReaction?.type === type;
-                            return (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => handleReact(item.id, type)}
-                                className={cn(
-                                  "flex items-center gap-1.5 text-xs font-medium transition-colors",
-                                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                                )}
-                              >
-                                <Icon className={cn("size-4", isActive && "fill-current")} />
-                                <span>{count}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Desktop reactions info */}
-                        <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
-                          <ThumbsUpIcon className="size-3.5" />
-                          {totalReactions} reacts
-                        </span>
-
-                        <div className="flex items-center gap-3 sm:gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleComments(item.id)}
-                            className={cn(
-                              "flex sm:inline-flex items-center gap-1.5 text-xs font-medium transition-colors sm:rounded-full sm:border sm:px-3 sm:py-1.5",
-                              isExpandedComments
-                                ? "text-primary sm:border-primary/40 sm:bg-primary/10"
-                                : "text-muted-foreground hover:text-foreground sm:border-border sm:bg-background"
-                            )}
-                          >
-                            <MessageSquareIcon className="size-4 sm:size-3.5" />
-                            <span>{item.commentCount}</span>
-                            <span className="hidden sm:inline"> comments</span>
-                          </button>
-
-                          <span className="flex sm:inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:rounded-full sm:border sm:border-border sm:bg-background sm:px-3 sm:py-1.5">
-                            <CheckCircle2Icon className="size-4 sm:size-3.5" />
-                            <span>{item.answerCount}</span>
-                            <span className="hidden sm:inline"> answers</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {canComment && (
-                          <Button
-                            onClick={() => toggleComments(item.id)}
-                            size="sm"
-                            variant={
-                              isExpandedComments ? "secondary" : "outline"
-                            }
-                            className="hidden sm:flex"
-                          >
-                            <MessageSquareIcon className="mr-1 size-3.5" />
-                            Comment
-                          </Button>
-                        )}
-
-                        {canAccept && (
-                          <Button
-                            disabled={isAcceptLoading}
-                            onClick={() => handleAccept(item.id)}
-                            size="sm"
-                            className="flex-1 sm:flex-none"
-                          >
-                            {isAcceptLoading ? (
-                              <Loader2Icon className="mr-1 size-3.5 animate-spin" />
-                            ) : (
-                              <CheckCircle2Icon className="mr-1 size-3.5" />
-                            )}
-                            Accept
-                          </Button>
-                        )}
-
-                        {canOpenThread && (
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="ghost"
-                            className="flex-1 sm:flex-none justify-between sm:justify-center border border-border sm:border-transparent"
-                          >
-                            <Link href={getChannelPath(item.channelId)}>
-                              Open thread
-                              <ArrowUpRightIcon className="size-3.5" />
-                            </Link>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {isExpandedComments && (
-                      <div className="border-t border-border/60 bg-background px-4 py-4">
-                        <div className="space-y-4">
-                          <div className="max-h-[320px] space-y-4 overflow-y-auto pr-1">
-                            {comments.length === 0 ? (
-                              <p className="py-2 text-sm text-muted-foreground">
-                                No comments yet. The first reply will appear
-                                here.
-                              </p>
-                            ) : (
-                              comments.map((comment) => (
-                                <div
-                                  key={comment._id}
-                                  className="flex min-w-0 gap-3"
-                                >
-                                  {comment.studentId?.userImage ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={comment.studentId.userImage}
-                                      alt={comment.studentId.name || "User"}
-                                      className="size-8 rounded-full border border-border/60 object-cover shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                                      {(comment.studentId?.name || "U")
-                                        .charAt(0)
-                                        .toUpperCase()}
-                                    </div>
-                                  )}
-
-                                  <div className="min-w-0 flex-1 border-l-2 border-border/60 pl-3">
-                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                      <span className="font-semibold text-foreground">
-                                        {comment.studentId?.name || "Anonymous"}
-                                      </span>
-                                      {comment.studentId?.username && (
-                                        <span>
-                                          @{comment.studentId.username}
-                                        </span>
-                                      )}
-                                      <span>•</span>
-                                      <span>
-                                        {formatTimeAgo(comment.createdAt)}
-                                      </span>
-                                    </div>
-                                    <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
-                                      {comment.content}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-
                           {canComment && (
-                            <div className="rounded-2xl border border-border/70 bg-muted/10 p-3">
-                              <div className="relative">
-                                <textarea
-                                  placeholder="Add a comment to this question..."
-                                  className="min-h-[48px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                  rows={1}
-                                  value={commentInput[item.id] || ""}
-                                  onChange={(e) => {
-                                    setCommentInput((prev) => ({
-                                      ...prev,
-                                      [item.id]: e.target.value,
-                                    }));
-                                    e.target.style.height = "auto";
-                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                      e.preventDefault();
-                                      submitComment(item.id);
-                                    }
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  className="absolute right-3 top-3 p-1 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
-                                  disabled={
-                                    isSubmittingComment === item.id ||
-                                    !commentInput[item.id]?.trim()
-                                  }
-                                  onClick={() => submitComment(item.id)}
-                                >
-                                  {isSubmittingComment === item.id ? (
-                                    <Loader2Icon className="size-4 animate-spin" />
-                                  ) : (
-                                    <SendIcon className="size-4" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
+                            <Button
+                              onClick={() => toggleComments(item.id)}
+                              size="sm"
+                              variant={
+                                isExpandedComments ? "secondary" : "outline"
+                              }
+                              className="hidden sm:flex"
+                            >
+                              <MessageSquareIcon className="mr-1 size-3.5" />
+                              Comment
+                            </Button>
+                          )}
+
+                          {canAccept && (
+                            <Button
+                              disabled={isAcceptLoading}
+                              onClick={() => handleAccept(item.id)}
+                              size="sm"
+                              className="flex-1 sm:flex-none"
+                            >
+                              {isAcceptLoading ? (
+                                <Loader2Icon className="mr-1 size-3.5 animate-spin" />
+                              ) : (
+                                <CheckCircle2Icon className="mr-1 size-3.5" />
+                              )}
+                              Accept
+                            </Button>
+                          )}
+
+                          {canOpenThread && (
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="ghost"
+                              className="flex-1 sm:flex-none justify-between sm:justify-center border border-border sm:border-transparent"
+                            >
+                              <Link href={getChannelPath(item.channelId)}>
+                                Open thread
+                                <ArrowUpRightIcon className="size-3.5" />
+                              </Link>
+                            </Button>
                           )}
                         </div>
                       </div>
-                    )}
+                      {isExpandedComments && (
+                        <div className="border-t border-border/60 bg-background px-4 py-4">
+                          <div className="space-y-4">
+                            <div className="max-h-[320px] space-y-4 overflow-y-auto pr-1">
+                              {comments.length === 0 ? (
+                                <p className="py-2 text-sm text-muted-foreground">
+                                  No comments yet. The first reply will appear
+                                  here.
+                                </p>
+                              ) : (
+                                comments.map((comment) => (
+                                  <div
+                                    key={comment._id}
+                                    className="flex min-w-0 gap-3"
+                                  >
+                                    {comment.studentId?.userImage ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={comment.studentId.userImage}
+                                        alt={comment.studentId.name || "User"}
+                                        className="size-8 rounded-full border border-border/60 object-cover shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                        {(comment.studentId?.name || "U")
+                                          .charAt(0)
+                                          .toUpperCase()}
+                                      </div>
+                                    )}
+
+                                    <div className="min-w-0 flex-1 border-l-2 border-border/60 pl-3">
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        <span className="font-semibold text-foreground">
+                                          {comment.studentId?.name ||
+                                            "Anonymous"}
+                                        </span>
+                                        {comment.studentId?.username && (
+                                          <span>
+                                            @{comment.studentId.username}
+                                          </span>
+                                        )}
+                                        <span>•</span>
+                                        <span>
+                                          {formatTimeAgo(comment.createdAt)}
+                                        </span>
+                                      </div>
+                                      <p className="mt-1 text-sm leading-6 text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                                        {comment.content}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+
+                            {canComment && (
+                              <div className="rounded-2xl border border-border/70 bg-muted/10 p-3">
+                                <div className="relative">
+                                  <textarea
+                                    placeholder="Add a comment to this question..."
+                                    className="min-h-[48px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    rows={1}
+                                    value={commentInput[item.id] || ""}
+                                    onChange={(e) => {
+                                      setCommentInput((prev) => ({
+                                        ...prev,
+                                        [item.id]: e.target.value,
+                                      }));
+                                      e.target.style.height = "auto";
+                                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        submitComment(item.id);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-3 p-1 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                                    disabled={
+                                      isSubmittingComment === item.id ||
+                                      !commentInput[item.id]?.trim()
+                                    }
+                                    onClick={() => submitComment(item.id)}
+                                  >
+                                    {isSubmittingComment === item.id ? (
+                                      <Loader2Icon className="size-4 animate-spin" />
+                                    ) : (
+                                      <SendIcon className="size-4" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              );
+            })}
+          </div>
         </div>
 
         <div className="hidden space-y-6 md:block xl:hidden">
