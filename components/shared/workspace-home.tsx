@@ -1134,8 +1134,8 @@ export function WorkspaceHome({
               </div>
             )}
 
-            {/* Empty state */}
-            {isHydrated && visibleFeedItems.length === 0 && (
+            {/* Empty state & Fallback */}
+            {!isLoading && visibleFeedItems.length === 0 && (
               <Card className="border border-dashed border-border/70 shadow-sm">
                 <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                   <MessageSquareIcon className="size-12 text-muted-foreground/40 mb-4" />

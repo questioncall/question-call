@@ -185,8 +185,7 @@ export function WorkspaceShell({
     channelsRef.current = channels;
   }, [channels]);
   
-  const [hasCompletedInitialSidebarLoad, setHasCompletedInitialSidebarLoad] =
-    useState(channelsHydrated);
+  const [hasFailedInitialLoad, setHasFailedInitialLoad] = useState(false);
   const [liveSocialLinks, setLiveSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
 
   // ── Global call state ───────────────────────────────────────
@@ -212,11 +211,11 @@ export function WorkspaceShell({
       if (res.ok) {
         const data: ChannelListItem[] = await res.json();
         dispatch(setChannelsList(data));
+      } else {
+        setHasFailedInitialLoad(true);
       }
     } catch {
-      // Silently fail
-    } finally {
-      setHasCompletedInitialSidebarLoad(true);
+      setHasFailedInitialLoad(true);
     }
   }, [dispatch]);
 
@@ -256,11 +255,7 @@ export function WorkspaceShell({
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
 
-  useEffect(() => {
-    if (channelsHydrated) {
-      setHasCompletedInitialSidebarLoad(true);
-    }
-  }, [channelsHydrated]);
+
 
   useEffect(() => {
     if (
@@ -640,7 +635,7 @@ collapseSidebarOnClick: true,
     resolvedUser.role === "STUDENT"
       ? "Ask doubts, follow answers, and manage your learning flow."
       : "Track question activity, channel updates, and reputation from one place.";
-  const isSidebarLoading = !hasCompletedInitialSidebarLoad;
+  const isSidebarLoading = !channelsHydrated && !hasFailedInitialLoad;
 
   return (
     <WorkspaceFilterProvider>

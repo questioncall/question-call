@@ -63,7 +63,7 @@ import {
   setMessageDeleted,
   markMessagesAsSeen,
   markOwnMessagesAsSeen,
-  clearActiveChannel,
+  setActiveChannelId,
 } from "@/store/features/channel/channel-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { ChatMessage, ChannelStatus } from "@/types/channel";
@@ -166,9 +166,15 @@ function formatCallDurationUI(seconds: number): string {
 export function ChannelChat({ channelId }: ChannelChatProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { channel, messages, isLoaded, isLoading, error, isAnswerSubmitted } = useAppSelector(
-    (state) => state.channel,
-  );
+  const session = useAppSelector((state) => state.channel.sessions[channelId]);
+  const { channel, messages, isLoaded, isLoading, error, isAnswerSubmitted } = session || {
+    channel: null,
+    messages: [],
+    isLoaded: false,
+    isLoading: false,
+    error: null,
+    isAnswerSubmitted: false,
+  };
   const userId = useAppSelector((state) => state.user.id);
 
   const [startingCallType, setStartingCallType] = useState<"AUDIO" | "VIDEO" | null>(null);
@@ -229,27 +235,30 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
   // ─── Fetch channel data from API ───────────────────────
   const fetchChannelData = useCallback(async () => {
-    dispatch(setChannelLoading());
+    if (!isLoaded) {
+      dispatch(setChannelLoading(channelId));
+    }
     try {
       const res = await fetch(`/api/channels/${channelId}`);
       if (!res.ok) {
         const data = await res.json();
-        dispatch(setChannelError(data.error || "Failed to load channel"));
+        dispatch(setChannelError({ channelId, error: data.error || "Failed to load channel" }));
         return;
       }
       const data = await res.json();
-      dispatch(setChannelData({ channel: data.channel, messages: data.messages }));
+      dispatch(setChannelData({ channelId, channel: data.channel, messages: data.messages }));
     } catch {
-      dispatch(setChannelError("Failed to load channel"));
+      dispatch(setChannelError({ channelId, error: "Failed to load channel" }));
     }
-  }, [channelId, dispatch]);
+  }, [channelId, dispatch, isLoaded]);
 
   useEffect(() => {
+    dispatch(setActiveChannelId(channelId));
     fetchChannelData();
     return () => {
-      dispatch(clearActiveChannel());
+      dispatch(setActiveChannelId(null));
     };
-  }, [fetchChannelData, dispatch]);
+  }, [channelId, fetchChannelData, dispatch]);
 
   // ─── Countdown timer ──────────────────────────────────
   useEffect(() => {
@@ -282,7 +291,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       if (!payload.message) return;
       // Don't add our own messages (we already have them optimistically)
       if (payload.message.senderId === userId) return;
-      dispatch(addMessage({ ...payload.message, isOwn: false }));
+      dispatch(addMessage({ channelId, message: { ...payload.message, isOwn: false } }));
 
       // Skip sound/notification for system messages (call logs etc)
       if (payload.message.isSystemMessage) return;
@@ -331,17 +340,17 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       ratingGiven?: number;
     }) => {
       if (payload.status) {
-        dispatch(setChannelStatus(payload.status));
+        dispatch(setChannelStatus({ channelId, status: payload.status }));
       }
       if (payload.ratingGiven) {
-        dispatch(setChannelRating(payload.ratingGiven));
+        dispatch(setChannelRating({ channelId, rating: payload.ratingGiven }));
       }
     };
 
     const handleMessagesSeen = (payload: { seenByUserId?: string }) => {
       // If the OTHER person saw the messages
       if (payload.seenByUserId !== userId) {
-        dispatch(markOwnMessagesAsSeen());
+        dispatch(markOwnMessagesAsSeen(channelId));
       }
     };
 
@@ -358,6 +367,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
       dispatch(
         setChannelTimer({
+          channelId,
           timerDeadline: payload.timerDeadline,
           timeExtensionCount: payload.timeExtensionCount,
         }),
@@ -373,24 +383,24 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     };
 
     const handleAnswerSubmitted = () => {
-      dispatch(setAnswerSubmitted(true));
+      dispatch(setAnswerSubmitted({ channelId, value: true }));
     };
 
     const handleChannelClosed = (payload: { status?: ChannelStatus; ratingGiven?: number }) => {
       if (payload.status) {
-        dispatch(setChannelStatus(payload.status));
+        dispatch(setChannelStatus({ channelId, status: payload.status }));
       }
       if (payload.ratingGiven) {
-        dispatch(setChannelRating(payload.ratingGiven));
+        dispatch(setChannelRating({ channelId, rating: payload.ratingGiven }));
       }
     };
 
     const handleMessageMarked = (payload: { messageId: string; isMarkedAsAnswer: boolean }) => {
-      dispatch(toggleMessageMarked(payload));
+      dispatch(toggleMessageMarked({ channelId, ...payload }));
     };
 
     const handleMessageDeleted = (payload: { messageId: string }) => {
-      dispatch(setMessageDeleted({ messageId: payload.messageId }));
+      dispatch(setMessageDeleted({ channelId, messageId: payload.messageId }));
     };
 
     pusherChannel.bind(CHANNEL_MESSAGE_EVENT, handleMessage);
@@ -431,7 +441,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       if (document.hidden) return;
       const hasUnseen = messages.some((m) => !m.isOwn && !m.isSeen);
       if (hasUnseen) {
-        dispatch(markMessagesAsSeen());
+        dispatch(markMessagesAsSeen(channelId));
         fetch(`/api/channels/${channelId}/read`, { method: "POST" }).catch(console.error);
       }
     };
@@ -607,19 +617,22 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
       dispatch(
         addMessage({
-          id: tempId,
           channelId,
-          senderId: userId || "",
-          senderName: "You",
-          content: content?.trim() || "",
-          isOwn: true,
-          isSystemMessage: false,
-          mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : null,
-          mediaUrl: pendingFile?.previewUrl || null,
-          isSending: Boolean(pendingFile),
-          isSeen: false,
-          isDelivered: false,
-          sentAt: new Date().toISOString(),
+          message: {
+            id: tempId,
+            channelId,
+            senderId: userId || "",
+            senderName: "You",
+            content: content?.trim() || "",
+            isOwn: true,
+            isSystemMessage: false,
+            mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : null,
+            mediaUrl: pendingFile?.previewUrl || null,
+            isSending: Boolean(pendingFile),
+            isSeen: false,
+            isDelivered: false,
+            sentAt: new Date().toISOString(),
+          }
         }),
       );
 
@@ -652,7 +665,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             },
           });
         } catch (error) {
-          dispatch(removeMessage(tempId));
+          dispatch(removeMessage({ channelId, messageId: tempId }));
           throw error;
         } finally {
           setUploadProgress(null);
@@ -672,13 +685,14 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         });
 
         if (!res.ok) {
-          dispatch(removeMessage(tempId));
+          dispatch(removeMessage({ channelId, messageId: tempId }));
           throw new Error("Failed to send message.");
         }
 
         const savedMsg: ChatMessage = await res.json();
         dispatch(
           updateMessage({
+            channelId,
             id: tempId,
             updates: {
               id: savedMsg.id,
@@ -693,7 +707,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           revokeObjectUrl(pendingFile.previewUrl);
         }
       } catch (error) {
-        dispatch(removeMessage(tempId));
+        dispatch(removeMessage({ channelId, messageId: tempId }));
         throw error;
       }
     },
@@ -782,19 +796,22 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
         dispatch(
           addMessage({
-            id: tempId,
             channelId,
-            senderId: userId || "",
-            senderName: "You",
-            content: "",
-            isOwn: true,
-            isSystemMessage: false,
-            mediaType: "AUDIO",
-            mediaUrl: previewUrl,
-            isSending: true,
-            isSeen: false,
-            isDelivered: false,
-            sentAt: new Date().toISOString(),
+            message: {
+              id: tempId,
+              channelId,
+              senderId: userId || "",
+              senderName: "You",
+              content: "",
+              isOwn: true,
+              isSystemMessage: false,
+              mediaType: "AUDIO",
+              mediaUrl: previewUrl,
+              isSending: true,
+              isSeen: false,
+              isDelivered: false,
+              sentAt: new Date().toISOString(),
+            }
           }),
         );
 
@@ -827,15 +844,16 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             const savedMsg: ChatMessage = await res.json();
             dispatch(
               updateMessage({
+                channelId,
                 id: tempId,
                 updates: { id: savedMsg.id, isSending: false, mediaUrl: uploaded.url },
               }),
             );
           } else {
-            dispatch(removeMessage(tempId));
+            dispatch(removeMessage({ channelId, messageId: tempId }));
           }
         } catch {
-          dispatch(removeMessage(tempId));
+          dispatch(removeMessage({ channelId, messageId: tempId }));
           toast.error("Failed to send audio message.");
         } finally {
           setUploadProgress(null);
@@ -899,7 +917,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   // Non-async: dispatch is synchronous so React re-renders the star in the same frame
   const handleToggleMark = (messageId: string, currentMark: boolean) => {
     const nextMark = !currentMark;
-    dispatch(toggleMessageMarked({ messageId, isMarkedAsAnswer: nextMark }));
+    dispatch(toggleMessageMarked({ channelId, messageId, isMarkedAsAnswer: nextMark }));
     syncMarkToServer(messageId, nextMark);
   };
 
@@ -907,7 +925,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const handleDeleteMessage = async (messageId: string) => {
     if (!channelId) return;
     // Optimistic update
-    dispatch(setMessageDeleted({ messageId }));
+    dispatch(setMessageDeleted({ channelId, messageId }));
     try {
       const res = await fetch(`/api/channels/${channelId}/messages/${messageId}`, {
         method: "DELETE",
@@ -937,7 +955,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         }),
       });
       if (res.ok) {
-        dispatch(setAnswerSubmitted(true));
+        dispatch(setAnswerSubmitted({ channelId, value: true }));
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to submit answer.");
@@ -962,8 +980,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       });
       if (res.ok) {
         setIsRatingModalOpen(false);
-        dispatch(setChannelStatus("CLOSED"));
-        dispatch(setChannelRating(ratingValue));
+        dispatch(setChannelStatus({ channelId, status: "CLOSED" }));
+        dispatch(setChannelRating({ channelId, rating: ratingValue }));
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to close channel.");
@@ -989,6 +1007,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
       dispatch(
         setChannelTimer({
+          channelId,
           timerDeadline: data.timerDeadline,
           timeExtensionCount: data.timeExtensionCount,
         }),
