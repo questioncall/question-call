@@ -1,2 +1,1 @@
-
-1. Call is sometime fast and soemtime late arriving on the other user why so ?? 
+good right now the question feed questiosn, channels chat-area-msg, and many more psosibe stff aare not storing in the redux -- that is why when i go to setting and back to home and then it again refetches form db-- use redux and sotre all data in there an duse from there. dont break the current logic just update the store and make it rractive in real time.. _- first make a implemntation plan which which data types field swe ened to stroe in the redic .. then i will approve

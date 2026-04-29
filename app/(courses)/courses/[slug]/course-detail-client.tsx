@@ -321,13 +321,7 @@ export function CourseDetailClient({
                     </div>
                   </div>
 
-                  {userRole === "STUDENT" && !course.hasAccess ? (
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href={`/courses/${course.slug}/buy`}>
-                        Open dedicated checkout
-                      </Link>
-                    </Button>
-                  ) : null}
+
                 </div>
               </div>
             </div>
