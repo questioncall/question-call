@@ -124,9 +124,9 @@ export async function emitNotification(
     notification: payload,
   });
 
-  // Web Push (device notification) is fire-and-forget — it should not
-  // slow down the request that created the notification.
-  void sendPushNotificationToUser(userId, {
+  // Web Push (device notification) should be awaited so it doesn't get
+  // frozen mid-flight in Next.js serverless functions.
+  await sendPushNotificationToUser(userId, {
     type: notification.type,
     message: notification.message,
     href: payload.href,

@@ -111,22 +111,25 @@ export async function POST(request: Request) {
     // Notify the other participant via Pusher (user-scoped channel for global reach)
     const otherUserId = userId === askerId ? acceptorId : askerId;
     const { emitIncomingCall } = await import("@/lib/pusher/pusherServer");
-    emitIncomingCall(otherUserId, {
-      callSessionId: newCall._id.toString(),
-      channelId,
-      callerName: session.user.name || "A user",
-      callerImage,
-      callerId: userId,
-      mode: mode as "AUDIO" | "VIDEO",
-    }).catch(console.error);
-
-    // Fire a device push notification so the callee is alerted even when the
-    // app is closed or backgrounded (Pusher alone won't wake the device).
-    void sendPushNotificationToUser(otherUserId, {
-      type: "SYSTEM",
-      message: `${session.user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
-      href: `/calls/${newCall._id.toString()}`,
-    }).catch(() => {/* non-fatal */});
+    
+    // We await these network calls so they do not freeze mid-flight in Vercel Edge/Serverless environments.
+    await Promise.allSettled([
+      emitIncomingCall(otherUserId, {
+        callSessionId: newCall._id.toString(),
+        channelId,
+        callerName: session.user.name || "A user",
+        callerImage,
+        callerId: userId,
+        mode: mode as "AUDIO" | "VIDEO",
+      }),
+      // Fire a device push notification so the callee is alerted even when the
+      // app is closed or backgrounded (Pusher alone won't wake the device).
+      sendPushNotificationToUser(otherUserId, {
+        type: "SYSTEM",
+        message: `${session.user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
+        href: `/calls/${newCall._id.toString()}`,
+      })
+    ]);
 
     logCallLifecycle("created", {
       callSessionId: newCall._id.toString(),
