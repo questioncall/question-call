@@ -32,11 +32,13 @@ import {
   MailIcon,
   MoreHorizontalIcon,
   PhoneIcon,
+  HelpCircleIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import { APP_NAME, CONTACT_SERVICE_EMAIL } from "@/lib/constants";
+import { HelpCircle, ChevronDown } from "lucide-react"; 
 
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
@@ -438,6 +440,7 @@ function Nav() {
             { href: "#for-students", label: "Students" },
             { href: "#for-teachers", label: "Teachers" },
             { href: "#quiz", label: "Quiz" },
+            { href: "#faq", label: "FAQ" },
           ].map((item) =>
             item.href.startsWith("#") ? (
               <a
@@ -625,6 +628,7 @@ function Nav() {
                 { href: "#for-students", label: "Students" },
                 { href: "#for-teachers", label: "Teachers" },
                 { href: "#quiz", label: "Quiz" },
+                { href: "#faq", label: "FAQ" },
               ].map((item) =>
                 item.href.startsWith("#") ? (
                   <a
@@ -3970,6 +3974,201 @@ function subStyle(isDark: boolean): React.CSSProperties {
   };
 }
 
+/* ─────────────────────── FAQ SECTION ─────────────────────── */
+
+const faqs = [
+  {
+    question: "Why should I use QuestionCall instead of just asking an AI chatbot?",
+    answer:
+      "AI chatbots can give you instant answers, but they often miss the mark — especially when your question is tied to a specific textbook, curriculum, or concept you're genuinely stuck on. QuestionCall connects you with a real, verified teacher who listens, asks follow-up questions, and explains things your way. You can share images, send voice notes, and even jump on a live video call.",
+  },
+  {
+    question: "How quickly will I get help after I post a question?",
+    answer:
+      "Most questions are picked up within minutes since our teachers are active throughout the day. Once a teacher accepts your question, they have a strict 15-minute timer to deliver a clear and accurate answer — so there's no waiting around.",
+  },
+  {
+    question: "Can I keep my question private, or does everyone see it?",
+    answer:
+      "That's completely up to you. Post publicly so other students with the same doubt can benefit too, or post privately for direct one-on-one help sent straight to your inbox. Either way, you're in control.",
+  },
+  {
+    question: "How do I know the teachers are actually qualified?",
+    answer:
+      "Every teacher goes through a qualification process before they can start helping students. They must accurately answer test questions first — so by the time a teacher picks up your question, they've already proven they know their stuff. You'll also see their ratings and track record on their profile.",
+  },
+  {
+    question: "Which subjects can I get help with?",
+    answer:
+      "We cover all major academic subjects — Mathematics, Science, English, Computer Science, and more. Whether it's a tricky algebra problem, a confusing chemistry concept, or a coding error you can't debug, there's likely a teacher ready to help.",
+  },
+  {
+    question: "Is there anything to do on the platform other than asking questions?",
+    answer:
+      "Plenty! You can enroll in structured video courses, attend live scheduled classes, and take AI-generated quizzes to test your knowledge. The quiz portal even rewards you with points for scoring well — think of it as your full academic toolkit.",
+  },
+  {
+    question: "Can I use QuestionCall on my phone without downloading an app?",
+    answer:
+      "Yes — QuestionCall works as a Progressive Web App (PWA), so you can install it directly from your browser on any device. No app store needed. It supports dark mode and sends push notifications so you never miss a reply.",
+  },
+  {
+    question: "How does payment work if I want a course or private help?",
+    answer:
+      "QuestionCall supports eSewa and Khalti — the most trusted payment options in Nepal. Paying for a course or a private session is quick and straightforward, and your full transaction history is always visible in your account.",
+  },
+];
+
+export function FAQSection({ isDark }: { isDark: boolean }) {
+  const { ref, visible } = useScrollReveal();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const toggle = (i: number) => setOpenIndex(openIndex === i ? null : i);
+
+  const borderColor = isDark ? "rgba(31,118,110,0.22)" : "rgba(31,118,110,0.15)";
+  const dividerColor = isDark ? "rgba(31,118,110,0.18)" : "rgba(31,118,110,0.12)";
+  const cardBg       = isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.7)";
+  const cardBgOpen   = isDark ? "rgba(31,118,110,0.08)"  : "rgba(31,118,110,0.05)";
+  const iconBg       = isDark ? "rgba(31,118,110,0.18)"  : "rgba(31,118,110,0.1)";
+  const iconColor    = isDark ? "#7fb8b2" : "#1f766e";
+  const questionColor= isDark ? "#c8e6e2" : "#0a2e2a";
+  const answerColor  = isDark ? "rgba(200,230,226,0.72)" : "rgba(10,46,42,0.7)";
+  const chevronColor = isDark ? "rgba(127,184,178,0.5)"  : "rgba(31,118,110,0.4)";
+
+  return (
+    <section
+      id="faq"
+      ref={ref}
+      style={{ padding: "6rem 1.5rem", position: "relative" }}
+    >
+      <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 2 }}>
+        <SectionLabel label="FAQ" color="#7c3aed" />
+
+        <h2
+          style={{
+            fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+            fontWeight: 700,
+            color: questionColor,
+            margin: "0 0 0.4rem",
+          }}
+        >
+          Got Questions?
+        </h2>
+        <p
+          style={{
+            fontSize: 15,
+            color: answerColor,
+            margin: "0 0 2.5rem",
+          }}
+        >
+          Everything you need to know about QuestionCall.
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        >
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div
+                key={i}
+                onClick={() => toggle(i)}
+                style={{
+                  background: isOpen ? cardBgOpen : cardBg,
+                  border: `1px solid ${isOpen ? "rgba(31,118,110,0.45)" : borderColor}`,
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  transition: "border-color 0.25s ease, background 0.25s ease",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                }}
+              >
+                {/* Question row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "0.85rem 1.25rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 32,
+                      height: 32,
+                      borderRadius: 9,
+                      background: iconBg,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <HelpCircle size={16} color={iconColor} />
+                  </div>
+
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 14.5,
+                      fontWeight: 600,
+                      color: questionColor,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {faq.question}
+                  </span>
+
+                  <ChevronDown
+                    size={18}
+                    color={isOpen ? iconColor : chevronColor}
+                    style={{
+                      flexShrink: 0,
+                      transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.3s ease, color 0.25s ease",
+                    }}
+                  />
+                </div>
+
+                {/* Answer — only rendered when open, no extra wrappers */}
+                {isOpen && (
+                  <div
+                    style={{
+                      borderTop: `1px solid ${dividerColor}`,
+                      padding: "0.75rem 1.25rem 0.9rem",
+                      paddingLeft: `calc(1.25rem + 32px + 14px)`,
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                        color: answerColor,
+                        fontWeight: 400,
+                      }}
+                    >
+                      {faq.answer}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────────────── ROOT EXPORT ─────────────────────── */
 export function PublicLanding({
   trialDays = PLATFORM.trialDays,
@@ -4001,6 +4200,7 @@ export function PublicLanding({
         <QuizPortal isDark={isDark} />
         <CourseLibrary isDark={isDark} />
         <Comparison isDark={isDark} />
+        <FAQSection isDark={isDark} />
         <CTASection isDark={isDark} trialDays={trialDays} />
       </main>
       <Footer isDark={isDark} customerService={customerService} />
