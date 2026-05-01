@@ -8,10 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 type SessionData = {
@@ -79,18 +75,19 @@ export function AdminLiveSessionsClient({
       </div>
 
       <div className="flex items-center gap-2">
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-            <SelectItem value="LIVE">Live</SelectItem>
-            <SelectItem value="ENDED">Ended</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <Select
+          value={filter}
+          onValueChange={setFilter}
+          placeholder="Filter by status"
+          className="w-[180px]"
+          options={[
+            { value: "all", label: "All statuses" },
+            { value: "SCHEDULED", label: "Scheduled" },
+            { value: "LIVE", label: "Live" },
+            { value: "ENDED", label: "Ended" },
+            { value: "CANCELLED", label: "Cancelled" },
+          ]}
+        />
       </div>
 
       <div className="rounded-2xl border border-border bg-background">
