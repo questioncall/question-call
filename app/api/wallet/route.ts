@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -80,7 +81,7 @@ const QUESTION_PAYOUT_EVENT_TYPES = new Set([
   "TIMEOUT_PENALTY",
 ]);
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (
@@ -113,24 +114,34 @@ export async function GET() {
       session.user.role === "STUDENT"
         ? await getQuizSubscriptionSnapshot(session.user.id)
         : null;
-    const historyLimit = 50;
 
-    const withdrawalHistory = await WithdrawalRequest.find({
-      teacherId: session.user.id,
-    }).sort({ createdAt: -1 });
+    const { searchParams } = new URL(req.url);
+    const historyLimit = Math.min(Math.max(parseInt(searchParams.get("limit") || "10", 10), 1), 100);
+    const historySkip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
+
+    const withdrawalFilter = { teacherId: session.user.id };
+    const [withdrawalHistory, withdrawalTotal, allWithdrawals] = await Promise.all([
+      WithdrawalRequest.find(withdrawalFilter)
+        .sort({ createdAt: -1 })
+        .skip(historySkip)
+        .limit(historyLimit),
+      WithdrawalRequest.countDocuments(withdrawalFilter),
+      // We still need ALL withdrawals for balance calculation
+      WithdrawalRequest.find(withdrawalFilter).select("status pointsRequested").lean(),
+    ]);
 
     const pointBalance =
       session.user.role === "TEACHER"
         ? user.pointBalance ?? 0
         : user.points ?? 0;
 
-    const withdrawnFromHistory = withdrawalHistory
+    const withdrawnFromHistory = allWithdrawals
       .filter(w => w.status === "COMPLETED")
-      .reduce((sum, w) => sum + w.pointsRequested, 0);
+      .reduce((sum: number, w: { pointsRequested: number }) => sum + w.pointsRequested, 0);
 
-    const pendingWithdrawal = withdrawalHistory
+    const pendingWithdrawal = allWithdrawals
       .filter(w => w.status === "PENDING")
-      .reduce((sum, w) => sum + w.pointsRequested, 0);
+      .reduce((sum: number, w: { pointsRequested: number }) => sum + w.pointsRequested, 0);
 
     const totalPointsWithdrawn = roundPoints(
       Math.max(user.totalPointsWithdrawn ?? 0, withdrawnFromHistory),
@@ -178,13 +189,14 @@ export async function GET() {
 
     let earningHistory: WalletEarningHistoryItem[] = [];
     let questionPayoutHistory: QuestionPayoutHistoryItem[] = [];
+    let earningTotal = 0;
+    let questionPayoutTotal = 0;
 
     if (session.user.role === "TEACHER") {
       const [walletHistoryEvents, courseSaleCredits] = await Promise.all([
         WalletHistoryEvent.find({ userId: session.user.id })
           .select("_id type title description pointsDelta occurredAt metadata")
           .sort({ occurredAt: -1 })
-          .limit(historyLimit)
           .lean(),
         Transaction.find({
           userId: session.user.id,
@@ -193,7 +205,6 @@ export async function GET() {
         })
           .select("_id amount createdAt metadata")
           .sort({ createdAt: -1 })
-          .limit(historyLimit)
           .lean(),
       ]);
 
@@ -267,21 +278,26 @@ export async function GET() {
         },
       );
 
-      earningHistory = [...walletEventHistory, ...courseSaleHistory]
+      const allEarnings = [...walletEventHistory, ...courseSaleHistory]
         .sort(
           (left, right) =>
             new Date(right.occurredAt).getTime() -
             new Date(left.occurredAt).getTime(),
-        )
-        .slice(0, historyLimit);
+        );
 
-      questionPayoutHistory = questionPayoutHistory
+      const allPayouts = questionPayoutHistory
         .sort(
           (left, right) =>
             new Date(right.occurredAt).getTime() -
             new Date(left.occurredAt).getTime(),
-        )
-        .slice(0, historyLimit);
+        );
+
+      earningHistory = allEarnings.slice(historySkip, historySkip + historyLimit);
+      questionPayoutHistory = allPayouts.slice(historySkip, historySkip + historyLimit);
+
+      // Store totals for pagination
+      earningTotal = allEarnings.length;
+      questionPayoutTotal = allPayouts.length;
     }
 
     return NextResponse.json({
@@ -310,6 +326,7 @@ export async function GET() {
       bonusQuestions,
       referralCode: userReferralCode || null,
       withdrawalHistory,
+      withdrawalTotal,
       savedEsewaNumber: user.esewaNumber || null,
       totalPointsEarned,
       totalPointsWithdrawn,
@@ -317,7 +334,9 @@ export async function GET() {
       totalPenaltyPoints,
       creditablePoints: roundPoints(pointBalance),
       earningHistory,
+      earningTotal,
       questionPayoutHistory,
+      questionPayoutTotal,
     });
   } catch (error) {
     console.error("[GET /api/wallet]", error);

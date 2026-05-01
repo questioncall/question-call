@@ -17,14 +17,21 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // optional filter: PENDING, COMPLETED, REJECTED
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "10", 10), 1), 100);
+    const skip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
 
     const filter = status ? { status } : {};
 
-    const requests = await WithdrawalRequest.find(filter)
-      .populate("teacherId", "name email username userImage role")
-      .sort({ createdAt: -1 });
+    const [requests, total] = await Promise.all([
+      WithdrawalRequest.find(filter)
+        .populate("teacherId", "name email username userImage role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      WithdrawalRequest.countDocuments(filter),
+    ]);
 
-    return NextResponse.json({ requests });
+    return NextResponse.json({ requests, total });
   } catch (error) {
     console.error("[GET /api/admin/withdrawals]", error);
     return NextResponse.json(
@@ -33,3 +40,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

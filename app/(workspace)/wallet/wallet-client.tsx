@@ -86,6 +86,7 @@ type WalletData = {
   questionsRemaining: number | null;
   maxQuestions: number;
   withdrawalHistory: WithdrawalHistoryItem[];
+  withdrawalTotal: number;
   savedEsewaNumber: string | null;
   referralCode: string | null;
   totalPointsEarned: number;
@@ -94,7 +95,9 @@ type WalletData = {
   totalPenaltyPoints: number;
   creditablePoints: number;
   earningHistory: WalletEarningHistoryItem[];
+  earningTotal: number;
   questionPayoutHistory: QuestionPayoutHistoryItem[];
+  questionPayoutTotal: number;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -140,11 +143,14 @@ export function WalletClient() {
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
   const [saveEsewaNumber, setSaveEsewaNumber] = useState(true);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [loadingMore, setLoadingMore] = useState<string | null>(null);
+
+  const PAGE_SIZE = 10;
 
   const fetchWallet = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/wallet");
+      const res = await fetch(`/api/wallet?limit=${PAGE_SIZE}&skip=0`);
 
       if (!res.ok) {
         throw new Error("Failed to fetch wallet data");
@@ -159,6 +165,52 @@ export function WalletClient() {
       setLoading(false);
     }
   }, []);
+
+  const loadMoreHistory = useCallback(async (section: "withdrawal" | "earning" | "payout") => {
+    if (!wallet) return;
+    setLoadingMore(section);
+
+    try {
+      const currentCount =
+        section === "withdrawal"
+          ? wallet.withdrawalHistory.length
+          : section === "earning"
+            ? wallet.earningHistory.length
+            : wallet.questionPayoutHistory.length;
+
+      const res = await fetch(`/api/wallet?limit=${PAGE_SIZE}&skip=${currentCount}`);
+      if (!res.ok) throw new Error("Failed to load more");
+
+      const data = (await res.json()) as WalletData;
+
+      setWallet((prev) => {
+        if (!prev) return prev;
+        if (section === "withdrawal") {
+          return {
+            ...prev,
+            withdrawalHistory: [...prev.withdrawalHistory, ...data.withdrawalHistory],
+            withdrawalTotal: data.withdrawalTotal,
+          };
+        }
+        if (section === "earning") {
+          return {
+            ...prev,
+            earningHistory: [...prev.earningHistory, ...data.earningHistory],
+            earningTotal: data.earningTotal,
+          };
+        }
+        return {
+          ...prev,
+          questionPayoutHistory: [...prev.questionPayoutHistory, ...data.questionPayoutHistory],
+          questionPayoutTotal: data.questionPayoutTotal,
+        };
+      });
+    } catch (err) {
+      console.error("Load more failed:", err);
+    } finally {
+      setLoadingMore(null);
+    }
+  }, [wallet]);
 
   useEffect(() => {
     fetchWallet();
@@ -433,6 +485,7 @@ export function WalletClient() {
                 No question payout entries yet.
               </p>
             ) : (
+              <>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[860px] text-sm">
                   <thead>
@@ -507,6 +560,21 @@ export function WalletClient() {
                   </tbody>
                 </table>
               </div>
+              {wallet.questionPayoutHistory.length < wallet.questionPayoutTotal && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadMoreHistory("payout")}
+                    disabled={loadingMore === "payout"}
+                    className="gap-2"
+                  >
+                    {loadingMore === "payout" && <Loader2Icon className="size-4 animate-spin" />}
+                    Load More
+                  </Button>
+                </div>
+              )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -529,6 +597,7 @@ export function WalletClient() {
                 No additional wallet activity has been recorded yet.
               </p>
             ) : (
+              <>
               <div className="space-y-3">
                 {wallet.earningHistory.map((entry) => {
                   const isPositive = entry.pointsDelta >= 0;
@@ -588,6 +657,21 @@ export function WalletClient() {
                   );
                 })}
               </div>
+              {wallet.earningHistory.length < wallet.earningTotal && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadMoreHistory("earning")}
+                    disabled={loadingMore === "earning"}
+                    className="gap-2"
+                  >
+                    {loadingMore === "earning" && <Loader2Icon className="size-4 animate-spin" />}
+                    Load More
+                  </Button>
+                </div>
+              )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -776,6 +860,7 @@ export function WalletClient() {
               No withdrawal requests yet.
             </p>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -817,6 +902,21 @@ export function WalletClient() {
                 </tbody>
               </table>
             </div>
+            {wallet.withdrawalHistory.length < wallet.withdrawalTotal && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadMoreHistory("withdrawal")}
+                  disabled={loadingMore === "withdrawal"}
+                  className="gap-2"
+                >
+                  {loadingMore === "withdrawal" && <Loader2Icon className="size-4 animate-spin" />}
+                  Load More
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

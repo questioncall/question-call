@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIcon,
   ArrowDownRightIcon,
@@ -158,7 +158,9 @@ function getUserEmail(transaction: TransactionRecord) {
 
 export function TransactionsClient() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [totalTransactions, setTotalTransactions] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState("ALL");
   const [view, setView] = useState<FinanceView>("LEDGER");
   const [approveTarget, setApproveTarget] = useState<TransactionRecord | null>(null);
@@ -166,22 +168,36 @@ export function TransactionsClient() {
   const [adminNote, setAdminNote] = useState("");
   const [acting, setActing] = useState(false);
 
-  const fetchTransactions = async () => {
+  const PAGE_SIZE = 10;
+
+  const fetchTransactions = useCallback(async (loadMore = false) => {
     try {
-      setLoading(true);
-      const res = await fetch("/api/admin/transactions");
+      if (loadMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const skip = loadMore ? transactions.length : 0;
+      const res = await fetch(`/api/admin/transactions?limit=${PAGE_SIZE}&skip=${skip}`);
       if (!res.ok) {
         throw new Error("Failed to fetch transactions");
       }
 
       const data = await res.json();
-      setTransactions(data);
+      if (loadMore) {
+        setTransactions((prev) => [...prev, ...data.transactions]);
+      } else {
+        setTransactions(data.transactions);
+      }
+      setTotalTransactions(data.total);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [transactions.length]);
 
   useEffect(() => {
     void fetchTransactions();
@@ -480,7 +496,7 @@ export function TransactionsClient() {
             <CardHeader>
               <CardTitle>Transaction Ledger</CardTitle>
               <CardDescription>
-                Total {filteredTxns.length} records with review actions kept in one place.
+                Total {filteredTxns.length} records (of {totalTransactions} total) with review actions kept in one place.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -564,6 +580,20 @@ export function TransactionsClient() {
                   </tbody>
                 </table>
               </div>
+              {transactions.length < totalTransactions && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchTransactions(true)}
+                    disabled={loadingMore}
+                    className="gap-2"
+                  >
+                    {loadingMore && <Loader2Icon className="size-4 animate-spin" />}
+                    Load More
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

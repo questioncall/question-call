@@ -70,7 +70,9 @@ function getErrorMessage(error: unknown): string {
 
 export default function AdminWithdrawalsPage() {
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [totalRequests, setTotalRequests] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("ALL");
 
@@ -86,21 +88,39 @@ export default function AdminWithdrawalsPage() {
   const [rejectNote, setRejectNote] = useState("");
   const [rejecting, setRejecting] = useState(false);
 
-  const fetchRequests = useCallback(async () => {
+  const PAGE_SIZE = 10;
+
+  const fetchRequests = useCallback(async (loadMore = false) => {
     try {
-      setLoading(true);
-      const params = filter !== "ALL" ? `?status=${filter}` : "";
-      const res = await fetch(`/api/admin/withdrawals${params}`);
+      if (loadMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const skip = loadMore ? requests.length : 0;
+      const params = new URLSearchParams();
+      if (filter !== "ALL") params.set("status", filter);
+      params.set("limit", String(PAGE_SIZE));
+      params.set("skip", String(skip));
+
+      const res = await fetch(`/api/admin/withdrawals?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setRequests(data.requests);
+      if (loadMore) {
+        setRequests((prev) => [...prev, ...data.requests]);
+      } else {
+        setRequests(data.requests);
+      }
+      setTotalRequests(data.total);
       setError(null);
     } catch (error) {
       setError(getErrorMessage(error));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [filter]);
+  }, [filter, requests.length]);
 
   useEffect(() => {
     fetchRequests();
@@ -257,7 +277,7 @@ export default function AdminWithdrawalsPage() {
       <Card className="mx-auto w-fit max-w-full border-border/70 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Requests</CardTitle>
-          <CardDescription>{requests.length} total</CardDescription>
+          <CardDescription>{requests.length} of {totalRequests} total</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -277,6 +297,7 @@ export default function AdminWithdrawalsPage() {
               No withdrawal requests found.
             </p>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-max min-w-[1320px] text-sm">
                 <thead>
@@ -369,6 +390,21 @@ export default function AdminWithdrawalsPage() {
                 </tbody>
               </table>
             </div>
+            {requests.length < totalRequests && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchRequests(true)}
+                  disabled={loadingMore}
+                  className="gap-2"
+                >
+                  {loadingMore && <Loader2Icon className="size-4 animate-spin" />}
+                  Load More
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
