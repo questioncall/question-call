@@ -153,9 +153,129 @@ export function CoursesBrowseClient({
 
   return (
     <div className="min-h-svh bg-[#f6f8fb] dark:bg-background">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:bg-none">
+        <div className="pointer-events-none absolute inset-0">
+          <div className={`absolute -top-24 right-0 h-[500px] w-[500px] rounded-full blur-[100px] ${isDark ? "bg-emerald-500/15" : "bg-emerald-300/15"}`} />
+          <div className={`absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full blur-[80px] ${isDark ? "bg-teal-500/10" : "bg-teal-300/10"}`} />
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <div className="flex flex-col lg:flex-row gap-12 items-center">
+            <div className="max-w-2xl flex-1">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                <GraduationCapIcon className={`size-4 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
+                <span className={`text-xs font-semibold tracking-wide ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
+                  ONLINE COURSES
+                </span>
+              </div>
+              <h1 className={`text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? "text-white" : "text-slate-900"}`}>
+                Sharpen Your Skills With{" "}
+                <span className={`bg-gradient-to-r bg-clip-text text-transparent ${isDark ? "from-emerald-400 to-teal-300" : "from-emerald-600 to-teal-500"}`}>
+                  {APP_NAME} Courses
+                </span>
+              </h1>
+              <p className={`mt-5 max-w-xl text-base leading-relaxed sm:text-lg ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                Learn from structured lessons, live classes, and recordings across
+                free, subscription-included, and paid courses.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button
+                  size="lg"
+                  className={`bg-emerald-600 px-8 text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 ${isDark ? "" : "bg-emerald-500 hover:bg-emerald-600"}`}
+                  asChild
+                >
+                  <a href="#browse">
+                    <PlayCircleIcon className="mr-2 size-5" />
+                    Browse Courses
+                  </a>
+                </Button>
+                {isAuthenticated ? (
+                  isStudent ? (
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="outline"
+                      className={isDark ? "border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"}
+                    >
+                      <Link href="/courses/my">My Courses</Link>
+                    </Button>
+                  ) : canManageCourses ? (
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="outline"
+                      className={isDark ? "border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"}
+                    >
+                      <Link href="/studio">Course Studio</Link>
+                    </Button>
+                  ) : null
+                ) : (
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className={isDark ? "border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"}
+                  >
+                    <Link href="/auth/signup/student">Create Free Account</Link>
+                  </Button>
+                )}
+              </div>
+
+              <div className={`mt-14 grid grid-cols-3 gap-6 border-t pt-8 sm:max-w-lg ${isDark ? "border-slate-700/50" : "border-slate-200"}`}>
+                {[
+                  { value: `${stats.totalCourses}+`, label: "Courses" },
+                  {
+                    value: `${stats.totalEnrollments.toLocaleString()}+`,
+                    label: "Enrollments",
+                  },
+                  { value: `${stats.totalInstructors}+`, label: "Instructors" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{stat.value}</div>
+                    <div className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"}`}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-full max-w-md lg:max-w-none flex-1 lg:pl-10 mt-10 lg:mt-0">
+              {featuredCourses[0] || courses[0] ? (() => {
+                const previewCourse = featuredCourses[0] || courses[0];
+                return (
+                  <Link href={`/courses/${previewCourse.slug}`} className="block relative aspect-video rounded-2xl overflow-hidden border border-border shadow-2xl bg-black/5 group">
+                    {previewCourse.thumbnailUrl ? (
+                      <img src={previewCourse.thumbnailUrl} alt={previewCourse.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white transition-transform duration-500 group-hover:scale-105">
+                        <BookOpenIcon className="size-16 opacity-80" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="size-16 rounded-full bg-emerald-600/90 flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-transform backdrop-blur-sm">
+                        <PlayCircleIcon className="size-8 ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                      <h3 className="text-white font-bold text-lg line-clamp-1 drop-shadow-md">{previewCourse.title}</h3>
+                      <p className="text-white/80 text-sm drop-shadow-sm">{previewCourse.instructorName}</p>
+                    </div>
+                  </Link>
+                );
+              })() : (
+                <div className="relative aspect-video rounded-2xl overflow-hidden border border-border shadow-2xl bg-black/5 group">
+                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.25),_transparent_55%),linear-gradient(135deg,_rgba(15,23,42,0.95),_rgba(17,75,95,0.95))] text-white">
+                    <BookOpenIcon className="size-16 opacity-80" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
       {isStudent && enrolledCourses.length > 0 ? (
         <section className="border-b border-border bg-background/70">
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">
@@ -233,7 +353,7 @@ export function CoursesBrowseClient({
 
       {canManageCourses && managedCourses.length > 0 ? (
         <section className="border-b border-border bg-background/70">
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">
@@ -299,81 +419,10 @@ export function CoursesBrowseClient({
         </section>
       ) : null}
 
-{!isAuthenticated ? (
-        <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950">
-          <div className="pointer-events-none absolute inset-0">
-            <div className={`absolute -top-24 right-0 h-[500px] w-[500px] rounded-full blur-[100px] ${isDark ? "bg-blue-500/15" : "bg-blue-300/15"}`} />
-            <div className={`absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full blur-[80px] ${isDark ? "bg-indigo-500/10" : "bg-indigo-300/10"}`} />
-            <div
-              className={`absolute inset-0 ${isDark ? "opacity-[0.03]" : "opacity-[0.15]"}`}
-              style={{
-                backgroundImage:
-                  "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-              }}
-            />
-          </div>
 
-          <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 dark:border-blue-500/30 dark:bg-blue-500/10">
-                <GraduationCapIcon className={`size-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
-                <span className={`text-xs font-semibold tracking-wide ${isDark ? "text-blue-400" : "text-blue-700"}`}>
-                  ONLINE COURSES
-                </span>
-              </div>
-              <h1 className={`text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl ${isDark ? "text-white" : "text-slate-900"}`}>
-                Sharpen Your Skills With{" "}
-                <span className={`bg-gradient-to-r bg-clip-text text-transparent ${isDark ? "from-blue-400 to-indigo-300" : "from-blue-600 to-indigo-500"}`}>
-                  {APP_NAME} Courses
-                </span>
-              </h1>
-              <p className={`mt-5 max-w-xl text-base leading-relaxed sm:text-lg ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                Learn from structured lessons, live classes, and recordings across
-                free, subscription-included, and paid courses.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button
-                  size="lg"
-                  className={`bg-blue-600 px-8 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 ${isDark ? "" : "bg-blue-500 hover:bg-blue-600"}`}
-                  asChild
-                >
-                  <a href="#browse">
-                    <PlayCircleIcon className="mr-2 size-5" />
-                    Browse Courses
-                  </a>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className={isDark ? "border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white" : "border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"}
-                >
-                  <Link href="/auth/signup/student">Create Free Account</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className={`mt-14 grid grid-cols-3 gap-6 border-t pt-8 sm:max-w-lg ${isDark ? "border-slate-700/50" : "border-slate-200"}`}>
-              {[
-                { value: `${stats.totalCourses}+`, label: "Courses" },
-                {
-                  value: `${stats.totalEnrollments.toLocaleString()}+`,
-                  label: "Enrollments",
-                },
-                { value: `${stats.totalInstructors}+`, label: "Instructors" },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <div className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{stat.value}</div>
-                  <div className={`text-xs ${isDark ? "text-slate-500" : "text-slate-500"}`}>{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {featuredCourses.length > 0 ? (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-foreground">Featured</h2>
@@ -430,7 +479,7 @@ export function CoursesBrowseClient({
         </section>
       ) : null}
 
-      <section id="browse" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <section id="browse" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />

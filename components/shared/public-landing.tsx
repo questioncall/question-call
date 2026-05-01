@@ -38,7 +38,7 @@ import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import { APP_NAME, CONTACT_SERVICE_EMAIL } from "@/lib/constants";
-import { HelpCircle, ChevronDown } from "lucide-react"; 
+import { HelpCircle, ChevronDown, PlusIcon } from "lucide-react"; 
 
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
@@ -410,7 +410,7 @@ function Nav() {
               fontSize: 15,
               fontWeight: 700,
               letterSpacing: "-0.03em",
-              color: isDark ? "#e8f5f3" : "#0f3d38",
+              color: isDark ? "#f9fafb" : "#030712",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -452,7 +452,7 @@ function Nav() {
                   textDecoration: "none",
                   fontSize: 12,
                   fontWeight: 600,
-                  color: isDark ? "#9dc8c3" : "#2a6b64",
+                  color: isDark ? "#d1d5db" : "#374151",
                 }}
                 className="lpb-btn"
               >
@@ -468,7 +468,7 @@ function Nav() {
                   textDecoration: "none",
                   fontSize: 12,
                   fontWeight: 600,
-                  color: isDark ? "#9dc8c3" : "#2a6b64",
+                  color: isDark ? "#d1d5db" : "#374151",
                 }}
                 className="lpb-btn"
               >
@@ -487,7 +487,7 @@ function Nav() {
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 600,
-              color: isDark ? "#9dc8c3" : "#2a6b64",
+              color: isDark ? "#d1d5db" : "#374151",
               display: "flex",
               alignItems: "center",
               gap: 4,
@@ -506,7 +506,7 @@ function Nav() {
               fontWeight: 600,
               borderRadius: 10,
               textDecoration: "none",
-              color: isDark ? "#9dc8c3" : "#2a6b64",
+              color: isDark ? "#d1d5db" : "#374151",
             }}
             className="lpb-btn"
           >
@@ -521,7 +521,7 @@ function Nav() {
               borderRadius: 10,
               border: "1px solid rgba(31,118,110,0.35)",
               textDecoration: "none",
-              color: isDark ? "#9dc8c3" : "#1f766e",
+              color: isDark ? "#d1d5db" : "#374151",
             }}
             className="lpb-btn"
           >
@@ -592,7 +592,7 @@ function Nav() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: isDark ? "#9dc8c3" : "#2a6b64",
+              color: isDark ? "#d1d5db" : "#374151",
               boxShadow: scrolled ? "0 12px 28px rgba(15,50,46,0.12)" : "none",
             }}
           >
@@ -645,7 +645,7 @@ function Nav() {
                       textDecoration: "none",
                       fontSize: 13,
                       fontWeight: 600,
-                      color: isDark ? "#d2f2ed" : "#154a44",
+                      color: isDark ? "#f9fafb" : "#030712",
                       background: "transparent",
                     }}
                     className="lpb-nav-chip"
@@ -668,7 +668,7 @@ function Nav() {
                       textDecoration: "none",
                       fontSize: 13,
                       fontWeight: 600,
-                      color: isDark ? "#d2f2ed" : "#154a44",
+                      color: isDark ? "#f9fafb" : "#030712",
                       background: "transparent",
                     }}
                     className="lpb-nav-chip"
@@ -697,7 +697,7 @@ function Nav() {
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: isDark ? "#d2f2ed" : "#154a44",
+                  color: isDark ? "#f9fafb" : "#030712",
                 }}
                 className="lpb-nav-chip"
               >
@@ -744,6 +744,20 @@ function Hero({ isDark }: { isDark: boolean }) {
         padding: "6rem 1.5rem 4rem",
       }}
     >
+      {/* Background Image */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "url('/assets/landing-bg.png')",
+          backgroundSize: "115% auto",
+          backgroundPosition: "top center",
+          backgroundRepeat: "no-repeat",
+          opacity: isDark ? 0.02 : 0.2,
+          pointerEvents: "none",
+        }}
+      />
+
       {/* Ambient blobs */}
       <div
         style={{
@@ -792,14 +806,7 @@ function Hero({ isDark }: { isDark: boolean }) {
             filter: "blur(80px)",
           }}
         />
-        {/* Grid pattern */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231f766e' fill-opacity='${isDark ? "0.04" : "0.06"}'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
+
       </div>
 
       <div
@@ -816,7 +823,7 @@ function Hero({ isDark }: { isDark: boolean }) {
             fontWeight: 800,
             lineHeight: 1.08,
             letterSpacing: "-0.04em",
-            color: isDark ? "#e8f5f3" : "#0a2e2a",
+            color: isDark ? "#f9fafb" : "#030712",
             marginBottom: "1.5rem",
             opacity: count ? 1 : 0,
             transform: count ? "translateY(0)" : "translateY(20px)",
@@ -826,10 +833,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           Ask tough questions. Get a teacher{" "}
           <span
             style={{
-              background: "linear-gradient(135deg,#1f766e 30%,#2176ae)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
+              color: isDark ? "#f9fafb" : "#030712",
             }}
           >
             working on them fast
@@ -840,7 +844,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           style={{
             fontSize: "clamp(1rem,2vw,1.2rem)",
             lineHeight: 1.7,
-            color: isDark ? "#7fb8b2" : "#3d6b64",
+            color: isDark ? "#9ca3af" : "#4b5563",
             maxWidth: 620,
             margin: "0 auto 2.5rem",
             opacity: count ? 1 : 0,
@@ -893,7 +897,7 @@ function Hero({ isDark }: { isDark: boolean }) {
               gap: 8,
               padding: "0.8rem 1.8rem",
               borderRadius: 12,
-              color: isDark ? "#9dc8c3" : "#1f766e",
+              color: isDark ? "#d1d5db" : "#374151",
               fontWeight: 700,
               fontSize: 15,
               textDecoration: "none",
@@ -935,7 +939,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           flexDirection: "column",
           alignItems: "center",
           gap: 6,
-          color: isDark ? "#5a9990" : "#4a8a82",
+          color: isDark ? "#9ca3af" : "#4b5563",
           textDecoration: "none",
           animation: "bounce 2s infinite",
         }}
@@ -1985,7 +1989,7 @@ function StatsBar({ isDark }: { isDark: boolean }) {
             <p
               style={{
                 fontSize: 12,
-                color: isDark ? "#5a9990" : "#5a8a84",
+                color: isDark ? "#9ca3af" : "#4b5563",
                 margin: 0,
               }}
             >
@@ -2077,7 +2081,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: 17,
                 fontWeight: 700,
-                color: isDark ? "#c8e6e2" : "#0a2e2a",
+                color: isDark ? "#f9fafb" : "#030712",
                 margin: "0 0 8px",
                 letterSpacing: "-0.02em",
               }}
@@ -2088,7 +2092,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: 14,
                 lineHeight: 1.65,
-                color: isDark ? "#6aaba4" : "#4a7a74",
+                color: isDark ? "#9ca3af" : "#4b5563",
                 margin: 0,
               }}
             >
@@ -2105,7 +2109,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
             textAlign: "center",
             fontSize: 13,
             fontWeight: 700,
-            color: isDark ? "#5a9990" : "#5a8a84",
+            color: isDark ? "#9ca3af" : "#4b5563",
             letterSpacing: "0.1em",
             marginBottom: "1.5rem",
           }}
@@ -2151,7 +2155,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
                   style={{
                     fontSize: 15,
                     fontWeight: 700,
-                    color: isDark ? "#c8e6e2" : "#0a2e2a",
+                    color: isDark ? "#f9fafb" : "#030712",
                     margin: "0 0 2px",
                   }}
                 >
@@ -2160,7 +2164,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
                 <p
                   style={{
                     fontSize: 12,
-                    color: isDark ? "#5a9990" : "#5a8a84",
+                    color: isDark ? "#9ca3af" : "#4b5563",
                     margin: 0,
                   }}
                 >
@@ -2243,7 +2247,7 @@ function ForStudents({
 function StudentQuizMockup({ isDark }: { isDark: boolean }) {
   const border = isDark ? "rgba(31,118,110,0.25)" : "rgba(31,118,110,0.18)";
   const cardBg = isDark ? "rgba(15,35,30,0.9)" : "rgba(255,255,255,0.92)";
-  const textMuted = isDark ? "#5a9990" : "#6aaba4";
+  const textMuted = isDark ? "#9ca3af" : "#4b5563";
 
   return (
     <div
@@ -2279,7 +2283,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: 13,
                 fontWeight: 700,
-                color: isDark ? "#c8e6e2" : "#0a2e2a",
+                color: isDark ? "#f9fafb" : "#030712",
               }}
             >
               Quiz — Mathematics · Grade 10
@@ -2338,7 +2342,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
             style={{
               fontSize: 13.5,
               fontWeight: 600,
-              color: isDark ? "#c8e6e2" : "#0a2e2a",
+              color: isDark ? "#f9fafb" : "#030712",
               marginBottom: 14,
               lineHeight: 1.5,
             }}
@@ -2355,7 +2359,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
                 background: i === 0 ? "rgba(31,118,110,0.12)" : "transparent",
                 marginBottom: 8,
                 fontSize: 13,
-                color: i === 0 ? "#1f766e" : isDark ? "#9dc8c3" : "#3d6b64",
+                color: i === 0 ? "#1f766e" : isDark ? "#d1d5db" : "#374151",
                 fontWeight: i === 0 ? 700 : 400,
                 cursor: "default",
               }}
@@ -2432,7 +2436,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
               <span
                 style={{
                   fontSize: 12.5,
-                  color: isDark ? "#9dc8c3" : "#3d6b64",
+                  color: isDark ? "#d1d5db" : "#374151",
                 }}
               >
                 {label}
@@ -2488,7 +2492,7 @@ function StudentQuizMockup({ isDark }: { isDark: boolean }) {
                   fontSize: 13,
                   flex: 1,
                   fontWeight: highlight ? 700 : 400,
-                  color: isDark ? "#c8e6e2" : "#0a2e2a",
+                  color: isDark ? "#f9fafb" : "#030712",
                 }}
               >
                 {name}
@@ -2566,7 +2570,7 @@ function ForTeachers({ isDark }: { isDark: boolean }) {
 function TeacherMockup({ isDark }: { isDark: boolean }) {
   const border = isDark ? "rgba(31,118,110,0.25)" : "rgba(31,118,110,0.18)";
   const cardBg = isDark ? "rgba(15,35,30,0.9)" : "rgba(255,255,255,0.92)";
-  const textMuted = isDark ? "#5a9990" : "#6aaba4";
+  const textMuted = isDark ? "#9ca3af" : "#4b5563";
 
   return (
     <div
@@ -2609,7 +2613,7 @@ function TeacherMockup({ isDark }: { isDark: boolean }) {
             style={{
               fontSize: 13,
               fontWeight: 700,
-              color: isDark ? "#c8e6e2" : "#0a2e2a",
+              color: isDark ? "#f9fafb" : "#030712",
               margin: 0,
             }}
           >
@@ -2752,7 +2756,7 @@ function TeacherMockup({ isDark }: { isDark: boolean }) {
                   style={{
                     fontSize: 12.5,
                     fontWeight: 600,
-                    color: isDark ? "#c8e6e2" : "#0a2e2a",
+                    color: isDark ? "#f9fafb" : "#030712",
                     margin: "0 0 2px",
                     lineHeight: 1.3,
                   }}
@@ -2883,7 +2887,7 @@ function QuizPortal({ isDark }: { isDark: boolean }) {
                 style={{
                   fontSize: 15,
                   fontWeight: 700,
-                  color: isDark ? "#c8e6e2" : "#0a2e2a",
+                  color: isDark ? "#f9fafb" : "#030712",
                   margin: "0 0 8px",
                 }}
               >
@@ -2892,7 +2896,7 @@ function QuizPortal({ isDark }: { isDark: boolean }) {
               <p
                 style={{
                   fontSize: 13.5,
-                  color: isDark ? "#6aaba4" : "#4a7a74",
+                  color: isDark ? "#9ca3af" : "#4b5563",
                   lineHeight: 1.6,
                   margin: 0,
                 }}
@@ -3126,7 +3130,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                     style={{
                       fontSize: 15,
                       fontWeight: 700,
-                      color: isDark ? "#c8e6e2" : "#0a2e2a",
+                      color: isDark ? "#f9fafb" : "#030712",
                       margin: "0 0 8px",
                       lineHeight: 1.3,
                     }}
@@ -3144,19 +3148,19 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                   >
                     <PlayCircleIcon
                       size={12}
-                      color={isDark ? "#5a9990" : "#6aaba4"}
+                      color={isDark ? "#9ca3af" : "#4b5563"}
                     />
                     <span
                       style={{
                         fontSize: 11,
-                        color: isDark ? "#5a9990" : "#6aaba4",
+                        color: isDark ? "#9ca3af" : "#4b5563",
                       }}
                     >
                       {videos} videos · {duration}
                     </span>
                     {liveSessions && (
                       <>
-                        <span style={{ color: isDark ? "#5a9990" : "#6aaba4" }}>
+                        <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>
                           ·
                         </span>
                         <CalendarIcon size={12} color="#7c3aed" />
@@ -3195,7 +3199,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                     <span
                       style={{
                         fontSize: 10,
-                        color: isDark ? "#5a9990" : "#6aaba4",
+                        color: isDark ? "#9ca3af" : "#4b5563",
                       }}
                     >
                       by {uploader}
@@ -3273,7 +3277,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                 style={{
                   fontSize: 14,
                   fontWeight: 700,
-                  color: isDark ? "#c8e6e2" : "#0a2e2a",
+                  color: isDark ? "#f9fafb" : "#030712",
                   margin: "0 0 4px",
                 }}
               >
@@ -3282,7 +3286,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
               <p
                 style={{
                   fontSize: 12.5,
-                  color: isDark ? "#6aaba4" : "#4a7a74",
+                  color: isDark ? "#9ca3af" : "#4b5563",
                   margin: 0,
                   lineHeight: 1.5,
                 }}
@@ -3373,7 +3377,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
                 textAlign: "center",
                 fontSize: 12,
                 fontWeight: 600,
-                color: isDark ? "#5a9990" : "#8aaca8",
+                color: isDark ? "#9ca3af" : "#6b7280",
               }}
             >
               Generic Q&A
@@ -3393,7 +3397,7 @@ function Comparison({ isDark }: { isDark: boolean }) {
                 style={{
                   padding: "11px 16px",
                   fontSize: 13.5,
-                  color: isDark ? "#9dc8c3" : "#2a6b64",
+                  color: isDark ? "#d1d5db" : "#374151",
                 }}
               >
                 {feature}
@@ -3528,7 +3532,7 @@ function CTASection({
             fontSize: "clamp(2rem,5vw,3.2rem)",
             fontWeight: 800,
             letterSpacing: "-0.04em",
-            color: isDark ? "#e8f5f3" : "#0a2e2a",
+            color: isDark ? "#f9fafb" : "#030712",
             margin: "0 0 1rem",
             lineHeight: 1.1,
           }}
@@ -3538,7 +3542,7 @@ function CTASection({
         <p
           style={{
             fontSize: 17,
-            color: isDark ? "#7fb8b2" : "#3d6b64",
+            color: isDark ? "#9ca3af" : "#4b5563",
             margin: "0 0 2.5rem",
             lineHeight: 1.6,
           }}
@@ -3581,7 +3585,7 @@ function CTASection({
               gap: 8,
               padding: "0.9rem 2rem",
               borderRadius: 14,
-              color: isDark ? "#9dc8c3" : "#1f766e",
+              color: isDark ? "#d1d5db" : "#374151",
               fontWeight: 700,
               fontSize: 15.5,
               textDecoration: "none",
@@ -3595,7 +3599,7 @@ function CTASection({
         <p
           style={{
             fontSize: 13,
-            color: isDark ? "#4a8a82" : "#7ab5ae",
+            color: isDark ? "#4b5563" : "#9ca3af",
             marginTop: "1.5rem",
           }}
         >
@@ -3663,7 +3667,7 @@ function Footer({
             style={{
               fontSize: 14,
               fontWeight: 700,
-              color: isDark ? "#9dc8c3" : "#1f766e",
+              color: isDark ? "#d1d5db" : "#374151",
             }}
           >
             {APP_NAME}
@@ -3682,7 +3686,7 @@ function Footer({
               className="lpb-footer-link"
               style={{
                 fontSize: 13,
-                color: isDark ? "#5a9990" : "#6aaba4",
+                color: isDark ? "#9ca3af" : "#4b5563",
                 textDecoration: "none",
                 fontWeight: 500,
               }}
@@ -3704,7 +3708,7 @@ function Footer({
           <p
             style={{
               fontSize: 12,
-              color: isDark ? "#3a6a64" : "#9dc8c3",
+              color: isDark ? "#374151" : "#d1d5db",
               margin: 0,
             }}
           >
@@ -3764,7 +3768,7 @@ function Footer({
                       background: isDark
                         ? "rgba(15,35,30,0.68)"
                         : "rgba(255,255,255,0.82)",
-                      color: isDark ? "#9dc8c3" : "#2a6b64",
+                      color: isDark ? "#d1d5db" : "#374151",
                       textDecoration: "none",
                       fontSize: 12,
                       fontWeight: 600,
@@ -3810,7 +3814,7 @@ function Footer({
             rel="noreferrer"
             style={{
               fontSize: 11,
-              color: isDark ? "#5a9990" : "#6aaba4",
+              color: isDark ? "#9ca3af" : "#4b5563",
               textDecoration: "none",
               fontWeight: 500,
             }}
@@ -3917,7 +3921,7 @@ function FeatureCard({
           style={{
             fontSize: compact ? 14 : 15.5,
             fontWeight: 700,
-            color: isDark ? "#c8e6e2" : "#0a2e2a",
+            color: isDark ? "#f9fafb" : "#030712",
             margin: "0 0 6px",
             letterSpacing: "-0.02em",
           }}
@@ -3928,7 +3932,7 @@ function FeatureCard({
           style={{
             fontSize: 13.5,
             lineHeight: 1.6,
-            color: isDark ? "#6aaba4" : "#4a7a74",
+            color: isDark ? "#9ca3af" : "#4b5563",
             margin: 0,
           }}
         >
@@ -3957,7 +3961,7 @@ function headingStyle(isDark: boolean): React.CSSProperties {
     fontSize: "clamp(1.7rem,3.5vw,2.4rem)",
     fontWeight: 800,
     letterSpacing: "-0.04em",
-    color: isDark ? "#e8f5f3" : "#0a2e2a",
+    color: isDark ? "#f9fafb" : "#030712",
     textAlign: "center",
     margin: "0 0 1rem",
   };
@@ -3966,7 +3970,7 @@ function headingStyle(isDark: boolean): React.CSSProperties {
 function subStyle(isDark: boolean): React.CSSProperties {
   return {
     fontSize: "clamp(0.95rem,1.8vw,1.1rem)",
-    color: isDark ? "#7fb8b2" : "#3d6b64",
+    color: isDark ? "#9ca3af" : "#4b5563",
     textAlign: "center",
     lineHeight: 1.7,
     margin: "0 auto 0",
@@ -4031,8 +4035,8 @@ export function FAQSection({ isDark }: { isDark: boolean }) {
   const cardBgOpen   = isDark ? "rgba(31,118,110,0.08)"  : "rgba(31,118,110,0.05)";
   const iconBg       = isDark ? "rgba(31,118,110,0.18)"  : "rgba(31,118,110,0.1)";
   const iconColor    = isDark ? "#7fb8b2" : "#1f766e";
-  const questionColor= isDark ? "#c8e6e2" : "#0a2e2a";
-  const answerColor  = isDark ? "rgba(200,230,226,0.72)" : "rgba(10,46,42,0.7)";
+  const questionColor= isDark ? "#f9fafb" : "#030712";
+  const answerColor = isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.7)";
   const chevronColor = isDark ? "rgba(127,184,178,0.5)"  : "rgba(31,118,110,0.4)";
 
   return (
@@ -4112,7 +4116,7 @@ export function FAQSection({ isDark }: { isDark: boolean }) {
                       flexShrink: 0,
                     }}
                   >
-                    <HelpCircle size={16} color={iconColor} />
+                    <PlusIcon size={16} color={iconColor} />
                   </div>
 
                   <span
@@ -4186,7 +4190,7 @@ export function PublicLanding({
         minHeight: "100vh",
         scrollBehavior: "smooth",
         background: isDark ? "#081412" : "#f8fcfb",
-        color: isDark ? "#e8f5f3" : "#0a2e2a",
+        color: isDark ? "#f9fafb" : "#030712",
       }}
     >
       <LandingStyles />

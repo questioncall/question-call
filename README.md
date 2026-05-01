@@ -1,7 +1,7 @@
 # Question Call
 
 <div align="center">
-  <img src="/logo.png" alt="Question Call Logo" width="200" />
+  <img src="https://questioncall.com/logo.png" alt="Question Call Logo" width="200" />
   <h1>The Smarter Way to Learn</h1>
   <p>A dual-portal academic platform connecting students with expert teachers through interactive questions, video courses, live sessions, and gamified learning.</p>
 </div>
@@ -109,30 +109,3 @@ Notifications  → Nodemailer, Twilio WhatsApp
 ```
 
 ---
-
-## 🚀 Get Started
-
-```bash
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env.local
-
-# Run development server
-npm run dev
-```
-
-Visit [http://localhost:3000](http://localhost:3000)
-
----
-
-## 📄 License
-
-MIT
-
----
-
-<div align="center">
-  <sub>Built with Next.js + MongoDB</sub>
-</div>
