@@ -359,7 +359,7 @@ export function WorkspaceHome({
         if (data.milestoneReached) {
           toast.success(
             data.milestoneMessage ||
-              `Milestone! You earned ${data.pointsAwarded} points.`,
+              `Milestone! You earned NPR ${data.pointsAwarded}.`,
           );
         }
       } else {

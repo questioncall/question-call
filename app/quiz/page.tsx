@@ -53,7 +53,7 @@ export default async function QuizHubPage() {
             <div className="rounded-2xl border border-border bg-muted/20 p-5">
               <h2 className="font-semibold">Built for students</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Practice regularly, track points, and keep building subject confidence.
+                Practice regularly, earn money, and keep building subject confidence.
               </p>
             </div>
           </div>

@@ -1037,7 +1037,7 @@ function LedgerDetails({ transaction }: { transaction: TransactionRecord }) {
       <div className="space-y-1">
         <div>Cashout: {formatMoney(transaction.metadata?.nprEquivalent ?? transaction.amount)}</div>
         {typeof transaction.metadata?.pointsRequested === "number" ? (
-          <div>Points: {transaction.metadata.pointsRequested}</div>
+          <div>Amount: {transaction.metadata.pointsRequested} NPR</div>
         ) : null}
         {transaction.metadata?.esewaNumber ? <div>eSewa: {transaction.metadata.esewaNumber}</div> : null}
         {transaction.transactionId ? (

@@ -80,7 +80,7 @@ export function QuizResultsView({
           <ResultMetric
             icon={<Clock3Icon className="size-5 text-primary" />}
             label="Reward"
-            value={`${formatPoints(session.pointsAwarded)} pts`}
+            value={`NPR ${formatPoints(session.pointsAwarded)}`}
           />
         </CardContent>
       </Card>

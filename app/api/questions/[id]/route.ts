@@ -40,15 +40,21 @@ export async function DELETE(
       );
     }
 
-    if (question.answerId) {
-      await Answer.findByIdAndDelete(question.answerId);
+    if (question.status !== "OPEN" && question.status !== "RESET") {
+      return NextResponse.json(
+        { error: "You can only delete questions that have not been accepted or answered" },
+        { status: 400 }
+      );
     }
 
     await Question.findByIdAndDelete(id);
 
-    await User.findByIdAndUpdate(session.user.id, {
-      $inc: { totalAsked: -1, questionsAsked: -1 },
-    });
+    const userToUpdate = await User.findById(session.user.id);
+    if (userToUpdate) {
+      userToUpdate.totalAsked = Math.max(0, (userToUpdate.totalAsked ?? 0) - 1);
+      userToUpdate.questionsAsked = Math.max(0, (userToUpdate.questionsAsked ?? 0) - 1);
+      await userToUpdate.save();
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

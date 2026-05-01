@@ -48,7 +48,7 @@ Features:
 ### 🧠 AI-Powered Quizzes
 - Generated using Gemini/Groq
 - Timed test sessions
-- 90%+ to pass & earn points
+- 90%+ to pass & earn money
 - Randomized question pools
 
 ### 💳 Payments & Wallets
@@ -59,7 +59,7 @@ Features:
 - Secure withdrawal system
 
 ### 🏆 Gamification
-- Points for answered questions
+- Money for answered questions
 - Quiz pass rewards
 - Leaderboard rankings
 - Achievement badges

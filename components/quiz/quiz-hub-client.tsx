@@ -291,7 +291,7 @@ export function QuizHubClient() {
               </h1>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Launch a focused full-screen session, keep your answers synced as you go,
-                and earn points when you clear the pass mark.
+                and earn money when you clear the pass mark.
               </p>
             </div>
           </div>
@@ -474,7 +474,7 @@ export function QuizHubClient() {
                     <div className="grid grid-cols-3 gap-3 text-sm md:min-w-[320px]">
                       <HistoryMetric label="Score" value={`${item.score.toFixed(2)}%`} />
                       <HistoryMetric label="Answered" value={`${item.answeredCount}/${item.questionCount}`} />
-                      <HistoryMetric label="Reward" value={`${formatPoints(item.pointsAwarded)} pts`} />
+                      <HistoryMetric label="Reward" value={`NPR ${formatPoints(item.pointsAwarded)}`} />
                     </div>
                   </div>
                 ))}
@@ -585,7 +585,7 @@ function ModeCard({
         <div className="grid grid-cols-3 gap-3 text-sm">
           <HistoryMetric label="Remaining" value={`${remaining}`} />
           <HistoryMetric label="Pass mark" value={`${passPercent}%`} />
-          <HistoryMetric label="Reward" value={`${formatPoints(pointReward)} pts`} />
+          <HistoryMetric label="Reward" value={`NPR ${formatPoints(pointReward)}`} />
         </div>
 
         <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">

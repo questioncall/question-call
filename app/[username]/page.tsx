@@ -309,7 +309,7 @@ export default async function PublicProfilePage({
                   : profile.totalAnswered}
               </span>
               <span className="text-muted-foreground ml-1">
-                {profile.role === "STUDENT" ? "points" : "answers"}
+                {profile.role === "STUDENT" ? "money" : "answers"}
               </span>
             </div>
             {profile.role === "TEACHER" && (

@@ -6,8 +6,8 @@ const studentMetrics = [
   },
   {
     label: "Peer rewards",
-    value: "Points later",
-    note: "This page will show points and answer validation progress once that feature lands.",
+    value: "Money later",
+    note: "This page will show money and answer validation progress once that feature lands.",
   },
   {
     label: "Answer flow",
@@ -19,7 +19,7 @@ const studentMetrics = [
 const studentActions = [
   "Create and manage questions.",
   "Track private answers and channel history.",
-  "View points and leaderboard progress.",
+  "View money and leaderboard progress.",
 ] as const;
 
 export function StudentDashboardOverview() {
@@ -29,7 +29,7 @@ export function StudentDashboardOverview() {
         <p className="text-sm font-medium text-slate-500">Student profile</p>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Your student workspace</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          This page will hold subscription details, points, progress, and personal
+          This page will hold subscription details, money, progress, and personal
           activity. The layout is intentionally plain for now so we can rebuild the UI
           cleanly with shadcn later.
         </p>

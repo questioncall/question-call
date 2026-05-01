@@ -153,7 +153,8 @@ export function CoursesBrowseClient({
 
   return (
     <div className="min-h-svh bg-[#f6f8fb] dark:bg-background">
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:bg-none">
+      {!isAuthenticated && (
+        <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:bg-none">
         <div className="pointer-events-none absolute inset-0">
           <div className={`absolute -top-24 right-0 h-[500px] w-[500px] rounded-full blur-[100px] ${isDark ? "bg-emerald-500/15" : "bg-emerald-300/15"}`} />
           <div className={`absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full blur-[80px] ${isDark ? "bg-teal-500/10" : "bg-teal-300/10"}`} />
@@ -273,6 +274,7 @@ export function CoursesBrowseClient({
           </div>
         </div>
       </section>
+      )}
       {isStudent && enrolledCourses.length > 0 ? (
         <section className="border-b border-border bg-background/70">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

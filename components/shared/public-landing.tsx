@@ -213,7 +213,7 @@ const PLATFORM: PlatformData = {
     {
       icon: BrainCircuitIcon,
       title: "Practice in the quiz portal",
-      desc: "Take AI-generated MCQ sessions by subject and topic. Score 90%+ to earn points that help on your next renewal.",
+      desc: "Take AI-generated MCQ sessions by subject and topic. Score 90%+ to earn money that helps on your next renewal.",
     },
     {
       icon: BookOpenIcon,
@@ -222,8 +222,8 @@ const PLATFORM: PlatformData = {
     },
     {
       icon: TrophyIcon,
-      title: "Earn points and visibility",
-      desc: "Quiz passes and accepted peer help add points to your account, while the leaderboard highlights active students and contributors.",
+      title: "Earn money and visibility",
+      desc: "Quiz passes and accepted peer help add money to your account, while the leaderboard highlights active students and contributors.",
     },
     {
       icon: ShieldCheckIcon,
@@ -2855,7 +2855,7 @@ function QuizPortal({ isDark }: { isDark: boolean }) {
             {
               icon: TrophyIcon,
               title: "Points that matter",
-              desc: `Pass with ${PLATFORM.quizPassPercent}%+ and earn ${PLATFORM.quizPoints} points that help reduce the cost of staying active on the platform.`,
+              desc: `Pass with ${PLATFORM.quizPassPercent}%+ and earn NPR ${PLATFORM.quizPoints} that helps reduce the cost of staying active on the platform.`,
               color: "#f59e0b",
             },
           ].map(({ icon: Icon, title, desc, color }, i) => (
@@ -4009,7 +4009,7 @@ const faqs = [
   {
     question: "Is there anything to do on the platform other than asking questions?",
     answer:
-      "Plenty! You can enroll in structured video courses, attend live scheduled classes, and take AI-generated quizzes to test your knowledge. The quiz portal even rewards you with points for scoring well — think of it as your full academic toolkit.",
+      "Plenty! You can enroll in structured video courses, attend live scheduled classes, and take AI-generated quizzes to test your knowledge. The quiz portal even rewards you with money for scoring well — think of it as your full academic toolkit.",
   },
   {
     question: "Can I use QuestionCall on my phone without downloading an app?",

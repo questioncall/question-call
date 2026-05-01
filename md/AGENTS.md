@@ -20,7 +20,7 @@
 
 | Portal | Purpose |
 |--------|---------|
-| **Student** | Ask questions → get answers via channels, take quizzes, watch courses, earn points |
+| **Student** | Ask questions → get answers via channels, take quizzes, watch courses, earn money |
 | **Teacher** | Answer questions → earn wallet money, create courses, host live sessions |
 | **Admin** | Manage users, config, courses, analytics |
 
@@ -76,7 +76,7 @@
 3. Ask Question → Select Format (Tier/Channel)
 4. Wait for Teacher Answer
 5. Submit Answer (Teacher → Student passes)
-6. Earn Points (AI validates)
+6. Earn Money (AI validates)
 7. Leaderboard
 8. Subscribe (Khalti/eSewa)
 9. Take Quizzes
@@ -118,7 +118,7 @@ app/
 ├── (workspace)/           ← Student/Teacher workspace
 │   ├── questions/        ← Ask/Browse questions
 │   ├── channels/         ← Channel listings
-│   ├── leaderboard/      ← Points/Leaderboard
+│   ├── leaderboard/      ← Money/Leaderboard
 │   ├── quizzes/          ← Quiz portal
 │   ├── courses/         ← Course browse
 │   │   ├── [slug]/      ← Course detail
@@ -254,7 +254,7 @@ app/
 | `qualificationThreshold` | 10 | Answers before monetization |
 | `quizTimeLimitSeconds` | 1800 | Quiz timer |
 | `quizPassPercent` | 90 | Pass threshold |
-| `quizPointReward` | 5 | Points on pass |
+| `quizPointReward` | 5 | Money on pass |
 | `quizQuestionCount` | 50 | Questions per quiz |
 | `coursePurchaseCommissionPercent` | 20 | Platform cut (courses) |
 | `maxVideoDurationMinutes` | 60 | Max video upload |

@@ -247,7 +247,7 @@ export default async function LeaderboardUserPage({
                   {profile.role === "TEACHER" ? (
                     <span>{profile.overallScore.toFixed(1)}/5 rating</span>
                   ) : (
-                    <span>{profile.points} pts</span>
+                    <span>{profile.points} NPR</span>
                   )}
                   <Link className="font-medium text-foreground underline decoration-primary/40 underline-offset-4" href={`/${profile.username}`}>
                     View profile

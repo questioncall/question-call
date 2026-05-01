@@ -170,12 +170,12 @@ export function UsersClient() {
                     <td className="px-4 py-3 min-w-[140px]">
                       {user.role === "STUDENT" ? (
                           <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">
-                          Points: <span className="font-medium text-primary">{formatPoints(user.points || 0)}</span>
+                          Amount: <span className="font-medium text-primary">{formatPoints(user.points || 0)} NPR</span>
                         </p>
                       ) : (
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground whitespace-nowrap">
-                            Balance: <span className="font-medium text-primary">{formatPoints(user.pointBalance || 0)} pts</span>
+                            Balance: <span className="font-medium text-primary">{formatPoints(user.pointBalance || 0)} NPR</span>
                           </p>
                           <p className="text-xs text-muted-foreground whitespace-nowrap">
                             Answers: <span className="font-medium text-foreground">{user.totalAnswered || 0}</span>

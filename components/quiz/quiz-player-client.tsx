@@ -573,7 +573,7 @@ export function QuizPlayerClient({ sessionId }: { sessionId: string }) {
                 {toTimerLabel(remainingMs)}
               </div>
               <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100">
-                Reward on pass: {formatPoints(session.pointReward)} pts
+                Reward on pass: NPR {formatPoints(session.pointReward)}
               </div>
               <Button
                 variant="destructive"

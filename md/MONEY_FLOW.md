@@ -1,6 +1,6 @@
 # Question Call Money Flow Overview
 
-This document explains, in plain language, how money, points, bonuses, and penalties move inside Question Call.
+This document explains, in plain language, how money, bonuses, and penalties move inside Question Call.
 
 ## 1. What the platform tracks
 
@@ -9,7 +9,7 @@ Question Call currently has four value systems:
 - `Subscription money (NPR)`: what students pay to access paid plans.
 - `Course purchase money (NPR)`: what students pay to unlock paid courses.
 - `Withdrawable wallet balance`: the teacher-facing balance used for answer rewards, monthly bonuses, and paid course earnings.
-- `Student points and bonus questions`: rewards students can earn through quizzes, milestones, and referrals.
+- `Student money and bonus questions`: rewards students can earn through quizzes, milestones, and referrals.
 
 ## 2. Student subscription flow
 
@@ -24,8 +24,8 @@ Question Call currently has four value systems:
 ## 3. Student question and quiz rewards
 
 - Asking questions consumes the student’s question allowance from the active plan.
-- Passing quizzes can credit points to the student account.
-- AI milestone rewards on peer comments can also credit points to the student account.
+- Passing quizzes can credit money to the student account.
+- AI milestone rewards on peer comments can also credit money to the student account.
 - Referral signup rewards do not pay cash. They increase bonus questions for the referrer and the new student.
 
 ## 4. Teacher answer earnings
@@ -38,8 +38,8 @@ Question Call currently has four value systems:
   - the answer format chosen by the student,
   - the final rating,
   - the live platform config.
-- Low ratings and missed deadlines can deduct points from the teacher wallet.
-- Teachers with strong ratings can also receive monthly bonus points.
+- Low ratings and missed deadlines can deduct money from the teacher wallet.
+- Teachers with strong ratings can also receive monthly bonus money.
 
 ## 5. Course sales and teacher payout
 
@@ -65,7 +65,7 @@ Question Call currently has four value systems:
 ## 7. Withdrawals
 
 - The current codebase allows withdrawals from the wallet view for both teachers and students.
-- In practice, teachers withdraw teaching and course earnings, while students can only withdraw reward points that were credited to their account.
+- In practice, teachers withdraw teaching and course earnings, while students can only withdraw reward money that was credited to their account.
 - The user enters the amount and eSewa number and submits a withdrawal request.
 - The requested balance is held immediately at request time.
 - That held amount is no longer available for spending or another withdrawal while the request is pending.
@@ -80,8 +80,8 @@ Question Call currently has four value systems:
 
 ## 8. Penalties and score impacts
 
-- Rating `1/5` deducts penalty points from the teacher.
-- Channel expiry without an answer also deducts penalty points.
+- Rating `1/5` deducts penalty money from the teacher.
+- Channel expiry without an answer also deducts penalty money.
 - Penalty totals are tracked separately so reporting can show:
   - total earned,
   - total withdrawn,
@@ -119,6 +119,6 @@ Question Call currently has four value systems:
   - missed-answer penalties,
   - successful withdrawals.
 - Students gain extra non-cash value through:
-  - quiz points,
-  - AI milestone points,
+  - quiz money,
+  - AI milestone money,
   - referral bonus questions.

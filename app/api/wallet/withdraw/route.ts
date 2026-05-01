@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
     if (requestedPoints < minPoints) {
       return NextResponse.json(
-        { error: `Minimum withdrawal is ${minPoints} points` },
+        { error: `Minimum withdrawal is NPR ${minPoints}` },
         { status: 400 },
       );
     }
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
           );
 
           if (!updatedUser) {
-            throw new WithdrawalRequestError("Insufficient point balance", 400);
+            throw new WithdrawalRequestError("Insufficient balance", 400);
           }
 
           const nprEquivalent = roundPoints(requestedPoints * rate);
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
     const adminNotifications = admins.map((admin) => ({
       userId: admin._id,
       type: "PAYMENT",
-      message: `${requesterLabel} ${finalizedRequester.name} requested a withdrawal of ${finalizedRequest.pointsRequested} pts (NPR ${finalizedRequest.nprEquivalent}). eSewa: ${finalizedRequest.esewaNumber}`,
+      message: `${requesterLabel} ${finalizedRequester.name} requested a withdrawal of NPR ${finalizedRequest.nprEquivalent} (${finalizedRequest.pointsRequested} units). eSewa: ${finalizedRequest.esewaNumber}`,
       href: "/admin/withdrawals",
       isRead: false,
     }));
@@ -223,7 +223,7 @@ export async function POST(req: Request) {
 
     const masterAdminEmails = await getMasterAdminEmails();
     if (masterAdminEmails.length > 0) {
-      const withdrawalMessage = `${requesterLabel} ${finalizedRequester.name} (${finalizedRequester.email}) requested a withdrawal of ${finalizedRequest.pointsRequested} pts (NPR ${finalizedRequest.nprEquivalent}). eSewa: ${finalizedRequest.esewaNumber}`;
+      const withdrawalMessage = `${requesterLabel} ${finalizedRequester.name} (${finalizedRequester.email}) requested a withdrawal of NPR ${finalizedRequest.nprEquivalent} (${finalizedRequest.pointsRequested} units). eSewa: ${finalizedRequest.esewaNumber}`;
       void sendTransactionEmail(
         masterAdminEmails,
         "New Withdrawal Request",

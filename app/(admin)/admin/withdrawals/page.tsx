@@ -282,7 +282,7 @@ export default function AdminWithdrawalsPage() {
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-3 font-normal">Requester</th>
-                    <th className="px-3 py-3 font-normal">Points</th>
+                    <th className="px-3 py-3 font-normal">Amount</th>
                     <th className="px-3 py-3 font-normal">NPR</th>
                     <th className="px-3 py-3 font-normal">eSewa</th>
                     <th className="px-3 py-3 font-normal">Date</th>
@@ -446,7 +446,7 @@ export default function AdminWithdrawalsPage() {
           <DialogHeader>
             <DialogTitle>Reject Withdrawal Request</DialogTitle>
             <DialogDescription>
-              This will NOT deduct any points from the requester. They can submit a
+              This will NOT deduct any money from the requester. They can submit a
               new request afterward.
             </DialogDescription>
           </DialogHeader>

@@ -201,20 +201,20 @@ export function FormatClient() {
           <CardHeader>
             <CardTitle>Teacher Payout Formula</CardTitle>
             <CardDescription>
-              Question payouts now follow rating points + bonus points, then platform commission is deducted.
+              Question payouts now follow rating money + bonus money, then platform commission is deducted.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
               Teacher payout formula:
               <span className="ml-1 font-medium text-foreground">
-                rating points + rating bonus - platform commission = final credited points
+                rating money + rating bonus - platform commission = final credited money
               </span>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">2-Star Rating Points</label>
+                <label className="text-sm font-medium">2-Star Rating Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -224,7 +224,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">2-Star Bonus Points</label>
+                <label className="text-sm font-medium">2-Star Bonus Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -234,7 +234,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">3-Star Rating Points</label>
+                <label className="text-sm font-medium">3-Star Rating Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -244,7 +244,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">3-Star Bonus Points</label>
+                <label className="text-sm font-medium">3-Star Bonus Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -254,7 +254,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">4-Star Rating Points</label>
+                <label className="text-sm font-medium">4-Star Rating Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -264,7 +264,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">4-Star Bonus Points</label>
+                <label className="text-sm font-medium">4-Star Bonus Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -274,7 +274,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">5-Star Rating Points</label>
+                <label className="text-sm font-medium">5-Star Rating Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -284,7 +284,7 @@ export function FormatClient() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">5-Star Bonus Points</label>
+                <label className="text-sm font-medium">5-Star Bonus Money</label>
                 <Input
                   type="number"
                   min={0}
@@ -300,7 +300,7 @@ export function FormatClient() {
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-3">Rating</th>
-                    <th className="px-3 py-3">Rating Points</th>
+                    <th className="px-3 py-3">Rating Money</th>
                     <th className="px-3 py-3">Bonus</th>
                     <th className="px-3 py-3">Commission</th>
                     <th className="px-3 py-3">Final Credit</th>
@@ -316,7 +316,7 @@ export function FormatClient() {
                         -{entry.commissionPoints.toFixed(2)} ({config.commissionPercent || 0}%)
                       </td>
                       <td className="px-3 py-3 font-semibold text-emerald-600">
-                        {entry.net.toFixed(2)} pts
+                        {entry.net.toFixed(2)} NPR
                       </td>
                     </tr>
                   ))}
@@ -330,7 +330,7 @@ export function FormatClient() {
           <CardHeader>
             <CardTitle>Economics & Withdrawals</CardTitle>
             <CardDescription>
-              Clear business rules for monetization, deductions, and point-to-cash conversion.
+              Clear business rules for monetization, deductions, and money-to-cash conversion.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -390,7 +390,7 @@ export function FormatClient() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Point to NPR Rate</label>
+                <label className="text-sm font-medium">Money to NPR Rate</label>
                 <Input
                   type="number"
                   step="0.1"
@@ -399,11 +399,11 @@ export function FormatClient() {
                   onChange={(e) => handleChange("pointToNprRate", e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Example: 1 means 1 point = NPR 1. Example: 0.1 means 10 points = NPR 1.
+                  Example: 1 means 1 unit = NPR 1. Example: 0.1 means 10 units = NPR 1.
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Min Withdrawal Points</label>
+                <label className="text-sm font-medium">Min Withdrawal Amount</label>
                 <Input
                   type="number"
                   min={1}
@@ -419,20 +419,20 @@ export function FormatClient() {
                 <p className="mt-2 text-muted-foreground">
                   With the current settings, a 4-star answer pays{" "}
                   <span className="font-semibold text-foreground">
-                    {payoutPreview.find((entry) => entry.rating === "4 Star")?.net.toFixed(2) || "0.00"} pts
+                    {payoutPreview.find((entry) => entry.rating === "4 Star")?.net.toFixed(2) || "0.00"} NPR
                   </span>{" "}
                   after commission.
                 </p>
                 <p className="mt-2 text-muted-foreground">
                   A teacher needs{" "}
                   <span className="font-semibold text-foreground">
-                    {config.minWithdrawalPoints || 0} pts
+                    {config.minWithdrawalPoints || 0} NPR
                   </span>{" "}
                   before cashout, at{" "}
                   <span className="font-semibold text-foreground">
                     NPR {config.pointToNprRate || 0}
                   </span>{" "}
-                  per point.
+                   per unit.
                 </p>
               </div>
             </div>

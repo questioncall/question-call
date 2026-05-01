@@ -643,19 +643,19 @@ export function QuizManagementClient() {
             <Card className="border-border/70">
               <CardHeader>
                 <CardTitle className="text-lg">Free Mode</CardTitle>
-                <CardDescription>Current reward: {formatPoints(config?.freeQuizPointReward ?? 0)} pts on pass.</CardDescription>
+                <CardDescription>Current reward: NPR {formatPoints(config?.freeQuizPointReward ?? 0)} on pass.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
                 <NumberField label="Daily Sessions" value={String(config?.freeQuizDailySessionLimit ?? 0)} onChange={(value) => handleConfigChange("freeQuizDailySessionLimit", value)} />
                 <NumberField label="Pass Percent" value={String(config?.freeQuizPassPercent ?? 0)} onChange={(value) => handleConfigChange("freeQuizPassPercent", value)} />
-                <NumberField label="Point Reward" value={String(config?.freeQuizPointReward ?? 0)} onChange={(value) => handleConfigChange("freeQuizPointReward", value)} step="0.01" />
+                <NumberField label="Money Reward" value={String(config?.freeQuizPointReward ?? 0)} onChange={(value) => handleConfigChange("freeQuizPointReward", value)} step="0.01" />
               </CardContent>
             </Card>
 
             <Card className="border-border/70">
               <CardHeader>
                 <CardTitle className="text-lg">Premium Mode</CardTitle>
-                <CardDescription>Current reward: {formatPoints(config?.premiumQuizPointReward ?? 0)} pts on pass.</CardDescription>
+                <CardDescription>Current reward: NPR {formatPoints(config?.premiumQuizPointReward ?? 0)} on pass.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
                 <NumberField label="Fallback Daily Sessions" value={String(config?.premiumQuizDailySessionLimit ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimit", value)} />
@@ -664,7 +664,7 @@ export function QuizManagementClient() {
                 <NumberField label="Pro Daily Sessions" value={String(config?.premiumQuizDailySessionLimitPro ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitPro", value)} />
                 <NumberField label="Max Daily Sessions" value={String(config?.premiumQuizDailySessionLimitMax ?? 0)} onChange={(value) => handleConfigChange("premiumQuizDailySessionLimitMax", value)} />
                 <NumberField label="Pass Percent" value={String(config?.premiumQuizPassPercent ?? 0)} onChange={(value) => handleConfigChange("premiumQuizPassPercent", value)} />
-                <NumberField label="Point Reward" value={String(config?.premiumQuizPointReward ?? 0)} onChange={(value) => handleConfigChange("premiumQuizPointReward", value)} step="0.01" />
+                <NumberField label="Money Reward" value={String(config?.premiumQuizPointReward ?? 0)} onChange={(value) => handleConfigChange("premiumQuizPointReward", value)} step="0.01" />
               </CardContent>
             </Card>
           </div>

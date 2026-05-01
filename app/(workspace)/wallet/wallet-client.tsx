@@ -114,7 +114,7 @@ function formatWalletHistoryDate(value: string) {
 
 function formatSignedPoints(value: number) {
   const prefix = value >= 0 ? "+" : "-";
-  return `${prefix}${formatPoints(Math.abs(value))} pts`;
+  return `${prefix}${formatPoints(Math.abs(value))} NPR`;
 }
 
 function truncateQuestionTitle(value: string | null, maxLength = 52) {
@@ -175,7 +175,7 @@ export function WalletClient() {
     const points = Number.parseFloat(pointsToWithdraw);
 
     if (!points || points <= 0) {
-      setWithdrawError("Enter a valid number of points.");
+      setWithdrawError("Enter a valid amount of money.");
       return;
     }
 
@@ -270,8 +270,8 @@ export function WalletClient() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {isTeacher
-            ? "Track your earned points, performance, and withdrawal requests."
-            : "Track your points, subscription status, and withdrawal requests."}
+            ? "Track your earned money, performance, and withdrawal requests."
+            : "Track your money, subscription status, and withdrawal requests."}
         </p>
       </div>
 
@@ -279,8 +279,8 @@ export function WalletClient() {
         <SummaryCard
           icon={<CoinsIcon className="size-5 text-primary" />}
           iconClassName="bg-primary/10"
-          title="Point Balance"
-          value={`${formatPoints(wallet.pointBalance)} pts`}
+          title="Money Balance"
+          value={`NPR ${formatPoints(wallet.pointBalance)}`}
           cardClassName="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10"
         />
         <SummaryCard
@@ -343,10 +343,10 @@ export function WalletClient() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <CoinsIcon className="size-5 text-primary" />
-              Point Breakdown
+              Money Breakdown
             </CardTitle>
             <CardDescription>
-              Detailed breakdown of your points earned, withdrawn, penalties, and current balance.
+              Detailed breakdown of your money earned, withdrawn, penalties, and current balance.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -357,7 +357,7 @@ export function WalletClient() {
                   <span className="text-sm font-medium text-emerald-700">Total Earned</span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatPoints(wallet.totalPointsEarned)} pts
+                  NPR {formatPoints(wallet.totalPointsEarned)}
                 </p>
                 <p className="text-xs text-muted-foreground">All time earnings</p>
               </div>
@@ -368,7 +368,7 @@ export function WalletClient() {
                   <span className="text-sm font-medium text-blue-700">Withdrawn</span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatPoints(wallet.totalPointsWithdrawn)} pts
+                  NPR {formatPoints(wallet.totalPointsWithdrawn)}
                 </p>
                 <p className="text-xs text-muted-foreground">Already withdrawn</p>
               </div>
@@ -379,7 +379,7 @@ export function WalletClient() {
                   <span className="text-sm font-medium text-red-700">Penalties</span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatPoints(wallet.totalPenaltyPoints)} pts
+                  NPR {formatPoints(wallet.totalPenaltyPoints)}
                 </p>
                 <p className="text-xs text-muted-foreground">Rating 1 & timeouts</p>
               </div>
@@ -390,7 +390,7 @@ export function WalletClient() {
                   <span className="text-sm font-medium text-amber-700">Current Balance</span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatPoints(wallet.creditablePoints)} pts
+                  NPR {formatPoints(wallet.creditablePoints)}
                 </p>
                 <p className="text-xs text-muted-foreground">Available to withdraw</p>
               </div>
@@ -400,7 +400,7 @@ export function WalletClient() {
               <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-center gap-2">
                 <ClockIcon className="size-4 text-amber-600" />
                 <span className="text-sm text-amber-700">
-                  You have <strong>{formatPoints(wallet.pendingWithdrawal)} pts</strong> held in a pending withdrawal request.
+                  You have <strong>NPR {formatPoints(wallet.pendingWithdrawal)}</strong> held in a pending withdrawal request.
                 </span>
               </div>
             )}
@@ -424,7 +424,7 @@ export function WalletClient() {
               Question Payout Ledger
             </CardTitle>
             <CardDescription>
-              Per-question payout details with rating points, bonus points, platform commission, and the final credited total.
+              Per-question payout details with rating money, bonus money, platform commission, and the final credited total.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -440,7 +440,7 @@ export function WalletClient() {
                       <th className="px-3 py-3">Date</th>
                       <th className="px-3 py-3">Question</th>
                       <th className="px-3 py-3">Rating</th>
-                      <th className="px-3 py-3">Rating Pts</th>
+                      <th className="px-3 py-3">Rating</th>
                       <th className="px-3 py-3">Bonus</th>
                       <th className="px-3 py-3">Commission</th>
                       <th className="px-3 py-3">Final</th>
@@ -478,14 +478,14 @@ export function WalletClient() {
                             {typeof entry.rating === "number" ? `${entry.rating}/5` : "—"}
                           </td>
                           <td className="px-3 py-3 text-foreground">
-                            {entry.ratingPoints > 0 ? `${formatPoints(entry.ratingPoints)} pts` : "—"}
+                            {entry.ratingPoints > 0 ? `NPR ${formatPoints(entry.ratingPoints)}` : "—"}
                           </td>
                           <td className="px-3 py-3 text-foreground">
-                            {entry.bonusPoints > 0 ? `+${formatPoints(entry.bonusPoints)} pts` : "—"}
+                            {entry.bonusPoints > 0 ? `+NPR ${formatPoints(entry.bonusPoints)}` : "—"}
                           </td>
                           <td className="px-3 py-3 text-muted-foreground">
                             {entry.commissionPoints > 0
-                              ? `-${formatPoints(entry.commissionPoints)} pts (${formatPoints(entry.commissionPercent)}%)`
+                              ? `-NPR ${formatPoints(entry.commissionPoints)} (${formatPoints(entry.commissionPercent)}%)`
                               : "—"}
                           </td>
                           <td className="px-3 py-3">
@@ -497,8 +497,8 @@ export function WalletClient() {
                               }`}
                             >
                               {isPenalty
-                                ? `-${formatPoints(Math.abs(entry.finalPoints || entry.penaltyPoints))} pts`
-                                : `+${formatPoints(entry.finalPoints)} pts`}
+                                ? `-NPR ${formatPoints(Math.abs(entry.finalPoints || entry.penaltyPoints))}`
+                                : `+NPR ${formatPoints(entry.finalPoints)}`}
                             </span>
                           </td>
                         </tr>
@@ -603,7 +603,7 @@ export function WalletClient() {
                   Wallet Active
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Your course earnings and answer points are ready to withdraw.
+                  Your course earnings and answer money are ready to withdraw.
                 </p>
               </div>
             </div>
@@ -614,7 +614,7 @@ export function WalletClient() {
           <CardHeader>
             <CardTitle className="text-base">Subscription</CardTitle>
             <CardDescription>
-              Subscription plans stay on their own student route, while your points and withdrawals live here.
+              Subscription plans stay on their own student route, while your money and withdrawals live here.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -637,8 +637,8 @@ export function WalletClient() {
         <CardHeader>
           <CardTitle className="text-base">Request Withdrawal</CardTitle>
           <CardDescription>
-            Minimum withdrawal: {formatPoints(wallet.minWithdrawalPoints)} pts. Conversion rate:{" "}
-            {wallet.pointToNprRate} NPR per point.
+            Minimum withdrawal: NPR {formatPoints(wallet.minWithdrawalPoints)}. Conversion rate:{" "}
+            {wallet.pointToNprRate} NPR per unit.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -646,7 +646,7 @@ export function WalletClient() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
               <AlertCircleIcon className="size-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                You can withdraw once you have at least {wallet.minWithdrawalPoints} points.
+                You can withdraw once you have at least NPR {wallet.minWithdrawalPoints}.
               </p>
             </div>
           ) : hasPendingRequest ? (
@@ -665,7 +665,7 @@ export function WalletClient() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
               <AlertCircleIcon className="size-5 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                You need at least {formatPoints(wallet.minWithdrawalPoints)} points to withdraw. You currently have {formatPoints(wallet.pointBalance)} points.
+                You need at least NPR {formatPoints(wallet.minWithdrawalPoints)} to withdraw. You currently have NPR {formatPoints(wallet.pointBalance)}.
               </p>
             </div>
           ) : (
@@ -673,7 +673,7 @@ export function WalletClient() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    Points to withdraw
+                    Amount to withdraw
                   </label>
                   <Input
                     type="number"
@@ -781,7 +781,7 @@ export function WalletClient() {
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-3">Date</th>
-                    <th className="px-3 py-3">Points</th>
+                    <th className="px-3 py-3">Amount</th>
                     <th className="px-3 py-3">NPR</th>
                     <th className="px-3 py-3">eSewa</th>
                     <th className="px-3 py-3">Txn ID</th>

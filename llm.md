@@ -23,7 +23,7 @@ Traditional learning and existing online platforms often leave students waiting 
 - Have the choice of posting publicly (community learning) or privately (direct inbox help).
 - Receive verified, real-time help via chat, audio, or video calls.
 - Can enroll in video courses and attend live scheduled classes.
-- Take AI-generated quizzes to earn points and climb leaderboards.
+- Take AI-generated quizzes to earn money and climb leaderboards.
 
 ### Teachers
 - Can pick up questions from a live feed and lock them in to answer.
@@ -59,16 +59,16 @@ Traditional learning and existing online platforms often leave students waiting 
 ### 🧠 AI-Powered Quiz Portal
 - AI dynamically generates Multiple Choice Questions based on subjects and topics.
 - Supported by a multi-LLM setup (Gemini, Groq, Mistral, Cerebras).
-- Gamified scoring: Scoring 90%+ grants users points for their wallet/renewals.
+- Gamified scoring: Scoring 90%+ grants users money for their wallet/renewals.
 
 ### 💳 Payments, Wallet & Internal Economy
 - Built-in digital wallet for teachers to accumulate earnings.
 - Integration with Nepalese payment gateways (**eSewa** and **Khalti**).
-- Features points-based rewards, referral bonuses, manual payments, and secure withdrawals.
+- Features money-based rewards, referral bonuses, manual payments, and secure withdrawals.
 
 ### 🏆 Gamification & PWA
 - Progressive Web App (PWA) functionality: Installable, offline caching, push notifications.
-- Leaderboards, achievement points, and visible ratings for teachers.
+- Leaderboards, achievement badges, and visible ratings for teachers.
 
 ## 5. Technical Architecture & Stack
 
