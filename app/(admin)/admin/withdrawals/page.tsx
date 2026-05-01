@@ -288,7 +288,7 @@ export default function AdminWithdrawalsPage() {
             <div className="flex flex-col items-center gap-2 py-8">
               <AlertCircleIcon className="size-6 text-destructive" />
               <p className="text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={fetchRequests}>
+              <Button variant="outline" size="sm" onClick={() => fetchRequests()}>
                 Retry
               </Button>
             </div>
