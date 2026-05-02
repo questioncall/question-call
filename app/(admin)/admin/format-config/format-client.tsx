@@ -198,74 +198,7 @@ export function FormatClient() {
           </CardContent>
         </Card>
 
-        {/* Teacher Daily Targets */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Teacher Daily Targets</CardTitle>
-            <CardDescription>Configure daily answer targets and NPR bonuses for teachers.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {(config.dailyTargets || []).map((t, i) => (
-                <div key={i} className="space-y-2 p-3 rounded-lg border bg-muted/20">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-semibold">Target {i + 1}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        const newTargets = [...(config.dailyTargets || [])];
-                        newTargets.splice(i, 1);
-                        setConfig({ ...config, dailyTargets: newTargets });
-                      }}
-                    >
-                      X
-                    </Button>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium">Questions</label>
-                    <Input
-                      type="number"
-                      value={t.target}
-                      onChange={(e) => {
-                        const newTargets = [...(config.dailyTargets || [])];
-                        newTargets[i] = { ...newTargets[i], target: Number(e.target.value) };
-                        setConfig({ ...config, dailyTargets: newTargets });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium">Bonus (NPR)</label>
-                    <Input
-                      type="number"
-                      value={t.bonus}
-                      onChange={(e) => {
-                        const newTargets = [...(config.dailyTargets || [])];
-                        newTargets[i] = { ...newTargets[i], bonus: Number(e.target.value) };
-                        setConfig({ ...config, dailyTargets: newTargets });
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const currentTargets = config.dailyTargets || [];
-                const lastTarget = currentTargets[currentTargets.length - 1] || { target: 0, bonus: 0 };
-                setConfig({
-                  ...config,
-                  dailyTargets: [...currentTargets, { target: lastTarget.target + 10, bonus: lastTarget.bonus + 5 }]
-                });
-              }}
-            >
-              + Add Target
-            </Button>
-          </CardContent>
-        </Card>
+
 
         <Card className="xl:col-span-2">
           <CardHeader>

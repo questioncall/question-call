@@ -89,6 +89,15 @@ function LandingStyles() {
         100% { left: 125%; }
       }
 
+      @keyframes scribble-glow {
+        0% { filter: drop-shadow(0 0 2px rgba(31,118,110,0.4)) brightness(1); }
+        50% { filter: drop-shadow(0 0 8px rgba(42,181,171,0.8)) brightness(1.3); }
+        100% { filter: drop-shadow(0 0 2px rgba(31,118,110,0.4)) brightness(1); }
+      }
+      .scribble-glow {
+        animation: scribble-glow 2s ease-in-out infinite;
+      }
+
       .shiny-text {
         font-size: 13.5px;
         font-weight: 700;
@@ -882,7 +891,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           style={{
             fontSize: "clamp(2.6rem,6vw,4.5rem)",
             fontWeight: 800,
-            lineHeight: 1.08,
+            lineHeight: 1.15,
             letterSpacing: "-0.04em",
             color: isDark ? "#f9fafb" : "#030712",
             marginBottom: "1.5rem",
@@ -891,14 +900,60 @@ function Hero({ isDark }: { isDark: boolean }) {
             transition: "all 0.5s 0.1s",
           }}
         >
-          Ask tough questions. Get a teacher{" "}
-          <span
-            style={{
-              color: isDark ? "#f9fafb" : "#030712",
-            }}
-          >
-            working on them fast
-          </span>
+          Ask{" "}
+          <span style={{ position: "relative", whiteSpace: "nowrap" }}>
+            your
+            <svg
+              viewBox="0 0 100 20"
+              preserveAspectRatio="none"
+              style={{
+                position: "absolute",
+                bottom: -2,
+                left: -2,
+                width: "105%",
+                height: 12,
+                zIndex: -1,
+                overflow: "visible",
+              }}
+            >
+              <path
+                d="M 2 12 Q 25 18 50 12 T 98 15 M 5 16 Q 30 22 60 16 T 95 20 M 10 20 Q 45 10 80 22"
+                stroke={isDark ? "#2ab5ab" : "#1f766e"}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                className="scribble-glow"
+              />
+            </svg>
+          </span>{" "}
+          question. <br className="hidden md:block" /> Get a teacher working <br className="hidden md:block" /> on them{" "}
+          <span style={{ position: "relative", whiteSpace: "nowrap" }}>
+            fast
+            <svg
+              viewBox="0 0 100 20"
+              preserveAspectRatio="none"
+              style={{
+                position: "absolute",
+                bottom: -2,
+                left: -2,
+                width: "105%",
+                height: 12,
+                zIndex: -1,
+                overflow: "visible",
+              }}
+            >
+              <path
+                d="M 2 15 Q 30 10 60 18 T 98 12 M 5 18 Q 40 25 70 14 T 95 20 M 15 22 Q 50 12 85 24"
+                stroke={isDark ? "#2ab5ab" : "#1f766e"}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                className="scribble-glow"
+              />
+            </svg>
+          </span>.
         </h1>
 
         <p
@@ -916,7 +971,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           Students post academic questions, teachers accept them live, and a
           private answer screen opens right away.
           <br />
-          Get help within 15 minutes using chat, audio or video calls, and file
+          Get help within minutes using chat, audio or video calls, and file
           sharing while the answer is being solved.
         </p>
 

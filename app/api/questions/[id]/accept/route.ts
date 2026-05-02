@@ -11,6 +11,7 @@ import Question from "@/models/Question";
 import User from "@/models/User";
 import type { FeedQuestion } from "@/types/question";
 import Notification from "@/models/Notification";
+import { checkTeacherStudentPattern } from "@/lib/anti-cheat";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -177,6 +178,11 @@ export async function POST(_request: Request, context: RouteParams) {
       role: "asker",
     };
     await emitNewChannel(asker._id.toString(), channelListItem).catch(() => {});
+
+    // Run anti-cheat check asynchronously
+    checkTeacherStudentPattern(session.user.id, asker._id.toString()).catch((err) => {
+      console.error("[Anti-Cheat] Check failed:", err);
+    });
 
     // Return channelId so the UI can redirect
     return NextResponse.json({

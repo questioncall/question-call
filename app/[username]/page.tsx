@@ -14,16 +14,20 @@ import {
   CalendarIcon,
   MailIcon,
   GraduationCapIcon,
+  ActivityIcon,
 } from "lucide-react";
 
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
 import Answer, { type AnswerRecord } from "@/models/Answer";
+import WalletHistoryEvent from "@/models/WalletHistoryEvent";
 
 import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { ProfileQuestionsTab } from "@/components/shared/profile-questions-tab";
+import { ActivityHeatmap } from "@/components/shared/activity-heatmap";
+import { ActivityGraph } from "@/components/shared/activity-graph";
 import { Button } from "@/components/ui/button";
 import {
   getDefaultPath,
@@ -229,6 +233,25 @@ export default async function PublicProfilePage({
     );
   }
 
+  // Heatmap Data Fetching
+  const heatmapStartDate = new Date();
+  heatmapStartDate.setDate(heatmapStartDate.getDate() - 365);
+  
+  let heatmapData: { date: string; amount: number }[] = [];
+  if (isStudent) {
+    const questionsAgg = await Question.aggregate([
+      { $match: { askerId: new mongoose.Types.ObjectId(profile.id), createdAt: { $gte: heatmapStartDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, amount: { $sum: 1 } } }
+    ]);
+    heatmapData = questionsAgg.map(d => ({ date: d._id, amount: d.amount }));
+  } else {
+    const earningsAgg = await WalletHistoryEvent.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(profile.id), occurredAt: { $gte: heatmapStartDate } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$occurredAt" } }, amount: { $sum: { $cond: [{ $gt: ["$pointsDelta", 0] }, "$pointsDelta", 0] } } } }
+    ]);
+    heatmapData = earningsAgg.map(d => ({ date: d._id, amount: d.amount }));
+  }
+
   const profileContent = (
     <div className="mx-auto w-full max-w-[1280px] px-4 md:px-8 py-8">
       <div className="grid gap-8 lg:grid-cols-[296px_minmax(0,1fr)] items-start">
@@ -410,6 +433,15 @@ export default async function PublicProfilePage({
                     : profile.totalAnswered}
                 </span>
               </Link>
+              <Link
+                href={`/${profile.username}?tab=activity`}
+                className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${tab === "activity" ? "border-primary text-primary bg-primary/5 rounded-t-md" : "border-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground"}`}
+              >
+                <ActivityIcon
+                  className={`size-4 ${tab === "activity" ? "text-primary" : "text-muted-foreground"}`}
+                />
+                Activity
+              </Link>
               {profile.role === "TEACHER" && (
                 <Link
                   href={`/${profile.username}?tab=media`}
@@ -499,6 +531,14 @@ export default async function PublicProfilePage({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* HEATMAP */}
+              <div className="rounded-lg border border-border bg-card p-6 shadow-sm overflow-hidden">
+                <h3 className="mb-4 text-base font-semibold text-foreground">
+                  Activity
+                </h3>
+                <ActivityHeatmap data={heatmapData} role={profile.role as "STUDENT" | "TEACHER"} />
               </div>
 
               {/* ACTIVITY GRID */}
@@ -695,6 +735,8 @@ export default async function PublicProfilePage({
                 </div>
               )}
             </div>
+          ) : tab === "activity" ? (
+            <ActivityGraph userId={profile.id} role={profile.role as "STUDENT" | "TEACHER"} isOwner={isOwner} />
           ) : null}
         </div>
       </div>

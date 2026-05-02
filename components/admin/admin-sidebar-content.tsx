@@ -46,6 +46,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Live sessions": VideoIcon,
   "Onboarding Videos": ClapperboardIcon,
   "Legal": ShieldAlertIcon,
+  "Security": ShieldAlertIcon,
   "Services": Zap,
   "Developer": Code2,
 };
@@ -65,7 +66,7 @@ const groupedItems = [
   },
   {
     category: "PLATFORM",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Services", "Developer", "Settings", "Social Media", "Subscription", "Payment config", "Format config", "AI Keys", "Legal"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Services", "Developer", "Settings", "Social Media", "Subscription", "Payment config", "Format config", "AI Keys", "Legal", "Security"].includes(item.label))
   }
 ];
 

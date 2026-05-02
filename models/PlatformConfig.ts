@@ -506,6 +506,22 @@ const platformConfigSchema = new Schema(
       ],
     },
 
+    // ─── Anti-Cheating / Security Config ──────────────────
+    antiCheatConsecutiveThreshold: {
+      type: Number,
+      default: 5,
+      min: 2,
+    },
+    antiCheatSuspensionDays: {
+      type: Number,
+      default: 3,
+      min: 1,
+    },
+    antiCheatEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
     // ─── Withdrawal Config (Phase 7) ─────────────────────────────
     pointToNprRate: {
       type: Number,

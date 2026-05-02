@@ -213,6 +213,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["legal", "terms", "privacy", "policy", "content"],
   },
   {
+    id: "security",
+    label: "Security",
+    href: "/admin/security",
+    description:
+      "Configure anti-cheat limits, view alerts, and manage teacher suspensions.",
+    group: "Platform Config",
+    keywords: ["security", "anti-cheat", "alerts", "suspension", "collusion"],
+  },
+  {
     id: "services",
     label: "Services",
     href: "/admin/services",
@@ -252,6 +261,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/live-sessions", label: "Live sessions" },
   { href: "/admin/onboarding-videos", label: "Onboarding Videos" },
   { href: "/admin/legal", label: "Legal" },
+  { href: "/admin/security", label: "Security" },
 ] as const;
 
 export const ADMIN_SEARCH_ENTRIES = [
