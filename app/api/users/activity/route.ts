@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const user = await User.findById(userId).select("role");
+    const user = await User.findById(userId).select("role createdAt");
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -38,8 +38,18 @@ export async function GET(req: NextRequest) {
       startDate.setFullYear(now.getFullYear() - range);
     }
 
-    let dataPoints = [];
-    let summary = {};
+    // If startDate is before user creation, clamp it and set a message
+    const userCreatedAt = user.createdAt ? new Date(user.createdAt) : null;
+    let rangeMessage: string | null = null;
+
+    if (userCreatedAt && startDate < userCreatedAt) {
+      startDate = new Date(userCreatedAt);
+      rangeMessage = `Showing data from ${userCreatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} (account creation date). No earlier activity exists.`;
+    }
+
+    let dataPoints: any[] = [];
+    let summary: any = {};
+    let typeBreakdown: any[] = [];
 
     if (isTeacher) {
       // Group by day/week/month
@@ -69,10 +79,43 @@ export async function GET(req: NextRequest) {
               } 
             },
             netEarning: { $sum: "$pointsDelta" },
+            answerRewards: {
+              $sum: {
+                $cond: [{ $in: ["$type", ["ANSWER_REWARD", "AUTO_CLOSE_REWARD"]] }, { $cond: [{ $gt: ["$pointsDelta", 0] }, "$pointsDelta", 0] }, 0]
+              }
+            },
+            bonuses: {
+              $sum: {
+                $cond: [{ $in: ["$type", ["MONTHLY_BONUS", "DAILY_TARGET_BONUS"]] }, "$pointsDelta", 0]
+              }
+            },
+            penalties: {
+              $sum: {
+                $cond: [{ $in: ["$type", ["LOW_RATING_PENALTY", "TIMEOUT_PENALTY"]] }, { $abs: "$pointsDelta" }, 0]
+              }
+            },
             count: { $sum: 1 }
           }
         },
         { $sort: { _id: 1 } }
+      ]);
+
+      // Type breakdown aggregation (for pie chart)
+      typeBreakdown = await WalletHistoryEvent.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(userId),
+            occurredAt: { $gte: startDate }
+          }
+        },
+        {
+          $group: {
+            _id: "$type",
+            total: { $sum: { $abs: "$pointsDelta" } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { total: -1 } }
       ]);
 
       let totalEarned = 0;
@@ -80,11 +123,15 @@ export async function GET(req: NextRequest) {
       let netEarning = 0;
       let totalActiveDays = dataPoints.length;
       let bestDay = { date: "", amount: 0 };
+      let totalBonuses = 0;
+      let totalAnswerRewards = 0;
 
       dataPoints = dataPoints.map(dp => {
         totalEarned += dp.totalEarned;
         totalPenalty += dp.totalPenalty;
         netEarning += dp.netEarning;
+        totalBonuses += dp.bonuses;
+        totalAnswerRewards += dp.answerRewards;
         if (dp.netEarning > bestDay.amount) {
           bestDay = { date: dp._id, amount: dp.netEarning };
         }
@@ -93,6 +140,9 @@ export async function GET(req: NextRequest) {
           earned: dp.totalEarned,
           penalty: dp.totalPenalty,
           net: dp.netEarning,
+          answerRewards: dp.answerRewards,
+          bonuses: dp.bonuses,
+          penalties: dp.penalties,
           count: dp.count
         };
       });
@@ -102,7 +152,9 @@ export async function GET(req: NextRequest) {
         totalPenalty,
         netEarning,
         totalActiveDays,
-        bestDay
+        bestDay,
+        totalBonuses,
+        totalAnswerRewards
       };
     } else {
       let format = "%Y-%m-%d";
@@ -120,29 +172,57 @@ export async function GET(req: NextRequest) {
         { 
           $group: {
             _id: { $dateToString: { format, date: "$createdAt" } },
-            questionsAsked: { $sum: 1 }
+            questionsAsked: { $sum: 1 },
+            solved: {
+              $sum: { $cond: [{ $eq: ["$status", "SOLVED"] }, 1, 0] }
+            },
+            pending: {
+              $sum: { $cond: [{ $in: ["$status", ["PENDING", "ACCEPTED"]] }, 1, 0] }
+            }
           }
         },
         { $sort: { _id: 1 } }
       ]);
 
+      // Status breakdown for pie chart
+      typeBreakdown = await Question.aggregate([
+        {
+          $match: {
+            askerId: new mongoose.Types.ObjectId(userId),
+            createdAt: { $gte: startDate }
+          }
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } }
+      ]);
+
       let totalAsked = 0;
+      let totalSolved = 0;
       let totalActiveDays = dataPoints.length;
       let bestDay = { date: "", amount: 0 };
 
       dataPoints = dataPoints.map(dp => {
         totalAsked += dp.questionsAsked;
+        totalSolved += dp.solved;
         if (dp.questionsAsked > bestDay.amount) {
           bestDay = { date: dp._id, amount: dp.questionsAsked };
         }
         return {
           date: dp._id,
-          questionsAsked: dp.questionsAsked
+          questionsAsked: dp.questionsAsked,
+          solved: dp.solved,
+          pending: dp.pending
         };
       });
 
       summary = {
         totalAsked,
+        totalSolved,
         totalActiveDays,
         bestDay
       };
@@ -152,7 +232,9 @@ export async function GET(req: NextRequest) {
       role: user.role,
       period,
       dataPoints,
-      summary
+      summary,
+      typeBreakdown,
+      rangeMessage
     });
   } catch (error: any) {
     console.error("Activity API error:", error);

@@ -26,7 +26,7 @@ import WalletHistoryEvent from "@/models/WalletHistoryEvent";
 import { GuestHeader } from "@/components/shared/guest-header";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { ProfileQuestionsTab } from "@/components/shared/profile-questions-tab";
-import { ActivityHeatmap } from "@/components/shared/activity-heatmap";
+import { ActivityOverview } from "@/components/shared/activity-overview";
 import { ActivityGraph } from "@/components/shared/activity-graph";
 import { Button } from "@/components/ui/button";
 import {
@@ -533,13 +533,8 @@ export default async function PublicProfilePage({
                 </div>
               </div>
 
-              {/* HEATMAP */}
-              <div className="rounded-lg border border-border bg-card p-6 shadow-sm overflow-hidden">
-                <h3 className="mb-4 text-base font-semibold text-foreground">
-                  Activity
-                </h3>
-                <ActivityHeatmap data={heatmapData} role={profile.role as "STUDENT" | "TEACHER"} />
-              </div>
+              {/* ACTIVITY OVERVIEW */}
+              <ActivityOverview data={heatmapData} role={profile.role as "STUDENT" | "TEACHER"} />
 
               {/* ACTIVITY GRID */}
               {featureQuestions.length > 0 && (
