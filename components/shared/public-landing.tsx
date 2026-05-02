@@ -511,6 +511,7 @@ function Nav() {
             { href: "#for-teachers", label: "Teachers" },
             { href: "#quiz", label: "Quiz" },
             { href: "#faq", label: "FAQ" },
+            { href: "/legal", label: "Privacy Policy" },
           ].map((item) =>
             item.href.startsWith("#") ? (
               <a
