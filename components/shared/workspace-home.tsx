@@ -1434,13 +1434,13 @@ export function WorkspaceHome({
 
                         {isAccepted && (
                           <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3">
-                            <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                            <p className="text-sm font-semibold text-foreground">
                               {item.acceptedByName
                                 ? `${item.acceptedByName} is already working on this question.`
                                 : "This question is currently being answered."}
                             </p>
                             {item.acceptedAt && (
-                              <p className="mt-1 text-xs text-sky-700/70 dark:text-sky-300/70">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 Accepted {formatTimeAgo(item.acceptedAt)}
                               </p>
                             )}
@@ -1458,10 +1458,10 @@ export function WorkspaceHome({
                             >
                               <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
                               <div className="flex-1">
-                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                <p className="text-sm font-semibold text-foreground">
                                   Accepted answer
                                 </p>
-                                <p className="text-xs text-emerald-700/70 dark:text-emerald-300/70">
+                                <p className="text-xs text-muted-foreground">
                                   {item.answer?.acceptorName ||
                                     item.acceptedByName ||
                                     "Teacher"}{" "}
@@ -1469,7 +1469,7 @@ export function WorkspaceHome({
                                 </p>
                               </div>
                               {item.answer ? (
-                                <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                                   <span>
                                     {expandedAnswers.has(item.id)
                                       ? "Hide"

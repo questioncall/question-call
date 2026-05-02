@@ -22,11 +22,20 @@ import {
   PhoneOutgoingIcon,
   PhoneMissedIcon,
   Trash2Icon,
+  ChevronDownIcon,
+  DownloadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { CustomAudioPlayer } from "@/components/shared/custom-audio-player";
 import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
 import {
   CHANNEL_EXTENSION_MINUTES,
@@ -167,14 +176,14 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const session = useAppSelector((state) => state.channel.sessions[channelId]);
-  const { channel, messages, isLoaded, isLoading, error, isAnswerSubmitted } = session || {
-    channel: null,
-    messages: [],
-    isLoaded: false,
-    isLoading: false,
-    error: null,
-    isAnswerSubmitted: false,
-  };
+  const {
+    channel = null,
+    messages = [],
+    isLoaded = false,
+    isLoading = false,
+    error = null,
+    isAnswerSubmitted = false,
+  } = session || {};
   const userId = useAppSelector((state) => state.user.id);
 
   const [startingCallType, setStartingCallType] = useState<"AUDIO" | "VIDEO" | null>(null);
@@ -1397,14 +1406,14 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                       className={cn(
                         "group relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
                         isOwn
-                          ? "rounded-tr-sm bg-[#183620] text-[#d4ebd9] dark:bg-[#d4ebd9] dark:text-[#183620]"
+                          ? "rounded-tr-sm bg-emerald-100 text-slate-900 dark:bg-emerald-500 dark:text-slate-950"
                           : "rounded-tl-sm border bg-background text-foreground",
                         msg.isMarkedAsAnswer
                           ? "border-transparent ring-2 ring-yellow-400 ring-offset-1 ring-offset-background"
                           : isOwn
                             ? ""
                             : "border-border",
-                        canToggleMark ? "pr-10 md:pr-4" : "",
+                        canToggleMark ? "md:pr-4" : "",
                       )}
                     >
                       {/* Mark as answer toggle */}
@@ -1424,21 +1433,42 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                         </button>
                       )}
 
-                      {/* Delete button (sender only) */}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          className={cn(
-                            "absolute right-2 flex size-7 items-center justify-center rounded-full transition-all",
-                            "bg-background/80 text-muted-foreground backdrop-blur-sm hover:bg-red-500/10 hover:text-red-500",
-                            "opacity-0 group-hover:opacity-100",
-                            canToggleMark ? "bottom-2" : "top-2",
-                          )}
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          title="Delete message"
-                        >
-                          <Trash2Icon className="size-3.5" />
-                        </button>
+                      {/* Dropdown Actions */}
+                      {(canDelete || msg.mediaUrl) && (
+                        <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "flex size-6 items-center justify-center rounded-full transition-colors backdrop-blur-sm",
+                                  isOwn ? "hover:bg-black/10 dark:hover:bg-white/10" : "bg-background/50 hover:bg-muted"
+                                )}
+                              >
+                                <ChevronDownIcon className="size-4 opacity-70" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-40 z-[100]">
+                              {msg.mediaUrl && (
+                                <DropdownMenuItem asChild>
+                                  <a href={msg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer">
+                                    <DownloadIcon className="mr-2 size-4" />
+                                    <span>Download</span>
+                                  </a>
+                                </DropdownMenuItem>
+                              )}
+                              {canDelete && (
+                                <DropdownMenuItem 
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/30 cursor-pointer"
+                                  onClick={() => handleDeleteMessage(msg.id)}
+                                >
+                                  <Trash2Icon className="mr-2 size-4" />
+                                  <span>Delete</span>
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       )}
 
                       {/* Small badge for asker view */}
@@ -1483,16 +1513,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                           )}
 
                           {msg.mediaType === "AUDIO" && (
-                            <div
-                              className={`flex items-center gap-3 rounded-full py-1 ${
-                                isOwn ? "text-background" : "text-foreground"
-                              }`}
-                            >
-                              <audio
-                                src={msg.mediaUrl}
-                                controls
-                                className="h-10 w-full max-w-[220px] sm:max-w-[240px]"
-                              />
+                            <div className="flex items-center gap-3 py-1">
+                              <CustomAudioPlayer src={msg.mediaUrl} />
                             </div>
                           )}
 

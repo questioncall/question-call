@@ -60,10 +60,12 @@ export default async function HomePage() {
 
   if (!session?.user) {
     const config = await getPlatformConfig();
+    const socialLinks = getPlatformSocialLinks(config);
     return (
       <PublicLanding
         trialDays={config.trialDays}
         customerService={getCustomerServiceDetails(config)}
+        socialLinks={socialLinks}
       />
     );
   }

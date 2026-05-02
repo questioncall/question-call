@@ -39,11 +39,66 @@ import { useTheme } from "next-themes";
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import { APP_NAME, CONTACT_SERVICE_EMAIL } from "@/lib/constants";
 import { HelpCircle, ChevronDown, PlusIcon } from "lucide-react"; 
+import type { PlatformSocialLinks } from "@/models/PlatformConfig";
+import { SocialHandlesDirect } from "@/components/shared/social-handles-hover"; 
 
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
   return (
     <style>{`
+      .shiny-pill {
+        position: relative;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.4rem 1rem;
+        border-radius: 100px;
+        border: 1px solid rgba(31,118,110,0.35);
+        background: rgba(31,118,110,0.08);
+        margin-bottom: 1.5rem;
+      }
+
+      .shiny-effect-active {
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* moving shine */
+      .shiny-pill::before,
+      .shiny-effect-active::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -75%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+          120deg,
+          transparent,
+          rgba(255, 255, 255, 0.5),
+          transparent
+        );
+        transform: skewX(-20deg);
+        animation: shine 2.5s linear infinite;
+        pointer-events: none;
+      }
+
+      @keyframes shine {
+        0% { left: -75%; }
+        100% { left: 125%; }
+      }
+
+      .shiny-text {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #1f2937;
+        letter-spacing: 0.06em;
+      }
+      
+      html.dark .shiny-text {
+        color: #f9fafb;
+      }
       .lpb-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
       .lpb-btn:hover { transform: translateY(-2px); }
       .lpb-nav-chip { border: 1px solid transparent; transition: all 0.2s ease; }
@@ -66,7 +121,7 @@ function LandingStyles() {
       .lpb-footer-contact-chip {
         transition: transform 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       }
-      .lpb-footer-contact-row { justify-content: flex-end; }
+      .lpb-footer-contact-row { justify-content: flex-start; }
       .lpb-footer-link:hover,
       .lpb-footer-contact-chip:hover {
         transform: translateY(-1px);
@@ -99,17 +154,23 @@ function LandingStyles() {
           grid-template-columns: minmax(0, 1fr) 74px 74px !important;
         }
         .lpb-footer-shell {
-          justify-content: center !important;
+          grid-template-columns: 1fr !important;
           text-align: center !important;
+          gap: 2.5rem !important;
+          padding: 2.5rem 1.5rem !important;
+        }
+        .lpb-footer-brand {
+          align-items: center !important;
         }
         .lpb-footer-links {
-          justify-content: center !important;
-          width: 100%;
-          flex-wrap: wrap;
+          align-items: center !important;
         }
         .lpb-footer-meta {
           align-items: center !important;
-          width: 100%;
+        }
+        .lpb-developer-credit {
+          align-self: center !important;
+          margin-top: 1rem !important;
         }
         .lpb-footer-contact-row {
           justify-content: center !important;
@@ -529,7 +590,7 @@ function Nav() {
           </Link>
           <Link
             href={getSignUpPath("STUDENT")}
-            className="lpb-btn lpb-btn-primary"
+            className="lpb-btn lpb-btn-primary shiny-effect-active"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -562,7 +623,7 @@ function Nav() {
         >
           <Link
             href={getSignUpPath("STUDENT")}
-            className="lpb-btn lpb-btn-primary lpb-mobile-btn"
+            className="lpb-btn lpb-btn-primary lpb-mobile-btn shiny-effect-active"
             style={{
               padding: "0.45rem 0.9rem",
               fontSize: 12,
@@ -844,7 +905,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           style={{
             fontSize: "clamp(1rem,2vw,1.2rem)",
             lineHeight: 1.7,
-            color: isDark ? "#9ca3af" : "#4b5563",
+            color: isDark ? "#e5e7eb" : "#1f2937",
             maxWidth: 620,
             margin: "0 auto 2.5rem",
             opacity: count ? 1 : 0,
@@ -939,7 +1000,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           flexDirection: "column",
           alignItems: "center",
           gap: 6,
-          color: isDark ? "#9ca3af" : "#4b5563",
+          color: isDark ? "#e5e7eb" : "#1f2937",
           textDecoration: "none",
           animation: "bounce 2s infinite",
         }}
@@ -1989,7 +2050,7 @@ function StatsBar({ isDark }: { isDark: boolean }) {
             <p
               style={{
                 fontSize: 12,
-                color: isDark ? "#9ca3af" : "#4b5563",
+                color: isDark ? "#e5e7eb" : "#1f2937",
                 margin: 0,
               }}
             >
@@ -2092,7 +2153,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: 14,
                 lineHeight: 1.65,
-                color: isDark ? "#9ca3af" : "#4b5563",
+                color: isDark ? "#e5e7eb" : "#1f2937",
                 margin: 0,
               }}
             >
@@ -2109,7 +2170,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
             textAlign: "center",
             fontSize: 13,
             fontWeight: 700,
-            color: isDark ? "#9ca3af" : "#4b5563",
+            color: isDark ? "#e5e7eb" : "#1f2937",
             letterSpacing: "0.1em",
             marginBottom: "1.5rem",
           }}
@@ -2164,7 +2225,7 @@ function HowItWorks({ isDark }: { isDark: boolean }) {
                 <p
                   style={{
                     fontSize: 12,
-                    color: isDark ? "#9ca3af" : "#4b5563",
+                    color: isDark ? "#e5e7eb" : "#1f2937",
                     margin: 0,
                   }}
                 >
@@ -2247,7 +2308,7 @@ function ForStudents({
 function StudentQuizMockup({ isDark }: { isDark: boolean }) {
   const border = isDark ? "rgba(31,118,110,0.25)" : "rgba(31,118,110,0.18)";
   const cardBg = isDark ? "rgba(15,35,30,0.9)" : "rgba(255,255,255,0.92)";
-  const textMuted = isDark ? "#9ca3af" : "#4b5563";
+  const textMuted = isDark ? "#e5e7eb" : "#1f2937";
 
   return (
     <div
@@ -2570,7 +2631,7 @@ function ForTeachers({ isDark }: { isDark: boolean }) {
 function TeacherMockup({ isDark }: { isDark: boolean }) {
   const border = isDark ? "rgba(31,118,110,0.25)" : "rgba(31,118,110,0.18)";
   const cardBg = isDark ? "rgba(15,35,30,0.9)" : "rgba(255,255,255,0.92)";
-  const textMuted = isDark ? "#9ca3af" : "#4b5563";
+  const textMuted = isDark ? "#e5e7eb" : "#1f2937";
 
   return (
     <div
@@ -2896,7 +2957,7 @@ function QuizPortal({ isDark }: { isDark: boolean }) {
               <p
                 style={{
                   fontSize: 13.5,
-                  color: isDark ? "#9ca3af" : "#4b5563",
+                  color: isDark ? "#e5e7eb" : "#1f2937",
                   lineHeight: 1.6,
                   margin: 0,
                 }}
@@ -3148,19 +3209,19 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                   >
                     <PlayCircleIcon
                       size={12}
-                      color={isDark ? "#9ca3af" : "#4b5563"}
+                      color={isDark ? "#e5e7eb" : "#1f2937"}
                     />
                     <span
                       style={{
                         fontSize: 11,
-                        color: isDark ? "#9ca3af" : "#4b5563",
+                        color: isDark ? "#e5e7eb" : "#1f2937",
                       }}
                     >
                       {videos} videos · {duration}
                     </span>
                     {liveSessions && (
                       <>
-                        <span style={{ color: isDark ? "#9ca3af" : "#4b5563" }}>
+                        <span style={{ color: isDark ? "#e5e7eb" : "#1f2937" }}>
                           ·
                         </span>
                         <CalendarIcon size={12} color="#7c3aed" />
@@ -3199,7 +3260,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
                     <span
                       style={{
                         fontSize: 10,
-                        color: isDark ? "#9ca3af" : "#4b5563",
+                        color: isDark ? "#e5e7eb" : "#1f2937",
                       }}
                     >
                       by {uploader}
@@ -3286,7 +3347,7 @@ function CourseLibrary({ isDark }: { isDark: boolean }) {
               <p
                 style={{
                   fontSize: 12.5,
-                  color: isDark ? "#9ca3af" : "#4b5563",
+                  color: isDark ? "#e5e7eb" : "#1f2937",
                   margin: 0,
                   lineHeight: 1.5,
                 }}
@@ -3502,55 +3563,14 @@ function CTASection({
           transition: "all 0.6s",
         }}
       >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "0.4rem 1rem",
-            borderRadius: 100,
-            border: "1px solid rgba(31,118,110,0.35)",
-            background: "rgba(31,118,110,0.08)",
-            marginBottom: "1.5rem",
-          }}
-        >
+        <div className="shiny-pill">
           <SparklesIcon size={13} color="#1f766e" />
-          <span
-            style={{
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: "#1f766e",
-              letterSpacing: "0.06em",
-            }}
-          >
+          <span className="shiny-text">
             {trialDays}-day free trial for students
           </span>
         </div>
 
-        <h2
-          style={{
-            fontSize: "clamp(2rem,5vw,3.2rem)",
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color: isDark ? "#f9fafb" : "#030712",
-            margin: "0 0 1rem",
-            lineHeight: 1.1,
-          }}
-        >
-          Start with the side of the platform that fits you
-        </h2>
-        <p
-          style={{
-            fontSize: 17,
-            color: isDark ? "#9ca3af" : "#4b5563",
-            margin: "0 0 2.5rem",
-            lineHeight: 1.6,
-          }}
-        >
-          Students can begin with the trial and ask right away. Teachers can
-          join, qualify, and start solving questions from their own dashboard.
-        </p>
-
+        
         <div
           style={{
             display: "flex",
@@ -3599,7 +3619,7 @@ function CTASection({
         <p
           style={{
             fontSize: 13,
-            color: isDark ? "#4b5563" : "#9ca3af",
+            color: isDark ? "#ffffff" : "#19191aff",
             marginTop: "1.5rem",
           }}
         >
@@ -3614,9 +3634,11 @@ function CTASection({
 function Footer({
   isDark,
   customerService,
+  socialLinks,
 }: {
   isDark: boolean;
   customerService: CustomerServiceDetails;
+  socialLinks?: PlatformSocialLinks;
 }) {
   const border = isDark ? "rgba(31,118,110,0.18)" : "rgba(31,118,110,0.14)";
   const hasCustomerService =
@@ -3635,50 +3657,88 @@ function Footer({
         style={{
           maxWidth: 1100,
           margin: "0 auto",
-          padding: "1.5rem 1.5rem",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
+          padding: "4rem 1.5rem 3rem",
+          display: "grid",
+          gridTemplateColumns: "1.2fr 1fr 1.5fr",
+          gap: "3rem",
+          alignItems: "start",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
-            <Image
-              src="/logo.png"
-              alt="Question Call logo"
-              width={28}
-              height={28}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
+        <div className="lpb-footer-brand" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                src="/logo.png"
+                alt="Question Call logo"
+                width={32}
+                height={32}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: isDark ? "#f9fafb" : "#030712",
+              }}
+            >
+              {APP_NAME}
+            </span>
           </div>
-          <span
+          <div style={{ marginTop: 4 }}>
+            {socialLinks ? <SocialHandlesDirect links={socialLinks} /> : null}
+          </div>
+          <div style={{ marginTop: "auto", paddingTop: 16 }}>
+            <a
+              href="https://github.com/siddthecoder"
+              className="lpb-footer-link"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize: 11,
+                color: isDark ? "#e5e7eb" : "#374151",
+                textDecoration: "none",
+                fontWeight: 600,
+                display: "inline-block",
+                padding: "6px 12px",
+                borderRadius: 8,
+                background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                marginLeft: "-10px",
+              }}
+            >
+              Developed by siddthecoder
+            </a>
+          </div>
+          <p
             style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: isDark ? "#d1d5db" : "#374151",
+              fontSize: 12,
+              color: isDark ? "#9ca3af" : "#6b7280",
+              margin: 0,
+              marginTop: 4,
             }}
           >
-            {APP_NAME}
-          </span>
+            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+          </p>
         </div>
 
-        <div className="lpb-footer-links" style={{ display: "flex", gap: 20 }}>
+        <div className="lpb-footer-links" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h4 style={{ fontSize: 12, fontWeight: 800, color: isDark ? "#9ca3af" : "#6b7280", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Quick Links</h4>
           {[
             [getSignInPath(), "Sign in"],
             [getSignUpPath("STUDENT"), "Students"],
             [getSignUpPath("TEACHER"), "Teachers"],
+            ["#how-it-works", "How it works"],
+            ["#faq", "FAQ"],
           ].map(([href, label]) => (
             <Link
               key={label}
@@ -3686,9 +3746,9 @@ function Footer({
               className="lpb-footer-link"
               style={{
                 fontSize: 13,
-                color: isDark ? "#9ca3af" : "#4b5563",
+                color: isDark ? "#e5e7eb" : "#1f2937",
                 textDecoration: "none",
-                fontWeight: 500,
+                fontWeight: 600,
               }}
             >
               {label}
@@ -3701,56 +3761,37 @@ function Footer({
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-end",
-            gap: 4,
+            gap: 20,
+            height: "100%",
           }}
         >
-          <p
-            style={{
-              fontSize: 12,
-              color: isDark ? "#374151" : "#d1d5db",
-              margin: 0,
-            }}
-          >
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-          </p>
           {hasCustomerService ? (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "inherit",
-                gap: 8,
+                gap: 12,
               }}
             >
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: isDark ? "#67a69e" : "#4a8a82",
-                  margin: 0,
-                }}
-              >
-                Contact us
-              </p>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: isDark ? "#7eb8b1" : "#5e8d86",
-                  margin: 0,
-                }}
-              >
-                Customer service
-              </p>
+              <div>
+                <h4 style={{ fontSize: 12, fontWeight: 800, color: isDark ? "#9ca3af" : "#6b7280", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Contact us</h4>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: isDark ? "#e5e7eb" : "#1f2937",
+                    margin: 0,
+                    fontWeight: 500,
+                  }}
+                >
+                  Customer service
+                </p>
+              </div>
               <div
                 className="lpb-footer-contact-row"
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: 8,
-                  maxWidth: 360,
+                  gap: 10,
                 }}
               >
                 {customerService.phoneNumbers.map((phoneNumber) => (
@@ -3762,13 +3803,13 @@ function Footer({
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "0.45rem 0.75rem",
+                      padding: "0.5rem 0.85rem",
                       borderRadius: 999,
                       border: `1px solid ${isDark ? "rgba(31,118,110,0.24)" : "rgba(31,118,110,0.18)"}`,
                       background: isDark
                         ? "rgba(15,35,30,0.68)"
                         : "rgba(255,255,255,0.82)",
-                      color: isDark ? "#d1d5db" : "#374151",
+                      color: isDark ? "#d1d5db" : "#1a1f28ff",
                       textDecoration: "none",
                       fontSize: 12,
                       fontWeight: 600,
@@ -3787,13 +3828,13 @@ function Footer({
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "0.45rem 0.75rem",
+                      padding: "0.5rem 0.85rem",
                       borderRadius: 999,
                       border: "1px solid rgba(31,118,110,0.28)",
                       background: isDark
                         ? "rgba(31,118,110,0.2)"
                         : "rgba(31,118,110,0.12)",
-                      color: isDark ? "#d2f2ed" : "#0f5c55",
+                      color: isDark ? "#d2f2ed" : "#051e1cff",
                       textDecoration: "none",
                       fontSize: 12,
                       fontWeight: 700,
@@ -3807,20 +3848,6 @@ function Footer({
               </div>
             </div>
           ) : null}
-          <a
-            href="https://github.com/siddthecoder"
-            className="lpb-footer-link"
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              fontSize: 11,
-              color: isDark ? "#9ca3af" : "#4b5563",
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
-          >
-            Developed by siddthecoder
-          </a>
         </div>
       </div>
     </footer>
@@ -3932,7 +3959,7 @@ function FeatureCard({
           style={{
             fontSize: 13.5,
             lineHeight: 1.6,
-            color: isDark ? "#9ca3af" : "#4b5563",
+            color: isDark ? "#e5e7eb" : "#1f2937",
             margin: 0,
           }}
         >
@@ -3970,7 +3997,7 @@ function headingStyle(isDark: boolean): React.CSSProperties {
 function subStyle(isDark: boolean): React.CSSProperties {
   return {
     fontSize: "clamp(0.95rem,1.8vw,1.1rem)",
-    color: isDark ? "#9ca3af" : "#4b5563",
+    color: isDark ? "#e5e7eb" : "#1f2937",
     textAlign: "center",
     lineHeight: 1.7,
     margin: "0 auto 0",
@@ -4177,9 +4204,11 @@ export function FAQSection({ isDark }: { isDark: boolean }) {
 export function PublicLanding({
   trialDays = PLATFORM.trialDays,
   customerService = DEFAULT_CUSTOMER_SERVICE_DETAILS,
+  socialLinks,
 }: {
   trialDays?: number;
   customerService?: CustomerServiceDetails;
+  socialLinks?: PlatformSocialLinks;
 }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -4207,7 +4236,7 @@ export function PublicLanding({
         <FAQSection isDark={isDark} />
         <CTASection isDark={isDark} trialDays={trialDays} />
       </main>
-      <Footer isDark={isDark} customerService={customerService} />
+      <Footer isDark={isDark} customerService={customerService} socialLinks={socialLinks} />
     </div>
   );
 }
