@@ -3794,6 +3794,7 @@ function Footer({
             [getSignUpPath("TEACHER"), "Teachers"],
             ["#how-it-works", "How it works"],
             ["#faq", "FAQ"],
+            ["/legal", "Privacy Policy"],
           ].map(([href, label]) => (
             <Link
               key={label}

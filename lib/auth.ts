@@ -1,12 +1,24 @@
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { cookies } from "next/headers";
 
 import { normalizeCallSettings, type UserCallSettings } from "@/lib/call-settings";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProfilePath, getUserHandle } from "@/lib/user-paths";
+import { generateUniqueUsername } from "@/lib/user-directory";
 import User, { type UserRecord, type UserRole } from "@/models/User";
+import Transaction from "@/models/Transaction";
+import Referral from "@/models/Referral";
+import Notification from "@/models/Notification";
+import { getPlatformConfig } from "@/models/PlatformConfig";
+import { emitNotification } from "@/lib/pusher/pusherServer";
+import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
+import { getSiteUrl } from "@/lib/site-url";
+import { APP_NAME } from "@/lib/constants";
 
 const defaultPathByRole: Record<UserRole, string> = {
   STUDENT: "/",
@@ -163,24 +175,195 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google") {
+        const email = user.email?.toLowerCase();
+        if (!email) return false;
+
+        await connectToDatabase();
+        const existingUser = await User.findOne({ email });
+
+        if (!existingUser) {
+          // New user registration via Google
+          const name = user.name || "Google User";
+          const username = await generateUniqueUsername({ email, name });
+          const userOwnReferralCode = `REF-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+          const siteUrl = getSiteUrl();
+          
+          // Get role and referral from cookies (set by AuthForm)
+          const cookieStore = await cookies();
+          const role = (cookieStore.get("pending-role")?.value as UserRole) || "STUDENT";
+          const referralCode = cookieStore.get("pending-referral")?.value;
+
+          let referrerUser = null;
+          let refereeBonus = 0;
+          let referrerBonus = 0;
+          let referralCodeUsed = null;
+
+          if (referralCode) {
+            const config = await getPlatformConfig();
+            if (config.referralEnabled) {
+              referrerUser = await User.findOne({ 
+                referralCode: referralCode.toUpperCase().trim(),
+                isSuspended: false
+              });
+              if (referrerUser && referrerUser.email !== email) {
+                refereeBonus = config.referralBonusQuestions || 1;
+                referrerBonus = config.referrerBonusQuestions || 3;
+                referralCodeUsed = referrerUser.referralCode;
+              }
+            }
+          }
+
+          const newUser = await User.create({
+            name,
+            email,
+            username,
+            role,
+            referralCode: userOwnReferralCode,
+            bonusQuestions: refereeBonus,
+            referredBy: referrerUser ? referrerUser._id : null,
+            points: 0,
+            pointBalance: 0,
+            totalAnswered: 0,
+            isMonetized: false,
+            overallScore: 0,
+            overallRatingSum: 0,
+            overallRatingCount: 0,
+          });
+
+          if (referrerUser) {
+            referrerUser.bonusQuestions = (referrerUser.bonusQuestions || 0) + referrerBonus;
+            if (!referrerUser.referralHistory) referrerUser.referralHistory = [];
+            referrerUser.referralHistory.push({
+              referredUserId: newUser._id,
+              pointsEarned: referrerBonus,
+              date: new Date()
+            });
+            await referrerUser.save();
+
+            await Referral.create({
+              referrerId: referrerUser._id,
+              refereeId: newUser._id,
+              referralCode: referralCodeUsed,
+              bonusAwarded: referrerBonus,
+              status: "COMPLETED",
+            });
+
+            const notification = await Notification.create({
+              userId: referrerUser._id,
+              type: "SYSTEM",
+              message: `🎉 Someone joined using your referral link! You've been awarded ${referrerBonus} bonus questions!`,
+              href: "/subscription",
+              isRead: false,
+            }).catch(() => null);
+
+            if (notification) {
+              await emitNotification(referrerUser._id.toString(), notification).catch(() => {});
+            }
+
+            void sendGreetingEmail(
+              referrerUser.email,
+              referrerUser.name,
+              "You Earned Bonus Questions! 🎉",
+              `${siteUrl}/subscription`,
+              `Someone just joined ${APP_NAME} using your referral link. You have been awarded ${referrerBonus} bonus questions permanently to your account!`
+            ).catch(console.error);
+          }
+
+          if (role === "STUDENT") {
+            await Transaction.create({
+              userId: newUser._id,
+              type: "SUBSCRIPTION_MANUAL",
+              amount: 0,
+              status: "COMPLETED",
+              planSlug: "free",
+              transactionId: `TRIAL_${newUser._id}`,
+              transactorName: name,
+            });
+          }
+
+          if (referrerUser && refereeBonus > 0) {
+            const refereeNotification = await Notification.create({
+              userId: newUser._id,
+              type: "SYSTEM",
+              message: `🎉 Welcome! You received ${refereeBonus} bonus questions for signing up with a referral link!`,
+              href: "/subscription",
+              isRead: false,
+            }).catch(() => null);
+
+            if (refereeNotification) {
+              await emitNotification(newUser._id.toString(), refereeNotification).catch(() => {});
+            }
+
+            void sendGreetingEmail(
+              email,
+              name,
+              `Welcome to ${APP_NAME}! (+ Bonus Questions 🎉)`,
+              siteUrl,
+              `We're excited to have you on board! Since you signed up with a friend's referral link, you have been awarded ${refereeBonus} bonus questions to ask for free. Explore courses, ask questions, and start your learning journey today.`
+            ).catch(console.error);
+          } else {
+            void sendGreetingEmail(
+              email,
+              name,
+              `Welcome to ${APP_NAME}! Your account has been created successfully.`,
+              siteUrl,
+              "We're excited to have you on board! Explore courses, ask questions, and start your learning journey today."
+            ).catch(console.error);
+          }
+
+          // Pass the new user details to the JWT callback
+          user.id = newUser.id;
+          (user as any).role = newUser.role;
+          (user as any).username = newUser.username;
+        } else {
+          // Existing user
+          user.id = existingUser.id;
+          (user as any).role = existingUser.role;
+          (user as any).username = existingUser.username;
+          (user as any).isMasterAdmin = existingUser.isMasterAdmin;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.username = user.username;
-        token.isMasterAdmin =
-          "isMasterAdmin" in user && typeof user.isMasterAdmin === "boolean"
-            ? user.isMasterAdmin
-            : undefined;
+        if (account?.provider === "google") {
+          // For Google users, we need to ensure the token has the MongoDB ID and Role
+          // We look up the user because modifications in the signIn callback 
+          // don't always propagate to the jwt callback in NextAuth v4.
+          await connectToDatabase();
+          const dbUser = await User.findOne({ email: user.email });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role;
+            token.username = dbUser.username;
+            token.isMasterAdmin = dbUser.isMasterAdmin;
+          }
+        } else {
+          // For Credentials provider, the user object already has the correct data
+          token.id = user.id;
+          token.role = (user as any).role;
+          token.username = (user as any).username;
+          token.isMasterAdmin =
+            "isMasterAdmin" in user && typeof (user as any).isMasterAdmin === "boolean"
+              ? (user as any).isMasterAdmin
+              : undefined;
+        }
       }
 
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id && token.role) {
-        session.user.id = token.id;
+        session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
         session.user.username =
           typeof token.username === "string" ? token.username : undefined;
