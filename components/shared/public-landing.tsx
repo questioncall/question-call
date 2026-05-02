@@ -3782,7 +3782,8 @@ function Footer({
               marginTop: 4,
             }}
           >
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+            © {new Date().getFullYear()} {APP_NAME}. All rights reserved. {" "}
+            <Link href="/legal" style={{ marginLeft: 8, textDecoration: "underline", color: "inherit" }}>Privacy Policy</Link>
           </p>
         </div>
 
