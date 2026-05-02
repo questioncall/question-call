@@ -89,6 +89,35 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Validate and normalise daily targets
+    if ("dailyTargets" in updates) {
+      if (!Array.isArray(updates.dailyTargets)) {
+        return NextResponse.json(
+          { error: "dailyTargets must be an array" },
+          { status: 400 },
+        );
+      }
+
+      const validated: { target: number; bonus: number }[] = [];
+      const seenTargets = new Set<number>();
+
+      for (const entry of updates.dailyTargets) {
+        const target = Number(entry?.target);
+        const bonus = Number(entry?.bonus);
+
+        if (!Number.isFinite(target) || target < 1) continue;
+        if (!Number.isFinite(bonus) || bonus < 0) continue;
+        if (seenTargets.has(target)) continue;
+
+        seenTargets.add(target);
+        validated.push({ target: Math.round(target), bonus: Math.round(bonus) });
+      }
+
+      // Sort ascending by target
+      validated.sort((a, b) => a.target - b.target);
+      updates.dailyTargets = validated;
+    }
+
     await connectToDatabase();
     
     const config = await getPlatformConfig();

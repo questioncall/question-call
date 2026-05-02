@@ -11,6 +11,7 @@ import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
 import { recordWalletHistoryEvent } from "@/lib/wallet-history";
+import { incrementDailyTargetCount } from "@/lib/daily-targets";
 import type { FeedQuestion } from "@/types/question";
 import Question from "@/models/Question";
 
@@ -344,6 +345,11 @@ export async function processExpiredChannels(
         if (teacherNotif) {
           await emitNotification(teacherId, teacherNotif).catch(() => {});
         }
+
+        // Increment daily target count for the auto-closed teacher
+        await incrementDailyTargetCount(teacherId, config).catch((err) => {
+          console.error("[daily-targets] Failed to increment on auto-close", err);
+        });
       }
 
       const askerId = getRefId(channel.askerId as RefLike);

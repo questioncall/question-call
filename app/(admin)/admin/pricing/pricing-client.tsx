@@ -25,7 +25,7 @@ const PLAN_FIELDS: Array<{
 ];
 
 export function PricingClient() {
-  const [config, setConfig] = useState<Record<string, number | boolean> | null>(null);
+  const [config, setConfig] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -154,6 +154,7 @@ export function PricingClient() {
           </div>
         </CardContent>
       </Card>
+
 
       {/* All Plans */}
       {PLAN_FIELDS.map((plan) => (

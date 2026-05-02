@@ -13,6 +13,7 @@ import Notification from "@/models/Notification";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import { calcTeacherPayoutBreakdown } from "@/lib/points";
 import { recordWalletHistoryEvent } from "@/lib/wallet-history";
+import { incrementDailyTargetCount } from "@/lib/daily-targets";
 import type { FeedQuestion } from "@/types/question";
 
 const BAYESIAN_SEED_VOTES = 5;
@@ -214,6 +215,11 @@ export async function POST(
         console.error("[wallet-history] Failed to record low-rating penalty", error);
       });
 
+      // Increment daily target count even for 1-star ratings (the teacher still answered)
+      await incrementDailyTargetCount(teacher._id.toString(), config).catch((err) => {
+        console.error("[daily-targets] Failed to increment", err);
+      });
+
       if (question) {
         const currentResetCount = question.resetCount || 0;
 
@@ -369,6 +375,11 @@ export async function POST(
             console.error("[wallet-history] Failed to record answer reward", error);
           });
       }
+
+      // Increment daily target count for the teacher (awards bonuses if thresholds met)
+      await incrementDailyTargetCount(teacher._id.toString(), config).catch((err) => {
+        console.error("[daily-targets] Failed to increment", err);
+      });
 
       const notifMessage = teacher.isMonetized && answer
         ? `Student rated your solution ${rating}/5 stars. Points credited!`

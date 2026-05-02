@@ -77,7 +77,11 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const workspaceUser = await getWorkspaceUser(session.user);
-  const socialLinks = getPlatformSocialLinks(await getPlatformConfig());
+  const config = await getPlatformConfig();
+  const socialLinks = getPlatformSocialLinks(config);
+  const dailyTargets: { target: number; bonus: number }[] = JSON.parse(
+    JSON.stringify((config as any).dailyTargets ?? []),
+  );
   const coursePageData = await getCourseBrowsePageData({
     userId: workspaceUser.id,
     role: workspaceUser.role as "STUDENT" | "TEACHER" | "ADMIN",
@@ -106,7 +110,7 @@ export default async function HomePage() {
   return (
     <>
       <GlobalNoticeModal />
-      <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} defaultOpen={defaultOpen}>
+      <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} dailyTargets={dailyTargets} defaultOpen={defaultOpen}>
         <WorkspaceHome
           role={workspaceUser.role as "STUDENT" | "TEACHER"}
           userId={workspaceUser.id}

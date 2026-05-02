@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   "PAYMENT",
   "ANSWER_SUBMITTED",
   "DEADLINE_WARNING",
+  "DAILY_TARGET_BONUS",
   "SYSTEM",
 ] as const;
 

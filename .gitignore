@@ -10,6 +10,8 @@
 !.yarn/releases
 !.yarn/versions
 
+secure 
+
 scripts/migrate-to-production.mjs
 
 # testing

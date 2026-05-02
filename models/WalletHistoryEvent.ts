@@ -6,6 +6,7 @@ export const WALLET_HISTORY_EVENT_TYPES = [
   "LOW_RATING_PENALTY",
   "TIMEOUT_PENALTY",
   "MONTHLY_BONUS",
+  "DAILY_TARGET_BONUS",
 ] as const;
 
 const walletHistoryEventSchema = new Schema(

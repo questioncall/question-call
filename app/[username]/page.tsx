@@ -705,12 +705,17 @@ export default async function PublicProfilePage({
     const cookieStore = await cookies();
     const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
     const workspaceUser = await getWorkspaceUser(session.user);
-    const socialLinks = getPlatformSocialLinks(await getPlatformConfig());
+    const config = await getPlatformConfig();
+    const socialLinks = getPlatformSocialLinks(config);
+    const dailyTargets: { target: number; bonus: number }[] = JSON.parse(
+      JSON.stringify((config as any).dailyTargets ?? []),
+    );
 
     return (
       <WorkspaceShell
         user={workspaceUser}
         socialLinks={socialLinks}
+        dailyTargets={dailyTargets}
         defaultOpen={defaultOpen}
       >
         {profileContent}

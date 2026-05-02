@@ -488,6 +488,23 @@ const platformConfigSchema = new Schema(
       default: TEACHER.MONTHLY_HIGH_SCORE_BONUS_POINTS,
       min: 0,
     },
+    dailyTargets: {
+      type: [
+        new Schema(
+          {
+            target: { type: Number, required: true },
+            bonus: { type: Number, required: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [
+        { target: 20, bonus: 5 },
+        { target: 40, bonus: 10 },
+        { target: 80, bonus: 20 },
+        { target: 100, bonus: 25 },
+      ],
+    },
 
     // ─── Withdrawal Config (Phase 7) ─────────────────────────────
     pointToNprRate: {

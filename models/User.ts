@@ -140,6 +140,22 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    /** Tracks the daily answers target */
+    dailyAnswersCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    /** The date when the dailyAnswersCount was last updated (used to reset daily) */
+    lastAnsweredDate: {
+      type: Date,
+      default: null,
+    },
+    /** Array of targets (number of questions) achieved on the current lastAnsweredDate */
+    dailyTargetsAchieved: {
+      type: [Number],
+      default: [],
+    },
     /** Tracks when the teacher last claimed the monthly high-rating bonus */
     monthlyBonusClaimedAt: {
       type: Date,

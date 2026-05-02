@@ -56,8 +56,21 @@ export async function getWorkspaceUser(sessionUser: Session["user"]) {
   await connectToDatabase();
 
   const dbUser = await User.findById(sessionUser.id)
-    .select("name email username role userImage callSettings teacherModeVerified totalAnswered")
-    .lean<WorkspaceUserRecord | null>();
+    .select("name email username role userImage callSettings teacherModeVerified totalAnswered dailyAnswersCount lastAnsweredDate")
+    .lean<WorkspaceUserRecord & { dailyAnswersCount?: number, lastAnsweredDate?: Date } | null>();
+
+  let activeDailyAnswersCount = 0;
+  if (dbUser?.lastAnsweredDate) {
+    const now = new Date();
+    const lastAns = new Date(dbUser.lastAnsweredDate);
+    if (
+      lastAns.getFullYear() === now.getFullYear() &&
+      lastAns.getMonth() === now.getMonth() &&
+      lastAns.getDate() === now.getDate()
+    ) {
+      activeDailyAnswersCount = dbUser.dailyAnswersCount || 0;
+    }
+  }
 
   return {
     id: sessionUser.id,
@@ -71,6 +84,7 @@ export async function getWorkspaceUser(sessionUser: Session["user"]) {
     callSettings: normalizeCallSettings(
       dbUser?.callSettings as Partial<UserCallSettings> | null | undefined,
     ),
+    dailyAnswersCount: activeDailyAnswersCount,
   };
 }
 

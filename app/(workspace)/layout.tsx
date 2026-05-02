@@ -41,12 +41,16 @@ export default async function WorkspaceLayout({
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
   const workspaceUser = await getWorkspaceUser(session.user);
-  const socialLinks = getPlatformSocialLinks(await getPlatformConfig());
+  const config = await getPlatformConfig();
+  const socialLinks = getPlatformSocialLinks(config);
+  const dailyTargets: { target: number; bonus: number }[] = JSON.parse(
+    JSON.stringify((config as any).dailyTargets ?? []),
+  );
 
   return (
     <>
       <GlobalNoticeModal />
-      <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} defaultOpen={defaultOpen}>
+      <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} dailyTargets={dailyTargets} defaultOpen={defaultOpen}>
         {children}
       </WorkspaceShell>
     </>

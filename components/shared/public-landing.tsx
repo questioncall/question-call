@@ -806,7 +806,7 @@ function Hero({ isDark }: { isDark: boolean }) {
       }}
     >
       {/* Background Image */}
-      <div
+      {/* <div
         style={{
           position: "absolute",
           inset: 0,
@@ -817,7 +817,7 @@ function Hero({ isDark }: { isDark: boolean }) {
           opacity: isDark ? 0.02 : 0.2,
           pointerEvents: "none",
         }}
-      />
+      /> */}
 
       {/* Ambient blobs */}
       <div
@@ -4073,7 +4073,7 @@ export function FAQSection({ isDark }: { isDark: boolean }) {
       style={{ padding: "6rem 1.5rem", position: "relative" }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 2 }}>
-        <SectionLabel label="FAQ" color="#7c3aed" />
+        <SectionLabel label="FAQ - Frequently Asked Questions" color="#7c3aed" />
 
         <h2
           style={{

@@ -68,7 +68,7 @@ export const ADMIN_SETTINGS_SECTION_ENTRIES: AdminPortalEntry[] = [
 export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
   {
     id: "pricing",
-    label: "Pricing",
+    label: "Subscription",
     href: "/admin/pricing",
     description:
       "Adjust subscription pricing, package values, and point-to-money platform settings.",
@@ -240,7 +240,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/social", label: "Social Media" },
   { href: "/admin/users", label: "Users" },
-  { href: "/admin/pricing", label: "Pricing" },
+  { href: "/admin/pricing", label: "Subscription" },
   { href: "/admin/payment-config", label: "Payment config" },
   { href: "/admin/format-config", label: "Format config" },
   { href: "/admin/notifications", label: "Notifications" },

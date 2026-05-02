@@ -34,7 +34,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Settings": SettingsIcon,
   "Social Media": Share2Icon,
   "Users": UsersIcon,
-  "Pricing": TagIcon,
+  "Subscription": TagIcon,
   "Payment config": CreditCardIcon,
   "Format config": LayoutDashboardIcon,
   "Notifications": BellIcon,
@@ -65,7 +65,7 @@ const groupedItems = [
   },
   {
     category: "PLATFORM",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Services", "Developer", "Settings", "Social Media", "Pricing", "Payment config", "Format config", "AI Keys", "Legal"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Services", "Developer", "Settings", "Social Media", "Subscription", "Payment config", "Format config", "AI Keys", "Legal"].includes(item.label))
   }
 ];
 

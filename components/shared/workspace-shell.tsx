@@ -9,9 +9,11 @@ import {
   CreditCardIcon,
   GraduationCapIcon,
   HomeIcon,
+  InfoIcon,
   MessageSquareIcon,
   Settings2Icon,
   SparklesIcon,
+  TargetIcon,
   TrophyIcon,
   UserCircle2Icon,
   WalletIcon,
@@ -25,6 +27,14 @@ import { NavUser } from "@/components/shared/nav-user";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { SocialHandlesHover } from "@/components/shared/social-handles-hover";
 import { NotificationBell } from "@/components/shared/notification-bell";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -105,11 +115,13 @@ type WorkspaceUser = {
   totalAnswered?: number;
   userImage?: string | null;
   callSettings: UserCallSettings;
+  dailyAnswersCount?: number;
 };
 
 type WorkspaceShellProps = {
   user: WorkspaceUser;
   socialLinks: PlatformSocialLinks;
+  dailyTargets?: { target: number; bonus: number }[];
   defaultOpen?: boolean;
   children: ReactNode;
 };
@@ -171,6 +183,7 @@ function WorkspaceSidebarModeSkeleton() {
 export function WorkspaceShell({
   user,
   socialLinks,
+  dailyTargets = [],
   defaultOpen = true,
   children,
 }: WorkspaceShellProps) {
@@ -194,6 +207,7 @@ export function WorkspaceShell({
   const [outgoingAcceptedCallId, setOutgoingAcceptedCallId] = useState<string | null>(null);
   const [outgoingRejectedCallId, setOutgoingRejectedCallId] = useState<string | null>(null);
   const [outgoingMissedCallId, setOutgoingMissedCallId] = useState<string | null>(null);
+  const [showTargetInfoModal, setShowTargetInfoModal] = useState(false);
 
   const removeIncomingCall = useCallback((callSessionId?: string) => {
     setIncomingCalls((prev) => removeIncomingCallFromQueue(prev, callSessionId));
@@ -698,13 +712,74 @@ collapseSidebarOnClick: true,
                 {isSidebarLoading ? (
                   <WorkspaceSidebarModeSkeleton />
                 ) : (
+                  <>
                   <div className="rounded-xl border border-sidebar-border/80 bg-sidebar-accent/70 p-3 text-xs leading-6 text-sidebar-foreground/85 shadow-sm group-data-[collapsible=icon]:hidden">
                     <div className="flex items-center gap-2 text-sidebar-foreground">
                       <SparklesIcon className="size-4" />
                       <span className="font-medium">{roleLabel} mode</span>
                     </div>
                     <p className="mt-2">{roleSummary}</p>
+                    
+                    {resolvedUser.role === "TEACHER" && dailyTargets.length > 0 && (
+                      <div className="mt-3 space-y-1.5 border-t border-sidebar-border/50 pt-3">
+                        <div className="flex items-center justify-between font-medium text-sidebar-foreground">
+                          <span>Daily Target</span>
+                          <span>{user.dailyAnswersCount || 0} / {dailyTargets[dailyTargets.length - 1]?.target || 0}</span>
+                        </div>
+                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-sidebar-border/50">
+                          <div 
+                            className="absolute left-0 top-0 h-full bg-primary transition-all duration-500" 
+                            style={{ 
+                              width: `${Math.min(100, ((user.dailyAnswersCount || 0) / (dailyTargets[dailyTargets.length - 1]?.target || 1)) * 100)}%` 
+                            }} 
+                          />
+                          {dailyTargets.map((t, i) => {
+                            const leftPercent = (t.target / (dailyTargets[dailyTargets.length - 1]?.target || 1)) * 100;
+                            return (
+                              <div 
+                                key={i} 
+                                className="absolute top-0 h-full w-[2px] bg-sidebar-background z-10" 
+                                style={{ left: `${leftPercent}%` }}
+                                title={`${t.target} Qs = ${t.bonus} NPR`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setShowTargetInfoModal(true)}
+                          className="mt-1.5 flex items-center gap-1 text-[10px] text-primary hover:underline mx-auto"
+                        >
+                          <InfoIcon className="size-3" />
+                          Learn how bonuses work
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Collapsed circular progress for daily target */}
+                  {resolvedUser.role === "TEACHER" && dailyTargets.length > 0 && (() => {
+                    const maxTarget = dailyTargets[dailyTargets.length - 1]?.target || 1;
+                    const count = user.dailyAnswersCount || 0;
+                    const pct = Math.min(1, count / maxTarget);
+                    const r = 14;
+                    const circ = 2 * Math.PI * r;
+                    const offset = circ * (1 - pct);
+                    const nextTarget = dailyTargets.find(t => t.target > count);
+                    return (
+                      <button
+                        onClick={() => setShowTargetInfoModal(true)}
+                        className="hidden group-data-[collapsible=icon]:flex relative items-center justify-center mx-auto"
+                        title={nextTarget ? `${count}/${nextTarget.target} — next bonus: ${nextTarget.bonus} NPR` : `${count} solved today!`}
+                      >
+                        <svg width="36" height="36" viewBox="0 0 36 36" className="-rotate-90">
+                          <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" className="stroke-sidebar-border/40" />
+                          <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" strokeLinecap="round" className="stroke-primary transition-all duration-500" strokeDasharray={circ} strokeDashoffset={offset} />
+                        </svg>
+                        <span className="absolute text-[9px] font-bold text-sidebar-foreground">{count}</span>
+                      </button>
+                    );
+                  })()}
+                  </>
                 )}
               </SidebarGroupContent>
             </SidebarGroup>
@@ -783,6 +858,79 @@ collapseSidebarOnClick: true,
           wasMissed={outgoingMissedCallId === outgoingCall?.callSessionId}
           ringbackTone={resolvedCallSettings.outgoingRingtone}
         />
+
+        {/* ── Daily Target Info Modal ────────────────────────── */}
+        {resolvedUser.role === "TEACHER" && dailyTargets.length > 0 && (
+          <Dialog open={showTargetInfoModal} onOpenChange={setShowTargetInfoModal}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-base">
+                  <TargetIcon className="size-5 text-primary" />
+                  Daily Target Bonuses
+                </DialogTitle>
+                <DialogDescription className="text-foreground/90">
+                  Earn bonus NPR by solving questions every day. The more you solve, the bigger the bonus!
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <div className="rounded-lg border bg-muted/30 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-4 py-2.5 text-left font-semibold text-foreground/80">Target</th>
+                        <th className="px-4 py-2.5 text-left font-semibold text-foreground/80">Bonus</th>
+                        <th className="px-4 py-2.5 text-right font-semibold text-foreground/80">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailyTargets.map((t, i) => {
+                        const count = user.dailyAnswersCount || 0;
+                        const achieved = count >= t.target;
+                        return (
+                          <tr key={i} className={cn("border-b last:border-0 transition-colors", achieved ? "bg-primary/5" : "")}>
+                            <td className="px-4 py-2.5 font-medium">
+                              {t.target} questions
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                +{t.bonus} NPR
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              {achieved ? (
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓ Achieved</span>
+                              ) : (
+                                <span className="text-xs text-foreground/80">{Math.max(0, t.target - count)} left</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-relaxed text-foreground">
+                  <p className="font-semibold mb-1">How it works:</p>
+                  <ul className="space-y-1 text-foreground/90 list-disc pl-4">
+                    <li>Solve questions throughout the day — each closed channel counts.</li>
+                    <li>When you hit a target, the bonus is <strong className="text-foreground">automatically added</strong> to your wallet.</li>
+                    <li>All targets reset at midnight — bonuses are earned daily!</li>
+                    <li>You must be a <strong className="text-foreground">monetized teacher</strong> to receive NPR bonuses.</li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-2.5 text-sm">
+                  <span className="text-foreground/80">Today&apos;s progress</span>
+                  <span className="font-bold text-foreground">{user.dailyAnswersCount || 0} / {dailyTargets[dailyTargets.length - 1]?.target || 0} questions</span>
+                </div>
+              </div>
+
+              <DialogFooter showCloseButton />
+            </DialogContent>
+          </Dialog>
+        )}
       </SidebarProvider>
     </WorkspaceFilterProvider>
   );
