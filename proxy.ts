@@ -88,6 +88,25 @@ function resetBrokenSession(request: NextRequest) {
   return clearSessionCookies(NextResponse.redirect(resetUrl));
 }
 
+/**
+ * Old cookie names from before the HTTPS migration.
+ * Auto-cleaned so users don't need to manually clear cookies.
+ */
+const staleCookieNames = [
+  "next-auth.session-token",
+  "next-auth.callback-url",
+  "next-auth.csrf-token",
+] as const;
+
+function expireStaleCookies(request: NextRequest, response: NextResponse) {
+  for (const name of staleCookieNames) {
+    if (request.cookies.has(name)) {
+      response.cookies.set(name, "", { expires: new Date(0), path: "/" });
+    }
+  }
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSessionCookie = requestHasSessionCookie(request);
@@ -160,7 +179,9 @@ export async function proxy(request: NextRequest) {
     return redirectToDefaultPath(request, role);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  expireStaleCookies(request, response);
+  return response;
 }
 
 export const config = {

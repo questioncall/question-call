@@ -56,9 +56,7 @@ export function LegalContent({
           Terms and Policies
         </h1>
         <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-          Please read these terms and policies carefully before using the
-          platform. This content is managed through the platform configuration
-          and can be updated by the admin team.
+          Please read these terms and policies carefully before using the platform.
         </p>
         <div className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
           Last updated: {updatedLabel}
