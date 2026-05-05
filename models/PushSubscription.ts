@@ -1,4 +1,10 @@
-import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
+import {
+  HydratedDocument,
+  InferSchemaType,
+  Schema,
+  model,
+  models,
+} from "mongoose";
 
 const pushSubscriptionSchema = new Schema(
   {
@@ -32,13 +38,20 @@ const pushSubscriptionSchema = new Schema(
       type: String,
       default: null,
     },
+    platform: {
+      type: String,
+      enum: ["web", "ios", "android"],
+      default: "web",
+    },
   },
   {
     timestamps: true,
   },
 );
 
-export type PushSubscriptionRecord = InferSchemaType<typeof pushSubscriptionSchema>;
+export type PushSubscriptionRecord = InferSchemaType<
+  typeof pushSubscriptionSchema
+>;
 export type PushSubscriptionDocument = HydratedDocument<PushSubscriptionRecord>;
 
 const PushSubscriptionModel =

@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
-import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
+import {
+  ADMIN_UPDATES_CHANNEL,
+  ADMIN_WITHDRAWAL_EVENT,
+} from "@/lib/pusher/events";
 import { connectToDatabase } from "@/lib/mongodb";
 import { roundPoints } from "@/lib/points";
 import { emitNotification, pusherServer } from "@/lib/pusher/pusherServer";
@@ -35,12 +37,9 @@ function isDuplicatePendingWithdrawal(error: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(req);
 
-    if (
-      !session?.user?.id ||
-      (session.user.role !== "STUDENT" && session.user.role !== "TEACHER")
-    ) {
+    if (!user?.id || (user.role !== "STUDENT" && user.role !== "TEACHER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -76,15 +75,16 @@ export async function POST(req: Request) {
     const createdPayload = await (async () => {
       try {
         return await dbSession.withTransaction(async () => {
-          const user = await User.findById(session.user.id)
+          const dbUser = await User.findById(user.id)
             .select("name email role points pointBalance esewaNumber")
             .session(dbSession);
 
-          if (!user) {
+          if (!dbUser) {
             throw new WithdrawalRequestError("User not found", 404);
           }
 
-          const esewaNumber = trimmedEsewaNumber || user.esewaNumber?.trim() || "";
+          const esewaNumber =
+            trimmedEsewaNumber || dbUser.esewaNumber?.trim() || "";
           if (!esewaNumber) {
             throw new WithdrawalRequestError(
               "pointsRequested and esewaNumber are required",
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
           }
 
           const existingPending = await WithdrawalRequest.findOne({
-            teacherId: session.user.id,
+            teacherId: user.id,
             status: "PENDING",
           }).session(dbSession);
 
@@ -104,17 +104,16 @@ export async function POST(req: Request) {
             );
           }
 
-          const balanceField = user.role === "TEACHER" ? "pointBalance" : "points";
+          const balanceField =
+            dbUser.role === "TEACHER" ? "pointBalance" : "points";
           const updatedUser = await User.findOneAndUpdate(
             {
-              _id: user._id,
+              _id: dbUser._id,
               [balanceField]: { $gte: requestedPoints },
             },
             {
               $inc: { [balanceField]: -requestedPoints },
-              ...(saveEsewaNumber === true
-                ? { $set: { esewaNumber } }
-                : {}),
+              ...(saveEsewaNumber === true ? { $set: { esewaNumber } } : {}),
             },
             {
               new: true,
@@ -130,7 +129,7 @@ export async function POST(req: Request) {
           const [createdRequest] = await WithdrawalRequest.create(
             [
               {
-                teacherId: session.user.id,
+                teacherId: user.id,
                 pointsRequested: requestedPoints,
                 nprEquivalent,
                 esewaNumber,
@@ -234,10 +233,16 @@ export async function POST(req: Request) {
       ).catch(console.error);
     }
 
-    return NextResponse.json({ success: true, requestId: finalizedRequest._id });
+    return NextResponse.json({
+      success: true,
+      requestId: finalizedRequest._id,
+    });
   } catch (error) {
     if (error instanceof WithdrawalRequestError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
     }
 
     if (isDuplicatePendingWithdrawal(error)) {

@@ -3,28 +3,6 @@
 
 ---
 
-## ⚠️ Pre-Read: Known Issues Fixed in This Doc
-
-The original handoff had several gaps corrected here:
-
-| # | Issue | Where Fixed |
-|---|-------|-------------|
-| 1 | Two "Section 3"s (Tech Stack + Backend) | Renumbered below |
-| 2 | "Phase 1/2/3" used for both nav states and dev phases | Dev phases renamed Sprint 0–8 |
-| 3 | Folder structure conflict between Section 2 and Section 14 | Use Section 2's flat version |
-| 4 | JWT refresh strategy missing — no token expiry, no 401 interceptor | Added in Sprint 1 |
-| 5 | No offline/network-loss strategy | Message retry queue added in Sprint 4 |
-| 6 | Quiz anti-cheat false positives (phone calls, biometric prompts) | Grace period added in Sprint 6 |
-| 7 | Apple IAP risk understated — eSewa/Khalti likely rejected on iOS | Blocking decision in Sprint 0 |
-| 8 | No crash reporting plan | Sentry added in Sprint 0 |
-| 9 | Biometric gate: no fallback if device has no biometrics | Password fallback added in Sprint 5 |
-| 10 | PlatformConfig has no TTL/invalidation | Refresh-on-foreground policy added in Sprint 1 |
-| 11 | Withdrawal approval notification not specified | Push notification wired in Sprint 5 |
-| 12 | No accessibility section | Added in Sprint 8 |
-| 13 | iOS screenshot prevention claim is technically wrong | Corrected in Sprint 5 |
-
----
-
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)

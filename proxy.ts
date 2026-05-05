@@ -99,6 +99,12 @@ const staleCookieNames = [
 ] as const;
 
 function expireStaleCookies(request: NextRequest, response: NextResponse) {
+  // In local dev (HTTP), NextAuth uses "next-auth.session-token" as the active
+  // session cookie — same name as the stale pre-HTTPS cookie we're trying to
+  // clean up. Only run this cleanup in production where the __Secure- prefix
+  // cookie is the real one and the plain name is guaranteed to be stale.
+  if (process.env.NODE_ENV !== "production") return response;
+
   for (const name of staleCookieNames) {
     if (request.cookies.has(name)) {
       response.cookies.set(name, "", { expires: new Date(0), path: "/" });

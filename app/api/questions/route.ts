@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
 import { ANSWER_FORMATS } from "@/lib/question-types";
@@ -12,13 +11,13 @@ import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (user.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can post questions" },
         { status: 403 },
@@ -27,7 +26,11 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as CreateQuestionPayload;
 
-    if (typeof body.title !== "string" || body.title.trim().length < 6 || body.title.trim().length > 180) {
+    if (
+      typeof body.title !== "string" ||
+      body.title.trim().length < 6 ||
+      body.title.trim().length > 180
+    ) {
       return NextResponse.json(
         { error: "Title must be between 6 and 180 characters" },
         { status: 400 },
@@ -35,7 +38,10 @@ export async function POST(request: Request) {
     }
 
     const questionBody = typeof body.body === "string" ? body.body.trim() : "";
-    if (questionBody.length > 0 && (questionBody.length < 12 || questionBody.length > 5000)) {
+    if (
+      questionBody.length > 0 &&
+      (questionBody.length < 12 || questionBody.length > 5000)
+    ) {
       return NextResponse.json(
         { error: "Details must be empty or between 12 and 5000 characters" },
         { status: 400 },
@@ -58,56 +64,61 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id);
-    if (!user) {
+    const dbUser = await User.findById(user.id);
+    if (!dbUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const config = await getPlatformConfig();
     const plans = getHydratedPlans(config);
-    const currentPlan = plans.find(p => p.slug === user.planSlug) || plans[0];
+    const currentPlan = plans.find((p) => p.slug === dbUser.planSlug) || plans[0];
     const maxQuestions = currentPlan?.maxQuestions ?? 0;
-    const bonusQuestions = user.bonusQuestions ?? 0;
-    const effectiveLimit = maxQuestions > 0 ? maxQuestions + bonusQuestions : maxQuestions;
-    const questionsAsked = user.questionsAsked ?? 0;
+    const bonusQuestions = dbUser.bonusQuestions ?? 0;
+    const effectiveLimit =
+      maxQuestions > 0 ? maxQuestions + bonusQuestions : maxQuestions;
+    const questionsAsked = dbUser.questionsAsked ?? 0;
 
     // Subscription Check Logic
     const now = new Date();
-    const subEnd = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
-    const isExpired = user.trialUsed && (!subEnd || subEnd < now);
-    
+    const subEnd = dbUser.subscriptionEnd ? new Date(dbUser.subscriptionEnd) : null;
+    const isExpired = dbUser.trialUsed && (!subEnd || subEnd < now);
+
     if (isExpired) {
-      if (user.subscriptionStatus !== "EXPIRED") {
-        await User.findByIdAndUpdate(user._id, { subscriptionStatus: "EXPIRED" });
+      if (dbUser.subscriptionStatus !== "EXPIRED") {
+        await User.findByIdAndUpdate(dbUser._id, {
+          subscriptionStatus: "EXPIRED",
+        });
       }
       return NextResponse.json(
         { error: "Subscription expired. Please renew to ask questions." },
         { status: 403 },
       );
     }
-    
+
     // Check question limit (not applicable for trial being activated)
-    if (user.trialUsed && effectiveLimit !== null && effectiveLimit > 0) {
+    if (dbUser.trialUsed && effectiveLimit !== null && effectiveLimit > 0) {
       if (questionsAsked >= effectiveLimit) {
         const remaining = effectiveLimit - questionsAsked;
         return NextResponse.json(
-          { 
+          {
             error: "Question limit reached for your plan.",
             questionsRemaining: Math.max(0, remaining),
             maxQuestions: effectiveLimit,
-            planSlug: user.planSlug,
+            planSlug: dbUser.planSlug,
             bonusQuestions: bonusQuestions,
           },
           { status: 403 },
         );
       }
     }
-    
+
     // Auto-start trial on first question if not used yet and no active sub
-    if (!user.trialUsed && user.subscriptionStatus !== "ACTIVE") {
+    if (!dbUser.trialUsed && dbUser.subscriptionStatus !== "ACTIVE") {
       const trialDays = config.trialDays;
-      const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
-      await User.findByIdAndUpdate(user._id, {
+      const trialEnd = new Date(
+        now.getTime() + trialDays * 24 * 60 * 60 * 1000,
+      );
+      await User.findByIdAndUpdate(dbUser._id, {
         trialUsed: true,
         subscriptionStatus: "ACTIVE",
         subscriptionEnd: trialEnd,
@@ -117,7 +128,7 @@ export async function POST(request: Request) {
     }
 
     const question = await Question.create({
-      askerId: session.user.id,
+      askerId: user.id,
       title: body.title.trim(),
       body: questionBody,
       images: Array.isArray(body.images) ? body.images : [],
@@ -129,16 +140,16 @@ export async function POST(request: Request) {
     });
 
     // Increment the user's totalAsked counter and questionsAsked
-    await User.findByIdAndUpdate(session.user.id, { 
-      $inc: { totalAsked: 1, questionsAsked: 1 } 
+    await User.findByIdAndUpdate(user.id, {
+      $inc: { totalAsked: 1, questionsAsked: 1 },
     });
 
     // Build the FeedQuestion shape to broadcast + return
     const feedQuestion: FeedQuestion = {
       id: question._id.toString(),
-      askerId: session.user.id,
-      askerName: session.user.name || "Anonymous",
-      askerUsername: session.user.username || undefined,
+      askerId: user.id,
+      askerName: user.name || "Anonymous",
+      askerUsername: dbUser.username || undefined,
       title: question.title,
       body: question.body,
       images: question.images || [],

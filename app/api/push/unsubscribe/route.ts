@@ -1,16 +1,15 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import PushSubscriptionModel from "@/models/PushSubscription";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const user = await getAuthenticatedUser(request);
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -19,13 +18,16 @@ export async function POST(request: Request) {
   };
 
   if (!body.endpoint) {
-    return NextResponse.json({ error: "Endpoint is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Endpoint is required." },
+      { status: 400 },
+    );
   }
 
   await connectToDatabase();
 
   await PushSubscriptionModel.deleteOne({
-    userId: session.user.id,
+    userId: user.id,
     endpoint: body.endpoint,
   });
 

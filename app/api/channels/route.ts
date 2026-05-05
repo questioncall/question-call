@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Types } from "mongoose";
 import "@/models/User";
@@ -12,17 +11,17 @@ import type { ChannelListItem } from "@/types/channel";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const userId = session.user.id;
+    const userId = user.id;
 
     // Validate userId is a valid ObjectId
     if (!Types.ObjectId.isValid(userId)) {
@@ -41,7 +40,7 @@ export async function GET() {
 
     // For each channel, get the last message and unread count
     const channelIds = channels.map((c) => c._id);
-    
+
     if (channelIds.length === 0) {
       return NextResponse.json([]);
     }
@@ -59,12 +58,12 @@ export async function GET() {
     ]);
 
     const unreadCounts = await Message.aggregate([
-      { 
-        $match: { 
+      {
+        $match: {
           channelId: { $in: channelIds },
           senderId: { $ne: new Types.ObjectId(userId) },
-          isSeen: false 
-        } 
+          isSeen: false,
+        },
       },
       {
         $group: {
@@ -75,7 +74,10 @@ export async function GET() {
     ]);
 
     const lastMessageMap = new Map(
-      lastMessages.map((m) => [m._id.toString(), { content: m.content, sentAt: m.sentAt }]),
+      lastMessages.map((m) => [
+        m._id.toString(),
+        { content: m.content, sentAt: m.sentAt },
+      ]),
     );
 
     const unreadCountMap = new Map(
@@ -85,12 +87,22 @@ export async function GET() {
     const items: ChannelListItem[] = channels.map((ch) => {
       try {
         // Handle cases where populate might return null
-        const askerIdObj = ch.askerId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
-        const acceptorIdObj = ch.acceptorId as unknown as { _id?: { toString(): string }; name?: string; userImage?: string } | null;
-        const questionObj = ch.questionId as unknown as { title?: string } | null;
-        
+        const askerIdObj = ch.askerId as unknown as {
+          _id?: { toString(): string };
+          name?: string;
+          userImage?: string;
+        } | null;
+        const acceptorIdObj = ch.acceptorId as unknown as {
+          _id?: { toString(): string };
+          name?: string;
+          userImage?: string;
+        } | null;
+        const questionObj = ch.questionId as unknown as {
+          title?: string;
+        } | null;
+
         const isAsker = askerIdObj?._id?.toString() === userId;
-        
+
         const counterpart = isAsker ? acceptorIdObj : askerIdObj;
         const lastMsg = lastMessageMap.get(ch._id.toString());
         const unreadCount = unreadCountMap.get(ch._id.toString()) || 0;
@@ -102,7 +114,9 @@ export async function GET() {
           counterpartImage: counterpart?.userImage || undefined,
           status: ch.status as ChannelListItem["status"],
           lastMessagePreview: lastMsg?.content?.substring(0, 80) || undefined,
-          lastMessageAt: lastMsg?.sentAt ? new Date(lastMsg.sentAt).toISOString() : undefined,
+          lastMessageAt: lastMsg?.sentAt
+            ? new Date(lastMsg.sentAt).toISOString()
+            : undefined,
           unreadCount,
           timerDeadline: new Date(ch.timerDeadline).toISOString(),
           role: isAsker ? "asker" : "acceptor",
