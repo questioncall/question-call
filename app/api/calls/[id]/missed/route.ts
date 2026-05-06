@@ -1,11 +1,10 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { authOptions } from "@/lib/auth";
 import { markCallSessionAsMissed } from "@/lib/call-expiration";
 import { getCallParticipantIds } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -17,11 +16,11 @@ const missedCallSchema = z.object({
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
     const { id } = await context.params;
 
     const rawBody = await request.json().catch(() => ({}));

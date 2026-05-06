@@ -81,7 +81,7 @@ First screen a new user sees. Design: clean, centered, premium feel similar to C
 
 **Google Sign-In:** `expo-auth-session` with Google provider. On success → same JWT flow.
 
-**Sign in with Apple:** Mandatory on iOS if Google Sign-In is present (Apple policy). Include both.
+**Sign in with Apple:** Not in scope for this Android-only phase. Google Sign-In only.
 
 **Additional screens:** Forgot Password, Email Verification Pending.
 
@@ -193,7 +193,7 @@ Backend is the existing Vercel-deployed Next.js app. No separate mobile backend 
 
 ### PlatformConfig — Critical
 
-Nearly every business constant (answer durations, points per format, rating bonuses/penalties, quiz settings, commission %, subscription pricing, withdrawal minimums, etc.) lives in the `PlatformConfig` MongoDB collection. **Never hardcode these values.** Fetch via `GET /api/platform` on launch, cache in Redux, refresh every hour and on every cold start + foreground if stale. Consider subscribing to a Pusher `platform-config` channel for instant invalidation when admin changes values.
+Nearly every business constant (answer durations, points per format, rating bonuses/penalties, quiz settings, commission %, subscription pricing, withdrawal minimums, etc.) lives in the `PlatformConfig` MongoDB collection. **Never hardcode these values.** Fetch via `GET /api/platform/config` on launch, cache in Redux, refresh every hour and on every cold start + foreground if stale. Consider subscribing to a Pusher `platform-config` channel for instant invalidation when admin changes values.
 
 ### Complete API Route Map
 
@@ -246,7 +246,7 @@ Nearly every business constant (answer durations, points per format, rating bonu
 - `GET /api/notices`
 - `POST /api/push` — push notification subscription (add `platform` field: web/ios/android)
 - `GET /api/legal`
-- `GET /api/platform` — PlatformConfig
+- `GET /api/platform/config` — PlatformConfig
 - `POST /api/upload` — Cloudinary file upload
 - `GET /api/notifications`
 - `GET /api/onboarding-video`
@@ -286,7 +286,7 @@ JWT payload contains `role`: `STUDENT`, `TEACHER`, or `ADMIN`. Gate all UI and A
 - **Admins:** Admin dashboard, user management, withdrawal processing
 
 ### Account Suspension
-On every app foreground and immediately after login, fetch `GET /api/users/me` and check `isSuspended`. If `true`:
+On every app foreground and immediately after login, fetch `GET /api/mobile/me` and check `isSuspended`. If `true`:
 - Navigate to `suspended.tsx` — full-screen blocker, cannot be dismissed
 - Only two options: "Contact Support" and "Sign Out"
 - Teacher is excluded from feed, cannot earn, cannot withdraw
@@ -654,7 +654,7 @@ Use EAS Build profiles (`development`, `staging`, `production`) with separate `.
 
 **iOS-specific risks:**
 - Apple guideline 3.1.1: must use IAP for digital goods consumed in-app. Resolve in Sprint 0.
-- Sign in with Apple is required if Google Sign-In is offered.
+- Sign in with Apple is not in scope for this Android-only phase.
 - Screenshot blocking is not possible — update all documentation accordingly.
 
 **Compliance checklist:**
@@ -713,7 +713,7 @@ Recommend: access token 15 min, refresh token 30 days. Backend must expose `/api
 Confirm with backend team: is `nprEquivalent` locked at request creation time or recomputed at admin approval? Doc says locked — verify before building withdrawal UI.
 
 **Decision 4: Sign in with Apple scope**
-Apple requires Sign in with Apple if any other third-party social login (e.g. Google) is offered. Confirm it is in scope — it is required, not optional.
+This phase is Android-only, so Sign in with Apple is out of scope for now.
 
 #### Bootstrap Tasks
 - `npx create-expo-app` with `expo-router` + TypeScript
@@ -733,15 +733,15 @@ Apple requires Sign in with Apple if any other third-party social login (e.g. Go
 **Goal:** Users can sign up, sign in, sign out, and the app correctly gates suspended accounts.
 
 - Build Phase 1 (Landing) and Phase 2 (Auth) screens
-- Implement JWT bridge: `POST /api/mobile/login`, `POST /api/mobile/register`, `POST /api/mobile/refresh`
+- Implement JWT bridge: `POST /api/mobile/login`, `POST /api/mobile/refresh`
 - Store access + refresh tokens in `expo-secure-store`
 - Write Axios interceptor: attach Bearer token, handle 401 with one silent refresh attempt, force logout on refresh failure
-- Implement Google Sign-In (`expo-auth-session`) and Sign in with Apple
+- Implement Google Sign-In (`expo-auth-session`)
 - Add deep-link handler for email verification and password reset
-- Fetch `GET /api/platform` (PlatformConfig) on launch → store in Redux `config` slice with 1-hour TTL
+- Fetch `GET /api/platform/config` (PlatformConfig) on launch → store in Redux `config` slice with 1-hour TTL
 - Refresh PlatformConfig on every cold start and on foreground if cache is stale
 - Show blocking splash until first PlatformConfig load completes
-- On every foreground and immediately after login: fetch `/api/users/me`, check `isSuspended` → if true, navigate to `suspended.tsx`
+- On every foreground and immediately after login: fetch `/api/mobile/me`, check `isSuspended` → if true, navigate to `suspended.tsx`
 
 **Definition of Done:** Sign up → email verify → log in → see empty home. Suspend a test user via admin panel → app shows full-screen blocker on next foreground.
 
@@ -862,13 +862,13 @@ Apple requires Sign in with Apple if any other third-party social login (e.g. Go
 ## 16. Final Launch Checklist
 
 ### 🔴 Must-Have Before Launch
-- [ ] API base URL configured → Vercel backend
-- [ ] Auth converted from cookies to Bearer JWT with refresh token flow
-- [ ] JWT bridge endpoints on backend (`/api/mobile/login`, `/api/mobile/refresh`)
-- [ ] 401 interceptor: silent refresh → retry → force logout
-- [ ] `isSuspended` check on every foreground → shows full-screen blocker
+- [x] API base URL configured → Vercel backend
+- [x] Auth converted from cookies to Bearer JWT with refresh token flow
+- [x] JWT bridge endpoints on backend (`/api/mobile/login`, `/api/mobile/refresh`)
+- [x] 401 interceptor: silent refresh → retry → force logout
+- [x] `isSuspended` check on every foreground → shows full-screen blocker
 - [ ] Teacher qualification/monetization state gates wallet features
-- [ ] PlatformConfig fetched on launch, cached with TTL, refreshed on foreground
+- [x] PlatformConfig fetched on launch, cached with TTL, refreshed on foreground
 - [ ] Pusher connecting with exponential backoff reconnect
 - [ ] LiveKit audio/video permissions and connections working
 - [ ] Wallet shows exact NPR equivalent (points × pointToNprRate)
@@ -879,7 +879,7 @@ Apple requires Sign in with Apple if any other third-party social login (e.g. Go
 - [ ] Quiz anti-cheat: backgrounding triggers violation, 2-second grace window in place
 - [ ] Message retry queue for offline sends
 - [ ] All business constants from PlatformConfig (zero hardcoding)
-- [ ] Sentry configured and receiving crashes
+- [x] Sentry configured (`EXPO_PUBLIC_SENTRY_DSN`; crash receipt still needs a device/build verification run)
 
 ### 🟡 Must-Have Before App Store Review
 - [ ] Biometric gate on wallet/withdrawal (password fallback if no biometrics)
@@ -892,7 +892,7 @@ Apple requires Sign in with Apple if any other third-party social login (e.g. Go
 - [ ] Admin notice system showing and dismissing correctly
 - [ ] Onboarding video shown on first login per role
 - [ ] Call settings configurable in Menu
-- [ ] Sign in with Apple implemented (required on iOS if Google Sign-In present)
+- [x] Sign in with Apple decision resolved: not in scope while Android-only
 - [ ] Apple IAP decision from Sprint 0 implemented
 
 ### 🟢 Should-Have for Feature Parity

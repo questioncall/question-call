@@ -13,19 +13,21 @@ const PLAN_FIELDS: Array<{
   name: string;
   priceField: string | null;
   questionsField: string;
+  bonusQuestionsField: string;
   daysField: string | null;
   price: number;
   questions: number;
+  bonusQuestions: number;
   days: number;
 }> = [
-  { slug: "go", name: "GO", priceField: "planGoPrice", questionsField: "planGoMaxQuestions", daysField: "planGoDays", price: 100, questions: 20, days: 30 },
-  { slug: "plus", name: "Plus", priceField: "planPlusPrice", questionsField: "planPlusMaxQuestions", daysField: "planPlusDays", price: 250, questions: 50, days: 60 },
-  { slug: "pro", name: "Pro", priceField: "planProPrice", questionsField: "planProMaxQuestions", daysField: "planProDays", price: 500, questions: 100, days: 90 },
-  { slug: "max", name: "Max", priceField: "planMaxPrice", questionsField: "planMaxMaxQuestions", daysField: "planMaxDays", price: 1000, questions: 200, days: 120 },
+  { slug: "go", name: "GO", priceField: "planGoPrice", questionsField: "planGoMaxQuestions", bonusQuestionsField: "planGoBonusQuestions", daysField: "planGoDays", price: 100, questions: 20, bonusQuestions: 0, days: 30 },
+  { slug: "plus", name: "Plus", priceField: "planPlusPrice", questionsField: "planPlusMaxQuestions", bonusQuestionsField: "planPlusBonusQuestions", daysField: "planPlusDays", price: 250, questions: 50, bonusQuestions: 10, days: 60 },
+  { slug: "pro", name: "Pro", priceField: "planProPrice", questionsField: "planProMaxQuestions", bonusQuestionsField: "planProBonusQuestions", daysField: "planProDays", price: 500, questions: 100, bonusQuestions: 20, days: 90 },
+  { slug: "max", name: "Max", priceField: "planMaxPrice", questionsField: "planMaxMaxQuestions", bonusQuestionsField: "planMaxBonusQuestions", daysField: "planMaxDays", price: 1000, questions: 200, bonusQuestions: 50, days: 120 },
 ];
 
 export function PricingClient() {
-  const [config, setConfig] = useState<Record<string, any> | null>(null);
+  const [config, setConfig] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -34,7 +36,7 @@ export function PricingClient() {
       try {
         const res = await fetch("/api/admin/config");
         if (!res.ok) throw new Error("Failed to fetch configuration");
-        const data = await res.json();
+        const data = (await res.json()) as Record<string, unknown>;
         setConfig(data);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to fetch configuration";
@@ -59,7 +61,9 @@ export function PricingClient() {
         body: JSON.stringify(config),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as Record<string, unknown> & {
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error || "Failed to update pricing config");
 
       toast.success("Pricing configuration updated successfully! This is now live.");
@@ -165,7 +169,7 @@ export function PricingClient() {
               Pricing, duration, and question limit for the {plan.name} plan.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-4">
             {plan.priceField ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Price (NPR)</label>
@@ -187,6 +191,14 @@ export function PricingClient() {
                 type="number"
                 value={((config as Record<string, unknown>)[plan.questionsField] as number) ?? plan.questions}
                 onChange={(e) => handleChange(plan.questionsField, e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Free Bonus Questions</label>
+              <Input
+                type="number"
+                value={((config as Record<string, unknown>)[plan.bonusQuestionsField] as number) ?? plan.bonusQuestions}
+                onChange={(e) => handleChange(plan.bonusQuestionsField, e.target.value)}
               />
             </div>
             {plan.daysField && (

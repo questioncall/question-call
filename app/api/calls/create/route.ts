@@ -1,24 +1,23 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { logCallLifecycle } from "@/lib/call-logging";
 import { CALL_RATE_LIMITS } from "@/lib/call-policies";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { enforceRequestRateLimit } from "@/lib/request-rate-limit";
 import { sendPushNotificationToUser } from "@/lib/push/web-push";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
 import CallSession from "@/models/CallSession";
 import User from "@/models/User";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
 
     const { channelId, mode } = await request.json();
     if (!channelId || !mode) {
@@ -117,7 +116,7 @@ export async function POST(request: Request) {
       emitIncomingCall(otherUserId, {
         callSessionId: newCall._id.toString(),
         channelId,
-        callerName: session.user.name || "A user",
+        callerName: user.name || "A user",
         callerImage,
         callerId: userId,
         mode: mode as "AUDIO" | "VIDEO",
@@ -126,7 +125,7 @@ export async function POST(request: Request) {
       // app is closed or backgrounded (Pusher alone won't wake the device).
       sendPushNotificationToUser(otherUserId, {
         type: "SYSTEM",
-        message: `${session.user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
+        message: `${user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
         href: `/calls/${newCall._id.toString()}`,
       })
     ]);

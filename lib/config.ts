@@ -47,6 +47,7 @@ export type PlanDef = {
   tax: number;
   durationDays: number;
   maxQuestions: number | null;  // null = unlimited
+  includedBonusQuestions: number;
 };
 
 // Plan slugs: free, go, plus, pro, max (must match getHydratedPlans)
@@ -70,6 +71,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     tax: 0,
     durationDays: TRIAL.DURATION_DAYS,
     maxQuestions: TRIAL.MAX_QUESTIONS,
+    includedBonusQuestions: 0,
   },
   {
     name: "GO",
@@ -91,6 +93,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     tax: 0,
     durationDays: 30,
     maxQuestions: 20,
+    includedBonusQuestions: 0,
   },
   {
     name: "Plus",
@@ -112,6 +115,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     tax: 0,
     durationDays: 60,
     maxQuestions: 50,
+    includedBonusQuestions: 0,
   },
   {
     name: "Pro",
@@ -134,6 +138,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     tax: 0,
     durationDays: 90,
     maxQuestions: 100,
+    includedBonusQuestions: 0,
   },
   {
     name: "Max",
@@ -156,6 +161,7 @@ export const SUBSCRIPTION_PLANS: PlanDef[] = [
     tax: 0,
     durationDays: 120,
     maxQuestions: 200,
+    includedBonusQuestions: 0,
   },
 ];
 

@@ -27,11 +27,11 @@ const pushSubscriptionSchema = new Schema(
     keys: {
       p256dh: {
         type: String,
-        required: true,
+        default: "",
       },
       auth: {
         type: String,
-        required: true,
+        default: "",
       },
     },
     userAgent: {

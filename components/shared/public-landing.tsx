@@ -32,13 +32,12 @@ import {
   MailIcon,
   MoreHorizontalIcon,
   PhoneIcon,
-  HelpCircleIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { getSignInPath, getSignUpPath } from "@/lib/user-paths";
 import { APP_NAME, CONTACT_SERVICE_EMAIL } from "@/lib/constants";
-import { HelpCircle, ChevronDown, PlusIcon } from "lucide-react"; 
+import { ChevronDown, PlusIcon } from "lucide-react"; 
 import type { PlatformSocialLinks } from "@/models/PlatformConfig";
 import { SocialHandlesDirect } from "@/components/shared/social-handles-hover"; 
 
@@ -669,7 +668,6 @@ function Nav() {
           >
             <MoreHorizontalIcon size={16} />
           </button>
-{/* TODO: Make this clickable -- it is just opening the menu when we click it -- but it is not redirecting to any page -- fix that */}
           {isMenuOpen ? (
             <div
               style={{

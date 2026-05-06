@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { logCallLifecycle } from "@/lib/call-logging";
 import {
   getCallParticipantIds,
   getCallSummaryText,
 } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 import Message from "@/models/Message";
 import { emitChannelMessage, pusherServer } from "@/lib/pusher/pusherServer";
@@ -19,11 +18,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
     const { id } = await context.params;
 
     await connectToDatabase();
@@ -65,7 +64,7 @@ export async function POST(request: Request, context: RouteParams) {
       const callerUser = await User.findById(resolvedCallerId)
         .select("name")
         .lean<{ name?: string | null } | null>();
-      const callerName = callerUser?.name || session.user.name || "Unknown";
+      const callerName = callerUser?.name || user.name || "Unknown";
 
       // Create a system message in the channel with call metadata
       const contentText = getCallSummaryText({

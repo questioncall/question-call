@@ -1,3 +1,6 @@
+✅ Admin pricing panel now has separate "Free Bonus Questions" fields per paid plan. Subscription cards show `Ask up to X questions (+ Y Free)`, and the plan quota uses `included + free bonus` before adding any user referral bonus.
+
+
 # 📋 Web Backend — TODO
 
 ---
@@ -55,19 +58,20 @@
   - `POST /api/wallet/withdraw` (withdrawal requests)
   - `POST /api/push/subscribe` (push subscription)
   - `POST /api/push/unsubscribe`
-- [ ] **Routes still using `getServerSession` only (no Bearer support):**
+- [x] **Sprint 1 / call-critical Bearer routes verified:**
   - All call routes (`/api/calls/*`) — see Task 7
   - `GET /api/questions/feed` — public endpoint, no auth needed ✓
   - `GET /api/platform/config` — public endpoint, no auth needed ✓
-  - `GET /api/users/me` — does not exist yet, needs creation for mobile suspension checks
-  - Various other routes (notifications, quiz, channel messages, etc.)
+  - `GET /api/mobile/me` — created for mobile suspension checks
+- [ ] **Future mobile routes still using `getServerSession` only (no Bearer support):**
+  - Notifications, quiz, channel message actions, question detail actions, notices, and other post-Sprint-1 mobile surfaces
 
 ### Task 4: Add `platform` Field to PushSubscription Model ✅
 
 - [x] Add field to schema: `platform: { type: String, enum: ["web", "ios", "android"], default: "web" }`
 - [x] Default existing records to `"web"`
 - [x] Update `POST /api/push/subscribe` to accept and store `platform` field (via `subscription.platform`)
-- [ ] Update push notification sending logic to handle FCM tokens (Android) separately from web push — _see Task 6_
+- [x] Update push notification sending logic to handle FCM tokens (Android) separately from web push — _see Task 6_
 
 ### Task 5: Provide Credentials to App Developer
 
@@ -75,7 +79,7 @@
 - [ ] LiveKit server URL
 - [ ] eSewa merchant ID
 - [ ] Khalti public key
-- [ ] Production API URL: `https://questioncall.com/api`
+- [x] Production API URL: `https://questioncall.com/api`
 
 ---
 
@@ -83,15 +87,16 @@
 
 ### Task 6: FCM Push Notification Support
 
-- [ ] Install `firebase-admin` SDK
+- [x] Install `firebase-admin` SDK
 - [ ] Set up Firebase project + get service account key
-- [ ] When sending push, check `platform` field:
-  - `"web"` → existing web push
-  - `"android"` → send via FCM
-- [ ] Wire FCM for these events:
-  - `withdrawal:processed`, `subscription:activated`, `monthly:bonus`, `daily:target`
-  - `call:incoming` (high priority), `question:new`, `question:accepted`
-  - Admin broadcast notices
+- [x] When sending push, check `platform` field:
+  - `"web"` / `"ios"` → existing web push
+  - `"android"` → send via FCM device token
+- [x] Wire FCM into the shared notification sender:
+  - Withdrawal/subscription/monthly/daily target/admin/user notifications now flow through the same platform-aware sender
+  - Incoming calls use high-priority Android FCM when the stored platform is `"android"`
+  - Question accepted notifications flow through `emitNotification`
+- [ ] Add a dedicated fan-out push for `question:new` if teachers should receive device notifications for every new feed item
 
 ---
 
@@ -99,16 +104,15 @@
 
 ### Task 7: Verify Call Routes Accept Bearer Auth
 
-> All call routes currently use `getServerSession(authOptions)` only.
-> They need to be migrated to `getAuthenticatedUser(request)` from `@/lib/unified-auth`.
+> All call routes were migrated to `getAuthenticatedUser(request)` from `@/lib/unified-auth`.
 
-- [ ] `POST /api/calls/create`
-- [ ] `POST /api/calls/[id]/accept`
-- [ ] `POST /api/calls/[id]/reject`
-- [ ] `POST /api/calls/[id]/cancel`
-- [ ] `POST /api/calls/[id]/end`
-- [ ] `POST /api/calls/[id]/missed`
-- [ ] `GET /api/calls/[id]/token`
+- [x] `POST /api/calls/create`
+- [x] `POST /api/calls/[id]/accept`
+- [x] `POST /api/calls/[id]/reject`
+- [x] `POST /api/calls/[id]/cancel`
+- [x] `POST /api/calls/[id]/end`
+- [x] `POST /api/calls/[id]/missed`
+- [x] `GET /api/calls/[id]/token`
 
 ---
 

@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { logCallLifecycle } from "@/lib/call-logging";
 import { CALL_RATE_LIMITS } from "@/lib/call-policies";
 import { getCallParticipantIds } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
 import { enforceRequestRateLimit } from "@/lib/request-rate-limit";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 import { emitCallStatusToUser } from "@/lib/pusher/pusherServer";
 import { CALL_ACCEPTED_EVENT } from "@/lib/pusher/events";
@@ -15,11 +14,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
     const { id } = await context.params;
 
     await connectToDatabase();

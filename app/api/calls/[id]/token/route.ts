@@ -1,11 +1,10 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
-import { authOptions } from "@/lib/auth";
 import { logCallLifecycle } from "@/lib/call-logging";
 import { canIssueCallToken } from "@/lib/call-utils";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 import Channel from "@/models/Channel";
 
@@ -13,11 +12,11 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
     const { id } = await context.params;
 
     await connectToDatabase();
@@ -77,7 +76,7 @@ export async function GET(request: Request, context: RouteParams) {
 
     const at = new AccessToken(apiKey, apiSecret, {
       identity: userId,
-      name: session.user.name || participantName,
+      name: user.name || participantName,
       ttl: 7200, // 2 hours in seconds
     });
     
