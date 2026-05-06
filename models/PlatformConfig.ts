@@ -176,6 +176,11 @@ const platformConfigSchema = new Schema(
       default: REFERRAL.REFERER_BONUS_QUESTIONS,
       min: 0,
     },
+    bonusQuestionValueNpr: {
+      type: Number,
+      default: 10,
+      min: 0,
+    },
     referralEnabled: {
       type: Boolean,
       default: REFERRAL.ENABLED,
@@ -696,6 +701,14 @@ export async function getPlatformConfig(): Promise<PlatformConfigDocument> {
       config.courseVideoUploadMaxBytes <= 0
     ) {
       config.courseVideoUploadMaxBytes = COURSE.MAX_CLOUDINARY_VIDEO_UPLOAD_BYTES;
+      shouldSave = true;
+    }
+
+    if (
+      typeof config.bonusQuestionValueNpr !== "number" ||
+      config.bonusQuestionValueNpr < 0
+    ) {
+      config.bonusQuestionValueNpr = 10;
       shouldSave = true;
     }
 

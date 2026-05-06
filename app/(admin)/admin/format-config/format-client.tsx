@@ -17,6 +17,7 @@ type FormatConfig = {
   pointsPerPhotoAnswer: number;
   pointsPerVideoAnswer: number;
   pointToNprRate: number;
+  bonusQuestionValueNpr: number;
   minWithdrawalPoints: number;
   qualificationThreshold: number;
   commissionPercent: number;
@@ -403,6 +404,18 @@ export function FormatClient() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Example: 1 means 1 unit = NPR 1. Example: 0.1 means 10 units = NPR 1.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bonus Question Value (NPR)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={config.bonusQuestionValueNpr || 10}
+                  onChange={(e) => handleChange("bonusQuestionValueNpr", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used to calculate how much value each bonus question and referral reward adds.
                 </p>
               </div>
               <div className="space-y-2">

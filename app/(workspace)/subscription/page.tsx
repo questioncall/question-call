@@ -78,6 +78,9 @@ export default async function SubscriptionPage() {
     <SubscriptionClient
       hydratedPlans={JSON.parse(JSON.stringify(plans))}
       trialDays={config.trialDays}
+      referralBonusQuestions={config.referralBonusQuestions ?? 1}
+      referrerBonusQuestions={config.referrerBonusQuestions ?? 3}
+      bonusQuestionValueNpr={config.bonusQuestionValueNpr ?? 10}
       initialSubscriptionData={initialSubscriptionData}
     />
   );

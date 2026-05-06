@@ -1,5 +1,3 @@
-✅ Admin pricing panel now has separate "Free Bonus Questions" fields per paid plan. Subscription cards show `Ask up to X questions (+ Y Free)`, and the plan quota uses `included + free bonus` before adding any user referral bonus.
-
 
 # 📋 Web Backend — TODO
 

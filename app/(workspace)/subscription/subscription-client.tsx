@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Clock, CalendarDays, HelpCircle, Play, BookOpen, UserCheck, Zap, Star, Info, CheckCircle2 } from "lucide-react";
+import { Leaf, Clock, CalendarDays, HelpCircle, CheckCircle2 } from "lucide-react";
 import { LegalDialog } from "@/components/shared/legal-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import Link from "next/link";
 import { PlanDef } from "@/lib/plans";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -62,10 +57,16 @@ const FEATURE_TOOLTIPS: Record<string, FeatureTooltip> = {
 export function SubscriptionClient({
   hydratedPlans,
   trialDays,
+  referralBonusQuestions,
+  referrerBonusQuestions,
+  bonusQuestionValueNpr,
   initialSubscriptionData,
 }: {
   hydratedPlans?: PlanDef[];
   trialDays?: number;
+  referralBonusQuestions?: number;
+  referrerBonusQuestions?: number;
+  bonusQuestionValueNpr?: number;
   initialSubscriptionData?: {
     subscriptionStatus: string | null;
     subscriptionEnd: string | null;
@@ -93,6 +94,9 @@ export function SubscriptionClient({
   } = useAppSelector((state) => state.user);
   
   const [referralStats, setReferralStats] = useState<{ totalReferred: number; totalBonusEarned: number } | null>(null);
+  const inviterBonusQuestions = referrerBonusQuestions ?? 3;
+  const inviteeBonusQuestions = referralBonusQuestions ?? 1;
+  const questionValueNpr = bonusQuestionValueNpr ?? 10;
 
   const [isHydrated, setIsHydrated] = useState(!!initialSubscriptionData);
   const [showPricing, setShowPricing] = useState(false);
@@ -339,7 +343,7 @@ const fetchReferralStats = async () => {
                   Refer & Earn Questions! 🎉
                 </h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-lg">
-                  Share your unique link with friends. When they register, <strong>both of you</strong> get +10 bonus questions added permanently to your active limit. 
+                  Share your unique link with friends. When they register, <strong>they get +{inviteeBonusQuestions}</strong> bonus questions and <strong>you get +{inviterBonusQuestions}</strong> bonus questions added permanently to your active limit.
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-2 justify-center md:justify-start">
                   <div className="bg-white dark:bg-black/20 border border-blue-200 dark:border-blue-800/50 rounded-xl px-4 py-3 flex items-center gap-3 w-full md:w-auto">
@@ -367,7 +371,7 @@ const fetchReferralStats = async () => {
                     onClick={() => {
                       if (typeof window !== "undefined") {
                         const subject = encodeURIComponent(`Join me on ${APP_NAME}!`);
-                        const body = encodeURIComponent(`Hey! I'm using ${APP_NAME} to ask academic questions. Sign up with my link and we both get 10 free bonus questions to ask:\n\n${window.location.origin}/auth/signup?ref=${referralCode}`);
+                        const body = encodeURIComponent(`Hey! I'm using ${APP_NAME} to ask academic questions. Sign up with my link and you get +${inviteeBonusQuestions} bonus questions while I get +${inviterBonusQuestions} bonus questions:\n\n${window.location.origin}/auth/signup?ref=${referralCode}`);
                         window.location.href = `mailto:?subject=${subject}&body=${body}`;
                       }
                     }}
@@ -455,39 +459,54 @@ const fetchReferralStats = async () => {
             return (
             <div
               key={index}
-              className={`flex flex-col bg-white dark:bg-white/5 dark:backdrop-blur-xl p-8 rounded-3xl border ${
+              className={`relative overflow-hidden flex flex-col bg-white dark:bg-white/5 dark:backdrop-blur-xl p-8 rounded-3xl border ${
                 plan.highlight
                   ? "border-neutral-200 dark:border-white/10 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.12)] relative z-10 lg:-mt-2 lg:-mb-2 lg:scale-[1.03]"
                   : "border-neutral-200 dark:border-white/5 shadow-sm"
               }`}
             >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="relative flex h-5 w-5 items-center justify-center">
-                    <div
-                      className="absolute h-full w-full rounded-full opacity-20 blur-[4px]"
-                      style={{ backgroundColor: plan.color }}
+                <div className="flex items-start justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex h-5 w-5 items-center justify-center">
+                      <div
+                        className="absolute h-full w-full rounded-full opacity-20 blur-[4px]"
+                        style={{ backgroundColor: plan.color }}
                     ></div>
                     <div
                       className="h-2 w-2 rounded-full"
                       style={{ backgroundColor: plan.color }}
                     ></div>
                   </div>
-                  <span
-                    className={`text-sm font-semibold ${plan.titleClass}`}
-                  >
-                    {plan.name}
-                  </span>
+                    <span
+                      className={`text-sm font-semibold ${plan.titleClass}`}
+                    >
+                      {plan.name}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {(plan.includedBonusQuestions || 0) > 0 && (
+                      <span className="inline-flex flex-col items-end rounded-[10px] border border-amber-400/40 bg-gradient-to-br from-amber-300/20 to-orange-500/10 px-3 py-2 text-right shadow-[0_12px_28px_-18px_rgba(245,158,11,0.9)] rotate-3">
+                        <span className="text-[9px] font-black uppercase tracking-[0.28em] text-amber-600 dark:text-amber-300">
+                          Save
+                        </span>
+                        <span className="text-sm font-black leading-none text-amber-700 dark:text-amber-200">
+                          NPR {Math.max(0, Math.round((plan.includedBonusQuestions || 0) * questionValueNpr))}
+                        </span>
+                        <span className="text-[10px] font-semibold text-amber-700/80 dark:text-amber-200/80">
+                          +{plan.includedBonusQuestions} free q
+                        </span>
+                      </span>
+                    )}
+                    {plan.badge && (
+                      <span
+                        className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm bg-neutral-100 dark:bg-white/10"
+                        style={{ color: plan.color }}
+                      >
+                        {plan.badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {plan.badge && (
-                  <span
-                    className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm bg-neutral-100 dark:bg-white/10"
-                    style={{ color: plan.color }}
-                  >
-                    {plan.badge}
-                  </span>
-                )}
-              </div>
 
               <div className="mb-8 flex flex-col">
                 {plan.originalPrice && (

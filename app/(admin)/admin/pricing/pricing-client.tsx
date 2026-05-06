@@ -128,7 +128,7 @@ export function PricingClient() {
       <Card>
         <CardHeader>
           <CardTitle>Referral System</CardTitle>
-          <CardDescription>Reward users with bonus questions when they invite others.</CardDescription>
+          <CardDescription>Reward both sides with bonus questions when someone signs up using a referral code.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-4 flex flex-col justify-center">
@@ -146,15 +146,30 @@ export function PricingClient() {
             </div>
             <p className="text-sm text-muted-foreground">Toggle to instantly turn the referral logic on or off.</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Bonus Questions</label>
-            <Input
-              type="number"
-              value={(config.referralBonusQuestions as number) ?? 10}
-              onChange={(e) => handleChange("referralBonusQuestions", e.target.value)}
-              disabled={!((config.referralEnabled as boolean) ?? true)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">Questions awarded to both the referrer and the new referee.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New User Bonus Questions</label>
+              <Input
+                type="number"
+                value={(config.referralBonusQuestions as number) ?? 1}
+                onChange={(e) => handleChange("referralBonusQuestions", e.target.value)}
+                disabled={!((config.referralEnabled as boolean) ?? true)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Questions awarded to the user who signs up with a referral code.</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Referrer Bonus Questions</label>
+              <Input
+                type="number"
+                value={(config.referrerBonusQuestions as number) ?? 3}
+                onChange={(e) => handleChange("referrerBonusQuestions", e.target.value)}
+                disabled={!((config.referralEnabled as boolean) ?? true)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Questions awarded to the person who shared the link.</p>
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              These values are stored in PlatformConfig and apply immediately everywhere referrals are shown.
+            </p>
           </div>
         </CardContent>
       </Card>
