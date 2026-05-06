@@ -7,7 +7,17 @@ import { generateAccessToken, generateRefreshToken } from "@/lib/mobile-auth";
 import User from "@/models/User";
 
 // Google OAuth2 client for validating Google ID tokens
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client();
+
+function getGoogleAudiences() {
+  return Array.from(
+    new Set(
+      [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_ANDROID_CLIENT_ID]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +77,21 @@ export async function POST(request: Request) {
     // ─── Google OAuth Login ───
     else if (body.googleIdToken) {
       try {
+        const googleAudiences = getGoogleAudiences();
+
+        if (!googleAudiences.length) {
+          console.error(
+            "Google login misconfigured: missing GOOGLE_CLIENT_ID and GOOGLE_ANDROID_CLIENT_ID",
+          );
+          return NextResponse.json(
+            { error: "Google sign-in is not configured" },
+            { status: 500 },
+          );
+        }
+
         const ticket = await googleClient.verifyIdToken({
           idToken: body.googleIdToken,
-          audience: process.env.GOOGLE_CLIENT_ID,
+          audience: googleAudiences,
         });
 
         const payload = ticket.getPayload();
@@ -90,7 +112,7 @@ export async function POST(request: Request) {
             { status: 404 },
           );
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: "Invalid Google ID token" },
           { status: 401 },

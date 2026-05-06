@@ -45,7 +45,8 @@ export const getMobileAppCredentials = () => {
     // Authentication
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
-      description: "Google OAuth 2.0 Client ID",
+      androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
+      description: "Google OAuth 2.0 client IDs for web and Android",
     },
   };
 };
@@ -67,6 +68,8 @@ export function validateMobileCredentials(): {
   if (!creds.payment.khalti.publicKey)
     missing.push("NEXT_PUBLIC_KHALTI_PUBLIC_KEY");
   if (!creds.google.clientId) missing.push("GOOGLE_CLIENT_ID");
+  if (!creds.google.androidClientId)
+    missing.push("GOOGLE_ANDROID_CLIENT_ID");
 
   return {
     isValid: missing.length === 0,
