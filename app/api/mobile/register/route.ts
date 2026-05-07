@@ -14,6 +14,7 @@ import Transaction from "@/models/Transaction";
 import { sendGreetingEmail } from "@/lib/sendEmails/sendGreetingEmail";
 import { getSiteUrl } from "@/lib/site-url";
 import User from "@/models/User";
+import type { UserRecord } from "@/models/User";
 
 const googleClient = new OAuth2Client();
 
@@ -45,15 +46,16 @@ type RegisterRequest = {
 };
 
 type ReferrerUser = {
-  _id: unknown;
+  _id: { toString(): string };
   email: string;
+  name: string;
   bonusQuestions?: number;
   referralHistory?: Array<{
-    referredUserId: unknown;
+    referredUserId: { toString(): string };
     pointsEarned: number;
     date: Date;
   }>;
-  referralCode?: string;
+  referralCode?: string | null;
   save: () => Promise<unknown>;
 };
 
@@ -84,7 +86,7 @@ async function createGoogleUser(params: {
       if (referrerUser && referrerUser.email !== email) {
         refereeBonus = config.referralBonusQuestions || 1;
         referrerBonus = config.referrerBonusQuestions || 3;
-        referralCodeUsed = referrerUser.referralCode;
+        referralCodeUsed = referrerUser.referralCode ?? null;
       } else {
         referrerUser = null;
       }
@@ -106,7 +108,7 @@ async function createGoogleUser(params: {
     overallScore: 0,
     overallRatingSum: 0,
     overallRatingCount: 0,
-  });
+  }) as unknown as UserRecord & { _id: { toString(): string } };
 
   if (referrerUser) {
     referrerUser.bonusQuestions = (referrerUser.bonusQuestions || 0) + referrerBonus;

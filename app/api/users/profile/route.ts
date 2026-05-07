@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSafeServerSession } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 
@@ -12,11 +12,19 @@ const profileSchema = z.object({
   interests: z.array(z.string()).optional(),
 });
 
+type ProfileUpdateData = {
+  name?: string;
+  bio?: string;
+  userImage?: string;
+  skills?: string[];
+  interests?: string[];
+};
+
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getSafeServerSession();
+    const authUser = await getAuthenticatedUser(req);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,7 +43,7 @@ export async function PATCH(req: NextRequest) {
     // Convert nulls to undefined to avoid overwriting existing properties with true nulls 
     // if mongoose schema isn't explicitly configured to allow null.
     // If user specifically clears a field, we may actually want to save empty string or array.
-    const updateData: Record<string, any> = {};
+    const updateData: ProfileUpdateData = {};
     if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
     if (parsed.data.bio !== undefined) updateData.bio = parsed.data.bio || "";
     if (parsed.data.userImage !== undefined) updateData.userImage = parsed.data.userImage || "";
@@ -43,7 +51,7 @@ export async function PATCH(req: NextRequest) {
     if (parsed.data.interests !== undefined) updateData.interests = parsed.data.interests;
 
     const updatedUser = await User.findByIdAndUpdate(
-      session.user.id,
+      authUser.id,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -65,7 +73,7 @@ export async function PATCH(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Profile update error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

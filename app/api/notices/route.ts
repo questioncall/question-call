@@ -2,20 +2,19 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Notice from "@/models/Notice";
 import User from "@/models/User";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser?.id) {
       console.log("[GET /api/notices] No session, returning empty array");
       return NextResponse.json([]);
     }
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id).select("seenNotices role email createdAt");
+    const user = await User.findById(authUser.id).select("seenNotices role email createdAt");
     if (!user) {
       console.log("[GET /api/notices] User not found in DB");
       return NextResponse.json([]);

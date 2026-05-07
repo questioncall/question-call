@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { getSafeServerSession } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getOnboardingVideoForRole } from "@/lib/onboarding-videos";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getSafeServerSession();
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!authUser?.id || !authUser.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,7 +18,7 @@ export async function GET() {
 
     const [config, user] = await Promise.all([
       getPlatformConfig(),
-      User.findById(session.user.id).select("seenOnboardingRoles role").lean(),
+      User.findById(authUser.id).select("seenOnboardingRoles role").lean(),
     ]);
 
     if (!user) {

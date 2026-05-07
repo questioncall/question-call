@@ -1,27 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { getSafeServerSession } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { getOnboardingVideoForRole } from "@/lib/onboarding-videos";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import User from "@/models/User";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const session = await getSafeServerSession();
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!authUser?.id || !authUser.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const config = await getPlatformConfig();
-    const activeVideo = getOnboardingVideoForRole(config, session.user.role);
+    const activeVideo = getOnboardingVideoForRole(config, authUser.role);
 
     if (!activeVideo) {
       return NextResponse.json({ success: true, skipped: true });
     }
 
-    await User.findByIdAndUpdate(session.user.id, {
-      $addToSet: { seenOnboardingRoles: session.user.role },
+    await User.findByIdAndUpdate(authUser.id, {
+      $addToSet: { seenOnboardingRoles: authUser.role },
     });
 
     return NextResponse.json({ success: true });

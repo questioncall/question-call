@@ -31,11 +31,11 @@ export async function GET(request: Request) {
     await connectToDatabase();
 
     const user = await User.findById(authUser.id).select(
-      "name email role userImage points pointBalance subscriptionStatus " +
+      "name email username role bio userImage skills interests points pointBalance subscriptionStatus " +
       "subscriptionEnd planSlug questionsAsked bonusQuestions " +
       "isSuspended isMonetized teacherModeVerified " +
       "dailyAnswersCount dailyTargetsAchieved esewaNumber " +
-      "referralCode seenOnboardingRoles callSettings createdAt"
+      "referralCode seenNotices seenOnboardingRoles callSettings createdAt"
     ).lean();
 
     if (!user) {
@@ -70,7 +70,11 @@ export async function GET(request: Request) {
       name: user.name,
       email: user.email,
       role: user.role,
+      username: user.username ?? null,
+      bio: user.bio ?? "",
       image: user.userImage ?? null,
+      skills: user.skills ?? [],
+      interests: user.interests ?? [],
 
       // Wallet
       points: user.points ?? 0,
@@ -100,6 +104,11 @@ export async function GET(request: Request) {
 
       // Referral
       referralCode: user.referralCode ?? null,
+
+      // Notices
+      seenNotices: (user.seenNotices ?? []).map((id: { toString(): string }) =>
+        id.toString(),
+      ),
 
       // Onboarding
       seenOnboardingRoles: user.seenOnboardingRoles ?? [],
