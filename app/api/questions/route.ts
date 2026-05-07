@@ -9,6 +9,10 @@ import User from "@/models/User";
 import type { CreateQuestionPayload, FeedQuestion } from "@/types/question";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 
+export async function GET(request: Request) {
+  return NextResponse.redirect(new URL("/api/questions/feed", request.url));
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getAuthenticatedUser(request);

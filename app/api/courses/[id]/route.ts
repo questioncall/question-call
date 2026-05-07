@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitCourseUpdated } from "@/lib/pusher/pusherServer";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import CourseNotificationLog from "@/models/CourseNotificationLog";
@@ -19,6 +20,8 @@ cloudinary.config({
 
 const COURSE_PRICING_MODELS = ["FREE", "SUBSCRIPTION_INCLUDED", "PAID"] as const;
 const COURSE_STATUSES = ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] as const;
+
+export const dynamic = "force-dynamic";
 
 function normalizeOptionalDate(value: unknown) {
   if (value === null || value === undefined || value === "") {
@@ -107,11 +110,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authenticatedUser = await getAuthenticatedUser(_request);
+    const authenticatedUserId = authenticatedUser?.id ?? null;
 
     const { id } = await context.params;
 
@@ -127,8 +127,10 @@ export async function GET(
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
 
-    const isAdmin = session.user.role === "ADMIN";
-    const isInstructor = course.instructorId.toString() === session.user.id;
+    const isAdmin = authenticatedUser?.role === "ADMIN";
+    const isInstructor =
+      Boolean(authenticatedUserId) &&
+      course.instructorId.toString() === authenticatedUserId;
 
     if (!isAdmin && !isInstructor && course.status !== "ACTIVE") {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
@@ -140,10 +142,10 @@ export async function GET(
         .select("_id sectionId title durationMinutes order thumbnailUrl")
         .sort({ order: 1, uploadedAt: 1 })
         .lean(),
-      session.user.role === "STUDENT"
+      authenticatedUser?.role === "STUDENT" && authenticatedUserId
         ? CourseEnrollment.findOne({
             courseId: course._id,
-            studentId: session.user.id,
+            studentId: authenticatedUserId,
           })
             .select("overallProgressPercent")
             .lean()
@@ -180,7 +182,7 @@ export async function GET(
         ...section,
         videos: videosBySectionId.get(section._id.toString()) ?? [],
       })),
-      ...(session.user.role === "STUDENT" && enrollment
+      ...(authenticatedUser?.role === "STUDENT" && enrollment
         ? { overallProgressPercent: enrollment.overallProgressPercent ?? 0 }
         : {}),
     };

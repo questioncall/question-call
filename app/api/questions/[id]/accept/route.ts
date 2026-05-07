@@ -1,9 +1,8 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitQuestionUpdated, emitChannelMessage, emitNotification, emitNewChannel } from "@/lib/pusher/pusherServer";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
 import { getPlatformConfig, getFormatDurationMinutes } from "@/models/PlatformConfig";
@@ -17,10 +16,17 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const authenticatedUser = await getAuthenticatedUser(_request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authenticatedUser.role !== "TEACHER") {
+      return NextResponse.json(
+        { error: "Only teachers can accept questions" },
+        { status: 403 },
+      );
     }
 
     const { id } = await context.params;
@@ -37,7 +43,7 @@ export async function POST(_request: Request, context: RouteParams) {
     }
 
     // Cannot accept own question
-    if (question.askerId._id.toString() === session.user.id) {
+    if (question.askerId._id.toString() === authenticatedUser.id) {
       return NextResponse.json(
         { error: "You cannot accept your own question" },
         { status: 403 },
@@ -61,7 +67,7 @@ export async function POST(_request: Request, context: RouteParams) {
 
     // Update question status
     question.status = "ACCEPTED";
-    question.acceptedById = session.user.id;
+    question.acceptedById = authenticatedUser.id;
     question.acceptedAt = now;
     await question.save();
 
@@ -69,15 +75,15 @@ export async function POST(_request: Request, context: RouteParams) {
     const channel = await Channel.create({
       questionId: question._id,
       askerId: question.askerId._id,
-      acceptorId: session.user.id,
+      acceptorId: authenticatedUser.id,
       openedAt: now,
       timerDeadline,
       status: "ACTIVE",
     });
 
     // Get acceptor's name for the auto-message
-    const acceptor = await User.findById(session.user.id).select("name").lean();
-    const acceptorName = (acceptor as { name?: string })?.name || session.user.name || "Someone";
+    const acceptor = await User.findById(authenticatedUser.id).select("name userImage").lean();
+    const acceptorName = (acceptor as { name?: string })?.name || authenticatedUser.name || "Someone";
 
     // Format duration for the message
     const durationText =
@@ -89,7 +95,7 @@ export async function POST(_request: Request, context: RouteParams) {
     const autoMessageContent = `Hey there! I accepted your question — the answer will be with you within ${durationText}. 🚀`;
     const autoMessage = await Message.create({
       channelId: channel._id,
-      senderId: session.user.id,
+      senderId: authenticatedUser.id,
       content: autoMessageContent,
       isSystemMessage: true,
       sentAt: now,
@@ -99,7 +105,7 @@ export async function POST(_request: Request, context: RouteParams) {
     await emitChannelMessage(channel._id.toString(), {
       id: autoMessage._id.toString(),
       channelId: channel._id.toString(),
-      senderId: session.user.id,
+      senderId: authenticatedUser.id,
       senderName: acceptorName,
       content: autoMessageContent,
       mediaUrl: null,
@@ -141,7 +147,7 @@ export async function POST(_request: Request, context: RouteParams) {
         userId: r.userId?.toString() || "",
         type: r.type as "like" | "insightful" | "same_doubt",
       })),
-      acceptedById: session.user.id,
+      acceptedById: authenticatedUser.id,
       acceptedAt: question.acceptedAt!.toISOString(),
       acceptedByName: acceptorName,
       answerCount: 0,
@@ -169,7 +175,7 @@ export async function POST(_request: Request, context: RouteParams) {
       id: channel._id.toString(),
       questionTitle: question.title,
       counterpartName: acceptorName,
-      counterpartImage: session.user.image || undefined,
+      counterpartImage: (acceptor as { userImage?: string | null } | null)?.userImage || undefined,
       status: "ACTIVE",
       lastMessagePreview: autoMessageContent,
       lastMessageAt: now.toISOString(),
@@ -180,7 +186,7 @@ export async function POST(_request: Request, context: RouteParams) {
     await emitNewChannel(asker._id.toString(), channelListItem).catch(() => {});
 
     // Run anti-cheat check asynchronously
-    checkTeacherStudentPattern(session.user.id, asker._id.toString()).catch((err) => {
+    checkTeacherStudentPattern(authenticatedUser.id, asker._id.toString()).catch((err) => {
       console.error("[Anti-Cheat] Check failed:", err);
     });
 

@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { llmGenerate } from "@/lib/llm";
 import { connectToDatabase } from "@/lib/mongodb";
 import PeerComment from "@/models/PeerComment";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import Question from "@/models/Question";
 import User from "@/models/User";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -171,13 +170,16 @@ export async function GET(request: Request, context: RouteParams) {
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT" && session.user.role !== "TEACHER") {
+    if (
+      authenticatedUser.role !== "STUDENT" &&
+      authenticatedUser.role !== "TEACHER"
+    ) {
       return NextResponse.json(
         { error: "Only students and teachers can post comments" },
         { status: 403 },
@@ -204,7 +206,7 @@ export async function POST(request: Request, context: RouteParams) {
       return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
 
-    if (question.askerId.toString() === session.user.id) {
+    if (question.askerId.toString() === authenticatedUser.id) {
       return NextResponse.json(
         { error: "You cannot comment on your own question" },
         { status: 400 },
@@ -213,7 +215,7 @@ export async function POST(request: Request, context: RouteParams) {
 
     const newComment = await PeerComment.create({
       questionId,
-      studentId: session.user.id,
+      studentId: authenticatedUser.id,
       content,
     });
 
@@ -221,9 +223,9 @@ export async function POST(request: Request, context: RouteParams) {
     let milestoneMessage: string | null = null;
     let milestoneReached = false;
 
-    if (session.user.role === "STUDENT") {
+    if (authenticatedUser.role === "STUDENT") {
       const uniqueQuestionIds = await PeerComment.distinct("questionId", {
-        studentId: session.user.id,
+        studentId: authenticatedUser.id,
       });
       const uniqueCount = uniqueQuestionIds.length;
 
@@ -235,7 +237,7 @@ export async function POST(request: Request, context: RouteParams) {
       if (milestoneReached) {
         const milestoneGroup = Math.floor(uniqueCount / threshold);
         const unevaluatedComments = (await PeerComment.find({
-          studentId: session.user.id,
+          studentId: authenticatedUser.id,
           milestoneGroup: null,
         })
           .sort({ createdAt: -1 })
@@ -276,7 +278,7 @@ export async function POST(request: Request, context: RouteParams) {
 
             pointsAwarded = parseAiScore(aiResponse, minReward, maxReward);
 
-            await User.findByIdAndUpdate(session.user.id, {
+            await User.findByIdAndUpdate(authenticatedUser.id, {
               $inc: { points: pointsAwarded },
             });
 

@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitCourseUpdated } from "@/lib/pusher/pusherServer";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import User from "@/models/User";
 
 const COURSE_PRICING_MODELS = ["FREE", "SUBSCRIPTION_INCLUDED", "PAID"] as const;
 const COURSE_CREATE_STATUSES = ["DRAFT", "ACTIVE"] as const;
+
+export const dynamic = "force-dynamic";
 
 cloudinary.config({
   secure: true,
@@ -133,11 +135,8 @@ async function destroyCourseThumbnail(publicId: string | null) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSafeServerSession();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authenticatedUser = await getAuthenticatedUser(request);
+    const authenticatedUserId = authenticatedUser?.id ?? null;
 
     await connectToDatabase();
 
@@ -151,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, unknown> = {};
 
-    if (session.user.role !== "ADMIN") {
+    if (authenticatedUser?.role !== "ADMIN") {
       query.status = "ACTIVE";
     }
 
@@ -185,9 +184,9 @@ export async function GET(request: NextRequest) {
 
     const progressByCourseId = new Map<string, number>();
 
-    if (session.user.role === "STUDENT" && courses.length > 0) {
+    if (authenticatedUser?.role === "STUDENT" && authenticatedUserId && courses.length > 0) {
       const enrollments = await CourseEnrollment.find({
-        studentId: session.user.id,
+        studentId: authenticatedUserId,
         courseId: { $in: courses.map((course) => course._id) },
       })
         .select("courseId overallProgressPercent")
@@ -235,13 +234,13 @@ export async function POST(request: NextRequest) {
   let uploadedThumbnailPublicId: string | null = null;
 
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can create courses." },
         { status: 403 },
@@ -312,7 +311,7 @@ export async function POST(request: NextRequest) {
       ? requestedStatus
       : "DRAFT";
 
-    const dbUser = await User.findById(session.user.id)
+    const dbUser = await User.findById(authenticatedUser.id)
       .select("name role")
       .lean<{ name?: string; role?: string } | null>();
 
@@ -339,7 +338,7 @@ export async function POST(request: NextRequest) {
       expectedEndDate: normalizeOptionalDate(body.expectedEndDate),
       tags: normalizeTags(body.tags),
       thumbnailUrl,
-      instructorId: session.user.id,
+      instructorId: authenticatedUser.id,
       instructorName: dbUser.name,
       instructorRole: dbUser.role,
       status: normalizedStatus,

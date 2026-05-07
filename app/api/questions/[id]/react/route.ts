@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { REACTION_TYPES } from "@/lib/question-types";
 import { emitQuestionUpdated } from "@/lib/pusher/pusherServer";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
 import Question from "@/models/Question";
 import type { FeedQuestion, ReactToQuestionPayload } from "@/types/question";
@@ -13,9 +12,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -45,7 +44,8 @@ export async function POST(request: Request, context: RouteParams) {
     // Toggle: if user already has any reaction, remove it; if same type, just remove (toggle off)
     // If different type or no reaction, set the new one
     const existingIndex = reactions.findIndex(
-      (r: { userId: { toString(): string } }) => r.userId.toString() === session.user.id,
+      (r: { userId: { toString(): string } }) =>
+        r.userId.toString() === authenticatedUser.id,
     );
 
     if (existingIndex >= 0) {
@@ -55,12 +55,12 @@ export async function POST(request: Request, context: RouteParams) {
 
       // If it was a different type, add the new one (switch reaction)
       if (existingType !== body.type) {
-        reactions.push({ userId: session.user.id, type: body.type });
+        reactions.push({ userId: authenticatedUser.id, type: body.type });
       }
       // If same type, it's now removed (toggle off)
     } else {
       // No existing reaction — add new one
-      reactions.push({ userId: session.user.id, type: body.type });
+      reactions.push({ userId: authenticatedUser.id, type: body.type });
     }
 
     question.reactions = reactions;
