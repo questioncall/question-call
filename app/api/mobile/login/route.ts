@@ -12,7 +12,11 @@ const googleClient = new OAuth2Client();
 function getGoogleAudiences() {
   return Array.from(
     new Set(
-      [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_ANDROID_CLIENT_ID]
+      [
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_ANDROID_CLIENT_ID,
+        process.env.GOOGLE_IOS_CLIENT_ID,
+      ]
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value)),
     ),
@@ -81,7 +85,7 @@ export async function POST(request: Request) {
 
         if (!googleAudiences.length) {
           console.error(
-            "Google login misconfigured: missing GOOGLE_CLIENT_ID and GOOGLE_ANDROID_CLIENT_ID",
+            "Google login misconfigured: missing GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID, and GOOGLE_IOS_CLIENT_ID",
           );
           return NextResponse.json(
             { error: "Google sign-in is not configured" },

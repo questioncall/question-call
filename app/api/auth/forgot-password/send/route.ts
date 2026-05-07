@@ -6,7 +6,8 @@ import { sendForgotPasswordEmail } from "@/lib/sendEmails/sendForgotPasswordEmai
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email: rawEmail } = await req.json();
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });

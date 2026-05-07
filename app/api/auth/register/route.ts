@@ -26,17 +26,25 @@ export async function POST(request: Request) {
     const siteUrl = getSiteUrl();
     const payload = await request.json();
 
-    const name = payload?.name?.trim();
+    const rawName = payload?.name?.trim();
     const email = payload?.email?.trim().toLowerCase();
     const password = payload?.password;
     const role = payload?.role;
 
-    if (!name || !email || !password || !role) {
+    if (!email || !password || !role) {
       return NextResponse.json(
-        { message: "Name, email, password, and role are required." },
+        { message: "Email, password, and role are required." },
         { status: 400 },
       );
     }
+
+    const name =
+      rawName ||
+      email
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .trim() ||
+      "User";
 
     if (!isAllowedRole(role)) {
       return NextResponse.json(

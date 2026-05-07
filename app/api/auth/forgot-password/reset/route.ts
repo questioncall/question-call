@@ -6,7 +6,8 @@ import User from "@/models/User";
 
 export async function POST(req: Request) {
   try {
-    const { email, code, newPassword } = await req.json();
+    const { email: rawEmail, code, newPassword } = await req.json();
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
     if (!email || !code || !newPassword) {
       return NextResponse.json({ error: "Email, code, and new password are required." }, { status: 400 });

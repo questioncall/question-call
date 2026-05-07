@@ -46,7 +46,8 @@ export const getMobileAppCredentials = () => {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
-      description: "Google OAuth 2.0 client IDs for web and Android",
+      iosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
+      description: "Google OAuth 2.0 client IDs for web, Android, and iOS",
     },
   };
 };

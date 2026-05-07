@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { connectToDatabase } from "@/lib/mongodb";
 import VerificationToken from "@/models/VerificationToken";
 import User from "@/models/User";
@@ -7,7 +6,8 @@ import { sendVerificationEmail } from "@/lib/sendEmails/sendVerificationEmail";
 
 export async function POST(req: Request) {
   try {
-    const { email, name } = await req.json();
+    const { email: rawEmail, name } = await req.json();
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "Invalid email address" }, { status: 400 });

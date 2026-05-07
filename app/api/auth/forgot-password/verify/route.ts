@@ -4,7 +4,8 @@ import VerificationToken from "@/models/VerificationToken";
 
 export async function POST(req: Request) {
   try {
-    const { email, code } = await req.json();
+    const { email: rawEmail, code } = await req.json();
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
     if (!email || !code) {
       return NextResponse.json({ error: "Email and code are required." }, { status: 400 });
