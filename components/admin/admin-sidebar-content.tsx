@@ -22,6 +22,7 @@ import {
   Zap,
   Code2,
   ClapperboardIcon,
+  HelpCircle,
 } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
@@ -49,6 +50,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Security": ShieldAlertIcon,
   "Services": Zap,
   "Developer": Code2,
+  "Questions": HelpCircle,
 };
 
 const groupedItems = [
@@ -62,7 +64,7 @@ const groupedItems = [
   },
   {
     category: "CONTENT",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Courses", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Questions", "Courses", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
   },
   {
     category: "PLATFORM",

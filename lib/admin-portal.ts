@@ -159,6 +159,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["quiz", "quiz topics", "quiz rules", "metadata", "ai seeding"],
   },
   {
+    id: "questions",
+    label: "Questions",
+    href: "/admin/questions",
+    description:
+      "Manage all user-posted questions, filter by users, and search or delete questions.",
+    group: "Learning & Content",
+    keywords: ["questions", "qna", "delete question", "filter question"],
+  },
+  {
     id: "ai-keys",
     label: "AI Keys",
     href: "/admin/ai-keys",
@@ -255,6 +264,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/notifications", label: "Notifications" },
   { href: "/admin/notices", label: "Notices" },
   { href: "/admin/quiz-management", label: "Quiz management" },
+  { href: "/admin/questions", label: "Questions" },
   { href: "/admin/ai-keys", label: "AI Keys" },
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/courses/coupons", label: "Coupons" },
