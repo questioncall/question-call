@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { emitDeadlineWarningIfNeeded } from "@/lib/channel-deadline-warning";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -16,14 +15,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: channelId } = await context.params;
-    const userId = session.user.id;
+    const userId = user.id;
 
     await connectToDatabase();
 
@@ -100,7 +99,7 @@ export async function POST(request: Request, context: RouteParams) {
       id: message._id.toString(),
       channelId,
       senderId: userId,
-      senderName: session.user.name || "Unknown",
+      senderName: user.name || "Unknown",
       content: message.content,
       mediaUrl: message.mediaUrl,
       mediaType: message.mediaType,

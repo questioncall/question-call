@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Question from "@/models/Question";
 import Answer from "@/models/Answer";
@@ -13,9 +12,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -33,7 +32,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
 
-    if (question.askerId.toString() !== session.user.id) {
+    if (question.askerId.toString() !== authenticatedUser.id) {
       return NextResponse.json(
         { error: "You can only delete your own questions" },
         { status: 403 }
@@ -49,7 +48,7 @@ export async function DELETE(
 
     await Question.findByIdAndDelete(id);
 
-    const userToUpdate = await User.findById(session.user.id);
+    const userToUpdate = await User.findById(authenticatedUser.id);
     if (userToUpdate) {
       userToUpdate.totalAsked = Math.max(0, (userToUpdate.totalAsked ?? 0) - 1);
       userToUpdate.questionsAsked = Math.max(0, (userToUpdate.questionsAsked ?? 0) - 1);

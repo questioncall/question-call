@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { canDeleteStoredMessage } from "@/lib/message-deletion";
 import { connectToDatabase } from "@/lib/mongodb";
 import Message from "@/models/Message";
@@ -15,11 +14,11 @@ type RouteParams = { params: Promise<{ id: string; messageId: string }> };
 
 export async function DELETE(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = user.id;
     const { id: channelId, messageId } = await context.params;
 
     await connectToDatabase();

@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { markChannelMessageAsAnswer } from "@/lib/channel-answer-marking";
 
 export async function POST(
@@ -10,9 +9,9 @@ export async function POST(
 ) {
   try {
     const { id, messageId } = await params;
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(req);
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,7 +24,7 @@ export async function POST(
     const result = await markChannelMessageAsAnswer({
       channelId: id,
       messageId,
-      userId: session.user.id,
+      userId: user.id,
       isMarkedAsAnswer,
     });
 

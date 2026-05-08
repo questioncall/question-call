@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pusherServer, emitMessagesSeen } from "@/lib/pusher/pusherServer";
 import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
@@ -13,14 +12,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: channelId } = await context.params;
-    const userId = session.user.id;
+    const userId = user.id;
 
     await connectToDatabase();
 

@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pusherServer, emitNotification, emitQuestionUpdated } from "@/lib/pusher/pusherServer";
 import { CHANNEL_CLOSED_EVENT, getChannelPusherName, getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
@@ -135,9 +134,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(req);
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -159,7 +158,7 @@ export async function POST(
       return NextResponse.json({ error: "Channel is already closed or expired" }, { status: 400 });
     }
 
-    if (channel.askerId.toString() !== session.user.id) {
+    if (channel.askerId.toString() !== user.id) {
       return NextResponse.json({ error: "Only the asker can close the channel" }, { status: 403 });
     }
 

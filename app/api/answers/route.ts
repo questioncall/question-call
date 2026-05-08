@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { pusherServer, emitNotification } from "@/lib/pusher/pusherServer";
@@ -22,9 +21,9 @@ import type { AnswerFormat, BaseAnswerFormat } from "@/types/question";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthenticatedUser(req);
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -42,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
     }
 
-    if (channel.acceptorId.toString() !== session.user.id) {
+    if (channel.acceptorId.toString() !== user.id) {
       return NextResponse.json(
         { error: "Only the acceptor (teacher) can submit an answer" },
         { status: 403 },
@@ -85,7 +84,7 @@ export async function POST(req: Request) {
       messages = await Message.find({
         _id: { $in: selectedMessageIds },
         channelId,
-        senderId: session.user.id,
+        senderId: user.id,
       }).sort({ sentAt: 1 });
 
       if (messages.length !== selectedMessageIds.length) {
@@ -97,17 +96,17 @@ export async function POST(req: Request) {
 
       // Keep the DB in sync with the messages the teacher actually selected in the UI.
       await Message.updateMany(
-        { channelId, senderId: session.user.id },
+        { channelId, senderId: user.id },
         { $set: { isMarkedAsAnswer: false } }
       );
       await Message.updateMany(
-        { _id: { $in: selectedMessageIds }, channelId, senderId: session.user.id },
+        { _id: { $in: selectedMessageIds }, channelId, senderId: user.id },
         { $set: { isMarkedAsAnswer: true } }
       );
     } else {
       messages = await Message.find({
         channelId,
-        senderId: session.user.id,
+        senderId: user.id,
         isMarkedAsAnswer: true,
       }).sort({ sentAt: 1 });
     }
@@ -174,7 +173,7 @@ export async function POST(req: Request) {
     const answer = await Answer.create({
       questionId: question._id,
       channelId,
-      acceptorId: session.user.id,
+      acceptorId: user.id,
       answerFormat: resolvedFormat,
       content,
       mediaUrls,
@@ -188,7 +187,7 @@ export async function POST(req: Request) {
     const threshold = config.qualificationThreshold;
 
     const updatedTeacher = await User.findByIdAndUpdate(
-      session.user.id,
+      user.id,
       { $inc: { totalAnswered: 1 } },
       { new: true },
     );
@@ -198,18 +197,18 @@ export async function POST(req: Request) {
       !updatedTeacher.isMonetized &&
       updatedTeacher.totalAnswered >= threshold
     ) {
-      await User.findByIdAndUpdate(session.user.id, { isMonetized: true });
+      await User.findByIdAndUpdate(user.id, { isMonetized: true });
 
       // Notify teacher they are now monetized
       const monetizationNotif = await Notification.create({
-        userId: session.user.id,
+        userId: user.id,
         type: "CHANNEL_CLOSED",
         message: `🎉 Congratulations! You've completed ${threshold} answers. You can now earn points for every answer!`,
         href: "/wallet",
       }).catch(() => null);
 
       if (monetizationNotif) {
-        await emitNotification(session.user.id, monetizationNotif);
+        await emitNotification(user.id, monetizationNotif);
       }
     }
 

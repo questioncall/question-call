@@ -9,16 +9,36 @@ import type { FeedQuestion } from "@/types/question";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
 
     // Ensure the Answer model schema is registered before populate
     void Answer;
 
-    const questions = await Question.find()
-      .sort({ resetCount: -1, createdAt: -1 })
-      .limit(50)
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get("cursor");
+    const limitParam = Number.parseInt(searchParams.get("limit") || "", 10);
+    const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 50
+      ? limitParam
+      : 50;
+
+    const filter: Record<string, unknown> = {};
+    let sort: Record<string, 1 | -1> = { resetCount: -1, createdAt: -1 };
+
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      if (!Number.isNaN(cursorDate.getTime())) {
+        filter.createdAt = { $lt: cursorDate };
+        // On paginated pages, sort by createdAt only so the cursor is unambiguous.
+        // The first page still uses resetCount-priority sort to surface RESET questions.
+        sort = { createdAt: -1 };
+      }
+    }
+
+    const questions = await Question.find(filter)
+      .sort(sort)
+      .limit(limit)
       .populate("askerId", "name username userImage")
       .populate("acceptedById", "name username")
       .populate("answerId") // populate linked public answer

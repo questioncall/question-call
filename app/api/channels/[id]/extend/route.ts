@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { processExpiredChannels } from "@/lib/channel-expiration";
 import {
   CHANNEL_EXTENSION_MINUTES,
@@ -17,13 +16,13 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, context: RouteParams) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getAuthenticatedUser(_request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: channelId } = await context.params;
-    const userId = session.user.id;
+    const userId = user.id;
 
     await connectToDatabase();
 
@@ -127,7 +126,7 @@ export async function POST(_request: Request, context: RouteParams) {
       timerDeadline: new Date(updatedChannel.timerDeadline).toISOString(),
       timeExtensionCount: updatedChannel.timeExtensionCount ?? 0,
       extendedBy: userId,
-      extendedByName: session.user.name || "A participant",
+      extendedByName: user.name || "A participant",
       extensionMinutes: CHANNEL_EXTENSION_MINUTES,
     }).catch(console.error);
 
