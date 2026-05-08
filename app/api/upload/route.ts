@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
-import { getSafeServerSession } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 
 // Ensure cloudinary uses the CLOUDINARY_URL environment variable if set
@@ -18,9 +18,11 @@ type CloudinaryUploadResult = {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSafeServerSession();
-    
-    if (!session?.user?.id) {
+    // Accepts both NextAuth session cookies (web) and `Authorization: Bearer …`
+    // (mobile). Same pattern as /api/mobile/me, /api/questions, etc.
+    const user = await getAuthenticatedUser(req);
+
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
