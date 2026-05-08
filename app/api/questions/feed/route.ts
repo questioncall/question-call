@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { connectToDatabase } from "@/lib/mongodb";
+import "@/models/User";
 import Question from "@/models/Question";
 import Answer from "@/models/Answer";
 import Channel from "@/models/Channel";
