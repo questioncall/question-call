@@ -1,6 +1,6 @@
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
 
-export const MESSAGE_MEDIA_TYPES = ["TEXT", "IMAGE", "VIDEO", "AUDIO"] as const;
+export const MESSAGE_MEDIA_TYPES = ["TEXT", "IMAGE", "VIDEO", "AUDIO", "DOCUMENT"] as const;
 export type MessageMediaType = (typeof MESSAGE_MEDIA_TYPES)[number];
 
 const messageSchema = new Schema({

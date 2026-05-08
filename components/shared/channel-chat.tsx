@@ -89,8 +89,23 @@ type PendingFile = {
   durationSeconds?: number | null;
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 16 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 64 * 1024 * 1024;
+const MAX_AUDIO_SIZE = 16 * 1024 * 1024;
+const MAX_DOC_SIZE = 100 * 1024 * 1024;
 const MAX_PENDING_ATTACHMENTS = 10;
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${bytes}B`;
+}
+
+function fileSizeError(fileName: string, fileSize: number, maxBytes: number) {
+  const limit = formatFileSize(maxBytes);
+  const actual = formatFileSize(fileSize);
+  return `${fileName} is ${actual} — please use a file under ${limit}.`;
+}
 
 function revokeObjectUrl(url?: string | null) {
   if (url?.startsWith("blob:")) {
@@ -127,6 +142,8 @@ function getUploadLabel(type: PendingFile["type"] | "audio") {
       return "Uploading video";
     case "audio":
       return "Uploading audio";
+    case "raw":
+      return "Uploading file";
     default:
       return "Uploading attachment";
   }
@@ -554,19 +571,27 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     const nextPendingFiles: PendingFile[] = [];
 
     for (const file of selectedFiles.slice(0, remainingSlots)) {
-      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-        toast.error(`${file.name} is not a supported image or video file.`);
-        continue;
+      let mediaType: PendingFile["type"];
+      let maxSize: number;
+
+      if (file.type.startsWith("image/")) {
+        mediaType = "image";
+        maxSize = MAX_IMAGE_SIZE;
+      } else if (file.type.startsWith("video/")) {
+        mediaType = "video";
+        maxSize = MAX_VIDEO_SIZE;
+      } else if (file.type.startsWith("audio/")) {
+        mediaType = "audio";
+        maxSize = MAX_AUDIO_SIZE;
+      } else {
+        mediaType = "raw";
+        maxSize = MAX_DOC_SIZE;
       }
 
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} is too large. Maximum size is 10MB.`);
+      if (file.size > maxSize) {
+        toast.error(fileSizeError(file.name, file.size, maxSize));
         continue;
       }
-
-      const mediaType: PendingFile["type"] = file.type.startsWith("video/")
-        ? "video"
-        : "image";
 
       let durationSeconds: number | null = null;
 
@@ -621,7 +646,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         image: "IMAGE",
         video: "VIDEO",
         audio: "AUDIO",
-        raw: "TEXT",
+        raw: "DOCUMENT",
       };
 
       dispatch(
@@ -686,7 +711,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: content?.trim() || undefined,
+            content: content?.trim() || (pendingFile?.type === "raw" ? pendingFile.file.name : undefined),
             mediaUrl: uploadedMedia?.url || undefined,
             mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : undefined,
             mediaPublicId: uploadedMedia?.publicId || undefined,
@@ -795,8 +820,8 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
         const file = new File([audioBlob], `voice-${Date.now()}.wav`, { type: "audio/wav" });
 
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error("Audio recording exceeded 10MB limit.");
+        if (file.size > MAX_AUDIO_SIZE) {
+          toast.error(fileSizeError("Voice recording", file.size, MAX_AUDIO_SIZE));
           return;
         }
 
@@ -1518,6 +1543,20 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                             </div>
                           )}
 
+                          {msg.mediaType === "DOCUMENT" && msg.mediaUrl && (
+                            <a
+                              href={msg.mediaUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted"
+                            >
+                              <FileIcon className="size-5 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0 truncate text-sm font-medium">
+                                {msg.content || "Document"}
+                              </span>
+                            </a>
+                          )}
+
                           {(!msg.mediaType || msg.mediaType === "TEXT") && msg.mediaUrl && (
                             <a
                               href={msg.mediaUrl}
@@ -1610,7 +1649,11 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {pendingFile.type === "video" && pendingFile.durationSeconds != null
                           ? `${formatDuration(Math.round(pendingFile.durationSeconds))} video`
-                          : "Image attachment"}
+                          : pendingFile.type === "audio"
+                            ? "Audio attachment"
+                            : pendingFile.type === "raw"
+                              ? `${(pendingFile.file.size / (1024 * 1024)).toFixed(1)} MB`
+                              : "Image attachment"}
                       </div>
                       {pendingFile.type === "video" && channel?.maxVideoDurationMinutes ? (
                         <div className="text-[11px] text-muted-foreground">
@@ -1638,7 +1681,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="image/*,video/*"
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
             multiple
             onChange={handleFileSelect}
           />

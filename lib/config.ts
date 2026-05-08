@@ -275,7 +275,7 @@ export const PLATFORM = {
   CURRENCY: "NPR",
 
   /** Max file upload size in MB (for screenshots, answers, etc.) */
-  MAX_UPLOAD_SIZE_MB: 10,
+  MAX_UPLOAD_SIZE_MB: 100,
 
   /** Max allowed duration for uploaded video attachments */
   MAX_VIDEO_DURATION_MINUTES: 30,
