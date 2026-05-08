@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { CustomAudioPlayer } from "@/components/shared/custom-audio-player";
-import { getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import { compressVideo, getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
 import {
   CHANNEL_EXTENSION_MINUTES,
   CHANNEL_WARNING_THRESHOLD_MS,
@@ -525,7 +525,26 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           useWebWorker: true,
         });
       } catch (err) {
-        console.error("Compression failed:", err);
+        console.error("Image compression failed:", err);
+      }
+    }
+
+    let wasCompressed = false;
+    if (file.type.startsWith("video/") && file.size > MAX_VIDEO_SIZE) {
+      try {
+        const sizeMB = Math.round(MAX_VIDEO_SIZE / (1024 * 1024));
+        toast.info(`Compressing video to fit within ${sizeMB}MB…`);
+        fileToUpload = await compressVideo(file, {
+          maxSizeMB: sizeMB,
+          maxWidth: 1280,
+          maxHeight: 720,
+          onProgress: (percent) => {
+            options?.onProgress?.(Math.min(percent * 0.5, 49));
+          },
+        });
+        wasCompressed = fileToUpload !== file;
+      } catch (err) {
+        console.error("Video compression failed:", err);
       }
     }
 
@@ -535,7 +554,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
           ? { videoDurationSeconds: String(durationSeconds) }
           : undefined,
       onProgress: ({ percent }) => {
-        options?.onProgress?.(percent);
+        options?.onProgress?.(wasCompressed ? 50 + percent * 0.5 : percent);
       },
     });
 
@@ -572,25 +591,23 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
     for (const file of selectedFiles.slice(0, remainingSlots)) {
       let mediaType: PendingFile["type"];
-      let maxSize: number;
 
       if (file.type.startsWith("image/")) {
         mediaType = "image";
-        maxSize = MAX_IMAGE_SIZE;
       } else if (file.type.startsWith("video/")) {
         mediaType = "video";
-        maxSize = MAX_VIDEO_SIZE;
       } else if (file.type.startsWith("audio/")) {
         mediaType = "audio";
-        maxSize = MAX_AUDIO_SIZE;
+        if (file.size > MAX_AUDIO_SIZE) {
+          toast.error(fileSizeError(file.name, file.size, MAX_AUDIO_SIZE));
+          continue;
+        }
       } else {
         mediaType = "raw";
-        maxSize = MAX_DOC_SIZE;
-      }
-
-      if (file.size > maxSize) {
-        toast.error(fileSizeError(file.name, file.size, maxSize));
-        continue;
+        if (file.size > MAX_DOC_SIZE) {
+          toast.error(fileSizeError(file.name, file.size, MAX_DOC_SIZE));
+          continue;
+        }
       }
 
       let durationSeconds: number | null = null;
@@ -808,7 +825,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const audioMime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: audioMime });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -817,8 +837,9 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
-        const file = new File([audioBlob], `voice-${Date.now()}.wav`, { type: "audio/wav" });
+        const audioBlob = new Blob(audioChunksRef.current, { type: audioMime });
+        const ext = audioMime.includes("webm") ? "webm" : "wav";
+        const file = new File([audioBlob], `voice-${Date.now()}.${ext}`, { type: audioMime });
 
         if (file.size > MAX_AUDIO_SIZE) {
           toast.error(fileSizeError("Voice recording", file.size, MAX_AUDIO_SIZE));

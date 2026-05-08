@@ -249,6 +249,143 @@ export async function uploadVideoToCloudinaryDirect(
   return lastResponse;
 }
 
+export type VideoCompressOptions = {
+  maxSizeMB?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  onProgress?: (percent: number) => void;
+};
+
+export async function compressVideo(
+  file: File,
+  options: VideoCompressOptions = {},
+): Promise<File> {
+  const {
+    maxSizeMB = 64,
+    maxWidth = 1280,
+    maxHeight = 720,
+    onProgress,
+  } = options;
+
+  const maxBytes = maxSizeMB * 1024 * 1024;
+  if (file.size <= maxBytes) return file;
+
+  return new Promise<File>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.onerror = () => {
+      cleanup();
+      resolve(file);
+    };
+
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0) {
+        cleanup();
+        resolve(file);
+        return;
+      }
+
+      let { videoWidth: w, videoHeight: h } = video;
+      const scale = Math.min(1, maxWidth / w, maxHeight / h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+      // ensure even dimensions for codec compat
+      w = w % 2 === 0 ? w : w - 1;
+      h = h % 2 === 0 ? h : h - 1;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+
+      const targetBitsPerSecond = Math.max(
+        500_000,
+        Math.floor((maxBytes * 8) / duration * 0.85),
+      );
+
+      const stream = canvas.captureStream(30);
+
+      try {
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(video);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+      } catch {
+        // no audio track or unsupported — continue without audio
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+          ? "video/webm;codecs=vp8"
+          : "video/webm";
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: targetBitsPerSecond,
+      });
+
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        cleanup();
+        const blob = new Blob(chunks, { type: mimeType });
+        const compressed = new File(
+          [blob],
+          file.name.replace(/\.[^.]+$/, ".webm"),
+          { type: mimeType, lastModified: Date.now() },
+        );
+        onProgress?.(100);
+        resolve(compressed);
+      };
+
+      recorder.onerror = () => {
+        cleanup();
+        resolve(file);
+      };
+
+      recorder.start(1000);
+
+      const drawFrame = () => {
+        if (video.paused || video.ended) return;
+        ctx.drawImage(video, 0, 0, w, h);
+        onProgress?.(Math.min(99, Math.round((video.currentTime / duration) * 100)));
+        requestAnimationFrame(drawFrame);
+      };
+
+      video.onplay = () => drawFrame();
+
+      video.onended = () => {
+        recorder.stop();
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      video.currentTime = 0;
+      video.play().catch(() => {
+        cleanup();
+        resolve(file);
+      });
+    };
+
+    video.src = objectUrl;
+  });
+}
+
 export async function getVideoDurationSeconds(file: File) {
   return new Promise<number>((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
