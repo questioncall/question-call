@@ -36,7 +36,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { CustomAudioPlayer } from "@/components/shared/custom-audio-player";
-import { compressVideo, getVideoDurationSeconds, uploadFileViaServer } from "@/lib/client-upload";
+import { ChatMuxVideoPlayer, ChatMuxAudioPlayer, isMuxUrl } from "@/components/shared/chat-mux-player";
+import { getVideoDurationSeconds } from "@/lib/client-upload";
+import { startChatUpload, hasActiveChatUploads } from "@/lib/chat-upload-manager";
 import {
   CHANNEL_EXTENSION_MINUTES,
   CHANNEL_WARNING_THRESHOLD_MS,
@@ -215,7 +217,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   const [ratingValue, setRatingValue] = useState(0);
-  const [uploadProgress, setUploadProgress] = useState<{
+  const [uploadProgress] = useState<{
     label: string;
     value: number;
     detail?: string;
@@ -497,69 +499,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     };
   }, []);
 
-  // ─── Upload file ──────────────────────────────────────
-  const uploadFileToServer = useCallback(async (
-    file: File,
-    options?: {
-      durationSeconds?: number | null;
-      onProgress?: (percent: number) => void;
-    },
-  ): Promise<{ url: string; publicId: string | null }> => {
-    let fileToUpload = file;
-    const durationSeconds = options?.durationSeconds ?? null;
-
-    if (
-      file.type.startsWith("video/") &&
-      typeof durationSeconds === "number" &&
-      channel?.maxVideoDurationMinutes &&
-      durationSeconds > channel.maxVideoDurationMinutes * 60
-    ) {
-      throw new Error(`Video must be ${channel.maxVideoDurationMinutes} minutes or shorter.`);
-    }
-
-    if (file.type.startsWith("image/") && !file.type.includes("gif")) {
-      try {
-        fileToUpload = await imageCompression(file, {
-          maxSizeMB: 5,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-        });
-      } catch (err) {
-        console.error("Image compression failed:", err);
-      }
-    }
-
-    let wasCompressed = false;
-    if (file.type.startsWith("video/") && file.size > MAX_VIDEO_SIZE) {
-      try {
-        const sizeMB = Math.round(MAX_VIDEO_SIZE / (1024 * 1024));
-        toast.info(`Compressing video to fit within ${sizeMB}MB…`);
-        fileToUpload = await compressVideo(file, {
-          maxSizeMB: sizeMB,
-          maxWidth: 1280,
-          maxHeight: 720,
-          onProgress: (percent) => {
-            options?.onProgress?.(Math.min(percent * 0.5, 49));
-          },
-        });
-        wasCompressed = fileToUpload !== file;
-      } catch (err) {
-        console.error("Video compression failed:", err);
-      }
-    }
-
-    const data = await uploadFileViaServer<{ secure_url: string; public_id?: string }>(fileToUpload, {
-      fields:
-        typeof durationSeconds === "number"
-          ? { videoDurationSeconds: String(durationSeconds) }
-          : undefined,
-      onProgress: ({ percent }) => {
-        options?.onProgress?.(wasCompressed ? 50 + percent * 0.5 : percent);
-      },
-    });
-
-    return { url: data.secure_url, publicId: data.public_id || null };
-  }, [channel?.maxVideoDurationMinutes]);
+  // ─── Upload file (kept only for non-media text messages) ─
 
   const removePendingFile = useCallback((pendingFileId: string) => {
     setPendingFiles((prev) => {
@@ -648,23 +588,10 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const sendSingleMessage = useCallback(
-    async ({
-      content,
-      pendingFile,
-      progressDetail,
-    }: {
-      content?: string;
-      pendingFile?: PendingFile;
-      progressDetail?: string;
-    }) => {
+  // ─── Send a text-only message (synchronous, no upload) ─
+  const sendTextMessage = useCallback(
+    async (content: string) => {
       const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const mediaTypeMap: Record<PendingFile["type"], ChatMessage["mediaType"]> = {
-        image: "IMAGE",
-        video: "VIDEO",
-        audio: "AUDIO",
-        raw: "DOCUMENT",
-      };
 
       dispatch(
         addMessage({
@@ -674,12 +601,12 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
             channelId,
             senderId: userId || "",
             senderName: "You",
-            content: content?.trim() || "",
+            content: content.trim(),
             isOwn: true,
             isSystemMessage: false,
-            mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : null,
-            mediaUrl: pendingFile?.previewUrl || null,
-            isSending: Boolean(pendingFile),
+            mediaType: null,
+            mediaUrl: null,
+            isSending: false,
             isSeen: false,
             isDelivered: false,
             sentAt: new Date().toISOString(),
@@ -687,52 +614,11 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
         }),
       );
 
-      let uploadedMedia: { url: string; publicId: string | null } | undefined;
-
-      if (pendingFile) {
-        try {
-          setUploadProgress({
-            label: getUploadLabel(pendingFile.type),
-            value: 0,
-            detail:
-              progressDetail ||
-              (pendingFile.type === "video" && channel?.maxVideoDurationMinutes
-                ? `Max ${channel.maxVideoDurationMinutes} minutes per video`
-                : pendingFile.file.name),
-          });
-
-          uploadedMedia = await uploadFileToServer(pendingFile.file, {
-            durationSeconds: pendingFile.durationSeconds,
-            onProgress: (percent) => {
-              setUploadProgress({
-                label: getUploadLabel(pendingFile.type),
-                value: percent,
-                detail:
-                  progressDetail ||
-                  (pendingFile.type === "video" && channel?.maxVideoDurationMinutes
-                    ? `Max ${channel.maxVideoDurationMinutes} minutes per video`
-                    : pendingFile.file.name),
-              });
-            },
-          });
-        } catch (error) {
-          dispatch(removeMessage({ channelId, messageId: tempId }));
-          throw error;
-        } finally {
-          setUploadProgress(null);
-        }
-      }
-
       try {
         const res = await fetch(`/api/channels/${channelId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: content?.trim() || (pendingFile?.type === "raw" ? pendingFile.file.name : undefined),
-            mediaUrl: uploadedMedia?.url || undefined,
-            mediaType: pendingFile ? mediaTypeMap[pendingFile.type] : undefined,
-            mediaPublicId: uploadedMedia?.publicId || undefined,
-          }),
+          body: JSON.stringify({ content: content.trim() }),
         });
 
         if (!res.ok) {
@@ -749,23 +635,18 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
               id: savedMsg.id,
               isSending: false,
               isDelivered: true,
-              mediaUrl: uploadedMedia?.url || null,
             },
           }),
         );
-
-        if (pendingFile) {
-          revokeObjectUrl(pendingFile.previewUrl);
-        }
       } catch (error) {
         dispatch(removeMessage({ channelId, messageId: tempId }));
         throw error;
       }
     },
-    [channel?.maxVideoDurationMinutes, channelId, dispatch, userId, uploadFileToServer],
+    [channelId, dispatch, userId],
   );
 
-  // ─── Send message ────────────────────────────────────
+  // ─── Send message (non-blocking for file uploads) ────
   const handleSend = async () => {
     if (!text.trim() && pendingFiles.length === 0) return;
     if (channel?.status !== "ACTIVE") return;
@@ -777,47 +658,48 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
     setText("");
     setPendingFiles([]);
 
-    let textSent = messageText.length === 0;
-    let attachmentIndex = 0;
-
-    try {
-      if (messageText && currentPendingFiles.length === 1) {
-        await sendSingleMessage({
-          content: messageText,
-          pendingFile: currentPendingFiles[0],
-        });
-        textSent = true;
-        attachmentIndex = 1;
-        return;
-      }
-
-      if (messageText) {
-        await sendSingleMessage({ content: messageText });
-        textSent = true;
-      }
-
-      for (attachmentIndex = 0; attachmentIndex < currentPendingFiles.length; attachmentIndex += 1) {
-        const pendingFile = currentPendingFiles[attachmentIndex];
-        await sendSingleMessage({
-          pendingFile,
-          progressDetail:
-            currentPendingFiles.length > 1
-              ? `Uploading ${attachmentIndex + 1} of ${currentPendingFiles.length}`
-              : pendingFile.file.name,
-        });
-      }
-    } catch (error) {
-      if (!textSent) {
+    // 1. Send text message (if any) — quick, no upload needed
+    if (messageText && currentPendingFiles.length === 0) {
+      try {
+        await sendTextMessage(messageText);
+      } catch (error) {
         setText(messageText);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to send message.",
+        );
       }
+      return;
+    }
 
-      if (attachmentIndex < currentPendingFiles.length) {
-        setPendingFiles(currentPendingFiles.slice(attachmentIndex));
+    // 2. Send text first if there are also attachments
+    if (messageText && currentPendingFiles.length > 0) {
+      try {
+        await sendTextMessage(messageText);
+      } catch (error) {
+        setText(messageText);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to send message.",
+        );
+        // Still continue with file uploads
       }
+    }
 
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send one or more attachments.",
-      );
+    // 3. Dispatch all file uploads to the background manager
+    //    This returns immediately — uploads continue in the background
+    //    and the user can navigate away freely.
+    for (const pendingFile of currentPendingFiles) {
+      startChatUpload({
+        channelId,
+        file: pendingFile.file,
+        fileType: pendingFile.type,
+        textContent: currentPendingFiles.length === 1 && messageText && !currentPendingFiles[0].type
+          ? messageText
+          : undefined,
+        userId: userId || "",
+        durationSeconds: pendingFile.durationSeconds,
+        maxVideoDurationMinutes: channel?.maxVideoDurationMinutes,
+        previewUrl: pendingFile.previewUrl,
+      });
     }
   };
 
@@ -843,76 +725,20 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
 
         if (file.size > MAX_AUDIO_SIZE) {
           toast.error(fileSizeError("Voice recording", file.size, MAX_AUDIO_SIZE));
+          stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
-        const tempId = `temp_audio_${Date.now()}`;
         const previewUrl = URL.createObjectURL(file);
 
-        dispatch(
-          addMessage({
-            channelId,
-            message: {
-              id: tempId,
-              channelId,
-              senderId: userId || "",
-              senderName: "You",
-              content: "",
-              isOwn: true,
-              isSystemMessage: false,
-              mediaType: "AUDIO",
-              mediaUrl: previewUrl,
-              isSending: true,
-              isSeen: false,
-              isDelivered: false,
-              sentAt: new Date().toISOString(),
-            }
-          }),
-        );
-
-        try {
-          setUploadProgress({
-            label: getUploadLabel("audio"),
-            value: 0,
-          });
-
-          const uploaded = await uploadFileToServer(file, {
-            onProgress: (percent) => {
-              setUploadProgress({
-                label: getUploadLabel("audio"),
-                value: percent,
-              });
-            },
-          });
-
-          const res = await fetch(`/api/channels/${channelId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              mediaUrl: uploaded.url,
-              mediaType: "AUDIO",
-              mediaPublicId: uploaded.publicId || undefined,
-            }),
-          });
-
-          if (res.ok) {
-            const savedMsg: ChatMessage = await res.json();
-            dispatch(
-              updateMessage({
-                channelId,
-                id: tempId,
-                updates: { id: savedMsg.id, isSending: false, mediaUrl: uploaded.url },
-              }),
-            );
-          } else {
-            dispatch(removeMessage({ channelId, messageId: tempId }));
-          }
-        } catch {
-          dispatch(removeMessage({ channelId, messageId: tempId }));
-          toast.error("Failed to send audio message.");
-        } finally {
-          setUploadProgress(null);
-        }
+        // Dispatch to background upload manager — returns immediately
+        startChatUpload({
+          channelId,
+          file,
+          fileType: "audio",
+          userId: userId || "",
+          previewUrl,
+        });
 
         stream.getTracks().forEach((track) => track.stop());
       };
@@ -1551,16 +1377,27 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                           )}
 
                           {msg.mediaType === "VIDEO" && (
-                            <video
-                              src={msg.mediaUrl}
-                              controls
-                              className="aspect-video w-full max-w-full overflow-hidden rounded-xl border border-border bg-muted/50 object-cover sm:max-w-[18rem]"
-                            />
+                            isMuxUrl(msg.mediaUrl) ? (
+                              <ChatMuxVideoPlayer
+                                src={msg.mediaUrl}
+                                className="w-full max-w-full sm:max-w-[18rem]"
+                              />
+                            ) : (
+                              <video
+                                src={msg.mediaUrl}
+                                controls
+                                className="aspect-video w-full max-w-full overflow-hidden rounded-xl border border-border bg-muted/50 object-cover sm:max-w-[18rem]"
+                              />
+                            )
                           )}
 
                           {msg.mediaType === "AUDIO" && (
                             <div className="flex items-center gap-3 py-1">
-                              <CustomAudioPlayer src={msg.mediaUrl} />
+                              {isMuxUrl(msg.mediaUrl) ? (
+                                <ChatMuxAudioPlayer src={msg.mediaUrl} />
+                              ) : (
+                                <CustomAudioPlayer src={msg.mediaUrl} />
+                              )}
                             </div>
                           )}
 

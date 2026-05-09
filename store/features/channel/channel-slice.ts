@@ -42,7 +42,17 @@ function getOrCreateSession(
   sessions: Record<string, ChatSessionState>,
   channelId: string,
 ): ChatSessionState {
-  return sessions[channelId] ?? { ...initialSessionState };
+  if (sessions[channelId]) {
+    return sessions[channelId];
+  }
+  return {
+    channel: null,
+    messages: [],
+    isLoaded: false,
+    isLoading: false,
+    error: null,
+    isAnswerSubmitted: false,
+  };
 }
 
 const channelSlice = createSlice({
@@ -91,7 +101,7 @@ const channelSlice = createSlice({
       const session = getOrCreateSession(state.sessions, channelId);
       const exists = session.messages.some((m) => m.id === message.id);
       if (!exists) {
-        session.messages.push(message);
+        session.messages = [...session.messages, message];
       }
       state.sessions[channelId] = session;
     },
@@ -104,10 +114,9 @@ const channelSlice = createSlice({
       const { channelId, id, updates } = action.payload;
       const session = state.sessions[channelId];
       if (!session) return;
-      const index = session.messages.findIndex((m) => m.id === id);
-      if (index >= 0) {
-        session.messages[index] = { ...session.messages[index], ...updates };
-      }
+      session.messages = session.messages.map((m) =>
+        m.id === id ? { ...m, ...updates } : m
+      );
     },
 
     /** Remove a message (e.g. on failed send) */
@@ -125,10 +134,9 @@ const channelSlice = createSlice({
       const { channelId, messageId, isMarkedAsAnswer } = action.payload;
       const session = state.sessions[channelId];
       if (!session) return;
-      const msg = session.messages.find((m) => m.id === messageId);
-      if (msg) {
-        msg.isMarkedAsAnswer = isMarkedAsAnswer;
-      }
+      session.messages = session.messages.map((m) =>
+        m.id === messageId ? { ...m, isMarkedAsAnswer } : m
+      );
     },
 
     /** Update channel status (from Pusher status event) */
@@ -210,14 +218,19 @@ const channelSlice = createSlice({
       const { channelId, messageId } = action.payload;
       const session = state.sessions[channelId];
       if (!session) return;
-      const msg = session.messages.find((m) => m.id === messageId);
-      if (msg) {
-        msg.isDeleted = true;
-        msg.content = "";
-        msg.mediaUrl = null;
-        msg.mediaType = null;
-        msg.isMarkedAsAnswer = false;
-      }
+      session.messages = session.messages.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            isDeleted: true,
+            content: "",
+            mediaUrl: null,
+            mediaType: null,
+            isMarkedAsAnswer: false,
+          };
+        }
+        return m;
+      });
     },
 
     /**
