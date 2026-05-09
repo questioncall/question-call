@@ -68,10 +68,8 @@ export function ChatMuxVideoPlayer({ src, className }: ChatMuxVideoPlayerProps) 
         aspectRatio: "16/9",
         borderRadius: "0.75rem",
         overflow: "hidden",
-        // Mux player CSS vars for compact chat styling
-        "--controls": "auto",
         "--media-object-fit": "cover",
-      }}
+      } as any}
       metadata={{
         video_title: "Chat video",
       }}
@@ -104,14 +102,9 @@ export function ChatMuxAudioPlayer({ src }: ChatMuxAudioPlayerProps) {
       audio
       className="w-full min-w-[200px] sm:min-w-[240px]"
       style={{
-        // Mux audio player styling — compact for chat
-        "--media-range-track-height": "4px",
-        "--media-range-thumb-height": "12px",
-        "--media-range-thumb-width": "12px",
-        "--media-control-hover-background": "transparent",
         minHeight: "40px",
         maxHeight: "48px",
-      }}
+      } as any}
       metadata={{
         video_title: "Voice message",
       }}

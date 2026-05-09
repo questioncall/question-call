@@ -106,7 +106,6 @@ const channelSlice = createSlice({
       state.sessions[channelId] = session;
     },
 
-    /** Update a message (e.g. mark as sent after upload completes) */
     updateMessage(
       state,
       action: PayloadAction<{ channelId: string; id: string; updates: Partial<ChatMessage> }>,
@@ -114,6 +113,17 @@ const channelSlice = createSlice({
       const { channelId, id, updates } = action.payload;
       const session = state.sessions[channelId];
       if (!session) return;
+      
+      if (updates.id && updates.id !== id) {
+        const existingRealMsg = session.messages.find(m => m.id === updates.id);
+        if (existingRealMsg) {
+          // The real message arrived via Pusher before the upload completed.
+          // Remove the temp message to prevent duplicate keys.
+          session.messages = session.messages.filter((m) => m.id !== id);
+          return;
+        }
+      }
+
       session.messages = session.messages.map((m) =>
         m.id === id ? { ...m, ...updates } : m
       );
