@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   buildQuizSessionResponse,
   finalizeQuizSession,
@@ -53,13 +52,13 @@ export async function PATCH(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can update quiz progress." },
         { status: 403 },
@@ -69,7 +68,7 @@ export async function PATCH(
     const { sessionId } = await params;
     const body = (await request.json().catch(() => ({}))) as ProgressPayload;
 
-    let quizSession = await getSyncedQuizSession(sessionId, session.user.id);
+    let quizSession = await getSyncedQuizSession(sessionId, authUser.id);
 
     if (!quizSession) {
       return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
@@ -87,12 +86,12 @@ export async function PATCH(
 
     const editableSession = await QuizSession.findOne({
       _id: sessionId,
-      studentId: session.user.id,
+      studentId: authUser.id,
       status: "IN_PROGRESS",
     });
 
     if (!editableSession) {
-      quizSession = await getSyncedQuizSession(sessionId, session.user.id);
+      quizSession = await getSyncedQuizSession(sessionId, authUser.id);
       if (!quizSession) {
         return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
       }
@@ -180,7 +179,7 @@ export async function PATCH(
     ) {
       const finalizedSession = await finalizeQuizSession({
         sessionId,
-        studentId: session.user.id,
+        studentId: authUser.id,
         submitReason: "ANTI_CHEAT",
       });
 
@@ -199,7 +198,7 @@ export async function PATCH(
       });
     }
 
-    quizSession = await getSyncedQuizSession(sessionId, session.user.id);
+    quizSession = await getSyncedQuizSession(sessionId, authUser.id);
     if (!quizSession) {
       return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
     }

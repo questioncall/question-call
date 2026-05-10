@@ -1,8 +1,7 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { generateQuizQuestions } from "@/lib/llm";
 import {
   buildQuizSessionResponse,
@@ -41,13 +40,13 @@ function shuffleArray<T>(items: T[]) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can start quizzes." },
         { status: 403 },
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
 
     const [config, subscription, topic] = await Promise.all([
       getPlatformConfig(),
-      getQuizSubscriptionSnapshot(session.user.id),
+      getQuizSubscriptionSnapshot(authUser.id),
       QuizTopic.findOne({ _id: body.topicId, isActive: true }).lean(),
     ]);
 
@@ -85,7 +84,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const activeSession = await getActiveQuizSessionForStudent(session.user.id);
+    const activeSession = await getActiveQuizSessionForStudent(authUser.id);
     if (activeSession) {
       const activeQuestions = await getQuizQuestionDocsForSession(activeSession);
       return NextResponse.json({
@@ -109,7 +108,7 @@ export async function POST(request: Request) {
     );
     const { start, end } = getNepalDayBounds();
     const usedToday = await QuizSession.countDocuments({
-      studentId: session.user.id,
+      studentId: authUser.id,
       quizType: body.quizType,
       startedAt: { $gte: start, $lt: end },
     });
@@ -130,7 +129,7 @@ export async function POST(request: Request) {
       Date.now() - config.quizRepeatResetDays * 24 * 60 * 60 * 1000,
     );
     const recentSessions = await QuizSession.find({
-      studentId: session.user.id,
+      studentId: authUser.id,
       startedAt: { $gte: repeatCutoff },
     })
       .select("questionsAsked")
@@ -231,7 +230,7 @@ export async function POST(request: Request) {
     );
 
     const createdSession = await QuizSession.create({
-      studentId: session.user.id,
+      studentId: authUser.id,
       quizType: body.quizType,
       topicId: topic._id,
       subject: topic.subject,

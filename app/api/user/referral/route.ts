@@ -1,28 +1,27 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import Referral from "@/models/Referral";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id).select("referralCode bonusQuestions");
+    const user = await User.findById(authUser.id).select("referralCode bonusQuestions");
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const referrals = await Referral.find({ referrerId: session.user.id, status: "COMPLETED" })
+    const referrals = await Referral.find({ referrerId: authUser.id, status: "COMPLETED" })
       .populate("refereeId", "name email createdAt")
       .sort({ createdAt: -1 });
 

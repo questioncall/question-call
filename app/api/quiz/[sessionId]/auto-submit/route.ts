@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   buildQuizSessionResponse,
   finalizeQuizSession,
@@ -27,13 +26,13 @@ export async function POST(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can submit quizzes." },
         { status: 403 },
@@ -48,7 +47,7 @@ export async function POST(
       return answer?.questionId && isValidSelectedOptionIndex(answer.selectedOptionIndex);
     }) as Array<{ questionId: string; selectedOptionIndex: number | null }>;
 
-    let currentSession = await getSyncedQuizSession(sessionId, session.user.id);
+    let currentSession = await getSyncedQuizSession(sessionId, authUser.id);
     if (!currentSession) {
       return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
     }
@@ -62,7 +61,7 @@ export async function POST(
 
     const finalizedSession = await finalizeQuizSession({
       sessionId,
-      studentId: session.user.id,
+      studentId: authUser.id,
       submitReason,
       answers,
     });
@@ -74,7 +73,7 @@ export async function POST(
       );
     }
 
-    currentSession = await getSyncedQuizSession(sessionId, session.user.id);
+    currentSession = await getSyncedQuizSession(sessionId, authUser.id);
     if (!currentSession) {
       return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
     }

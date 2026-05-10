@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import { sendReferralInviteEmail } from "@/lib/sendEmails/sendReferralInviteEmail";
@@ -9,8 +8,8 @@ import { emitNotification } from "@/lib/pusher/pusherServer";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id).select("name email");
+    const user = await User.findById(authUser.id).select("name email");
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

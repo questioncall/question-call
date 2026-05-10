@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   buildQuizTopicSuggestions,
   searchQuizTopics,
@@ -22,13 +21,13 @@ function parseLimit(value: string | null) {
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can access quiz topics." },
         { status: 403 },
