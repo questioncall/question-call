@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   buildQuizSessionResponse,
   getQuizQuestionDocsForSession,
@@ -9,17 +8,17 @@ import {
 } from "@/lib/quiz";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can access quiz sessions." },
         { status: 403 },
@@ -27,7 +26,7 @@ export async function GET(
     }
 
     const { sessionId } = await params;
-    const quizSession = await getSyncedQuizSession(sessionId, session.user.id);
+    const quizSession = await getSyncedQuizSession(sessionId, authUser.id);
 
     if (!quizSession) {
       return NextResponse.json({ error: "Quiz session not found." }, { status: 404 });
