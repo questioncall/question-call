@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
-import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Transaction from "@/models/Transaction";
+import Course from "@/models/Course";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { pusherServer } from "@/lib/pusher/pusherServer";
@@ -15,30 +16,59 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSafeServerSession();
-    if (!session?.user?.id) {
+    const authenticatedUser = await getAuthenticatedUser(req);
+    if (!authenticatedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const formData = await req.formData();
     const transactionId = formData.get("transactionId") as string;
     const transactorName = formData.get("transactorName") as string;
-    const planSlug = formData.get("planSlug") as string;
+    const planSlug = formData.get("planSlug") as string | null;
+    const courseId = formData.get("courseId") as string | null;
     const file = formData.get("screenshot") as File | null;
 
-    if (!transactionId || !transactorName || !planSlug) {
+    const isCourseMode = !!courseId;
+
+    if (!transactionId || !transactorName || (!planSlug && !courseId)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     await connectToDatabase();
-    const config = await getPlatformConfig();
-    const hydratedPlans = getHydratedPlans(config);
 
-    const plan = hydratedPlans.find((p) => p.slug === planSlug);
-    if (!plan) {
-      return NextResponse.json({ error: "Invalid subscription plan" }, { status: 400 });
+    let totalAmount: number;
+    let transactionType: "SUBSCRIPTION_MANUAL" | "COURSE_PURCHASE";
+    let courseMeta: Record<string, unknown> | undefined;
+
+    if (isCourseMode) {
+      const course = await Course.findById(courseId).select("_id title price pricingModel instructorId status").lean();
+      if (!course || course.status !== "ACTIVE") {
+        return NextResponse.json({ error: "Course not found." }, { status: 404 });
+      }
+      if (course.pricingModel !== "PAID") {
+        return NextResponse.json({ error: "This course does not require payment." }, { status: 400 });
+      }
+      totalAmount = typeof course.price === "number" ? course.price : 0;
+      transactionType = "COURSE_PURCHASE";
+      courseMeta = {
+        courseId: course._id.toString(),
+        courseName: course.title,
+        instructorId: course.instructorId?.toString(),
+        pricingModel: course.pricingModel,
+        grossAmount: totalAmount,
+        studentId: authenticatedUser.id,
+        paymentChannel: "ESEWA_MANUAL",
+      };
+    } else {
+      const config = await getPlatformConfig();
+      const hydratedPlans = getHydratedPlans(config);
+      const plan = hydratedPlans.find((p) => p.slug === planSlug);
+      if (!plan) {
+        return NextResponse.json({ error: "Invalid subscription plan" }, { status: 400 });
+      }
+      totalAmount = plan.price + plan.tax;
+      transactionType = "SUBSCRIPTION_MANUAL";
     }
-    const totalAmount = plan.price + plan.tax;
 
     // 1. Rule -> Completed Check
     const existingCompleted = await Transaction.findOne({ transactionId, status: "COMPLETED" });
@@ -75,9 +105,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Rule -> Smart Typo Fix Check (User submitted previously but made a typo)
-    const existingPendingAccount = await Transaction.findOne({ 
-      transactionId, 
-      userId: session.user.id, 
+    const existingPendingAccount = await Transaction.findOne({
+      transactionId,
+      userId: authenticatedUser.id,
       status: "PENDING"
     });
 
@@ -90,13 +120,17 @@ export async function POST(req: NextRequest) {
 
       const masterEmails = await getMasterAdminEmails();
       if (masterEmails.length > 0) {
+        const updateSubject = isCourseMode ? "Manual Course Payment Updated" : "Manual Subscription Updated";
+        const updateBody = isCourseMode
+          ? `A user has submitted an update for a pending manual course payment for "${courseMeta?.courseName ?? courseId}".`
+          : `A user has submitted an update for an existing pending manual subscription for plan "${planSlug}".`;
         void sendTransactionEmail(
           masterEmails,
-          "Manual Subscription Updated",
-          `A user has submitted an update for an existing pending manual subscription for plan "${plan.name}".`,
+          updateSubject,
+          updateBody,
           existingPendingAccount._id.toString(),
           `NPR ${totalAmount}`,
-          session.user.email ?? "Unknown"
+          authenticatedUser.email ?? "Unknown"
         ).catch(console.error);
       }
 
@@ -109,13 +143,13 @@ export async function POST(req: NextRequest) {
     // 3. Rule -> Final Fallback: Create new manually pending transaction.
     // Notice how we don't block differing userIds, so Admin can resolve conflicts.
     await Transaction.create({
-      userId: session.user.id,
-      type: "SUBSCRIPTION_MANUAL",
+      userId: authenticatedUser.id,
+      type: transactionType,
       amount: totalAmount,
       status: "PENDING",
       transactionId,
       transactorName,
-      planSlug,
+      ...(isCourseMode ? { metadata: courseMeta } : { planSlug }),
       screenshotUrl,
     });
 
@@ -123,21 +157,25 @@ export async function POST(req: NextRequest) {
     if (pusherServer) {
       await pusherServer.trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
         transactionId,
-        planName: plan.name,
+        ...(isCourseMode ? { courseId, courseName: courseMeta?.courseName } : { planName: planSlug }),
         amount: totalAmount,
-        userId: session.user.id,
+        userId: authenticatedUser.id,
       }).catch(console.error);
     }
 
     const masterEmailsNew = await getMasterAdminEmails();
     if (masterEmailsNew.length > 0) {
+      const newSubject = isCourseMode ? "New Manual Course Payment Initiated" : "New Manual Subscription Initiated";
+      const newBody = isCourseMode
+        ? `A user has initiated a manual payment for course "${courseMeta?.courseName ?? courseId}".`
+        : `A user has initiated a manual payment for subscription plan "${planSlug}".`;
       void sendTransactionEmail(
         masterEmailsNew,
-        "New Manual Subscription Initiated",
-        `A user has initiated a manual payment for subscription plan "${plan.name}".`,
+        newSubject,
+        newBody,
         transactionId,
         `NPR ${totalAmount}`,
-        session.user.email ?? "Unknown"
+        authenticatedUser.email ?? "Unknown"
       ).catch(console.error);
     }
 

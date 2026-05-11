@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { validateCourseCoupon } from "@/lib/course-coupons";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getQuizSubscriptionSnapshot } from "@/lib/quiz";
 import Course from "@/models/Course";
@@ -16,13 +16,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "STUDENT") {
+    if (authenticatedUser.role !== "STUDENT") {
       return NextResponse.json(
         { error: "Only students can enroll in courses." },
         { status: 403 },
@@ -46,7 +46,7 @@ export async function POST(
 
     const existingEnrollment = await CourseEnrollment.findOne({
       courseId: course._id,
-      studentId: session.user.id,
+      studentId: authenticatedUser.id,
     });
 
     if (existingEnrollment) {
@@ -74,7 +74,7 @@ export async function POST(
       const validation = await validateCourseCoupon({
         code: couponCode,
         courseId: course._id.toString(),
-        studentId: session.user.id,
+        studentId: authenticatedUser.id,
       });
 
       if (!validation.valid) {
@@ -95,7 +95,7 @@ export async function POST(
     } else if (course.pricingModel === "FREE") {
       accessType = "FREE";
     } else {
-      const subscription = await getQuizSubscriptionSnapshot(session.user.id);
+      const subscription = await getQuizSubscriptionSnapshot(authenticatedUser.id);
       if (subscription.subscriptionStatus !== "ACTIVE") {
         return NextResponse.json(
           { reason: "SUBSCRIPTION_REQUIRED" },
@@ -108,7 +108,7 @@ export async function POST(
 
     const enrollment = await CourseEnrollment.create({
       courseId: course._id,
-      studentId: session.user.id,
+      studentId: authenticatedUser.id,
       accessType,
       couponId,
       totalVideoCount,
@@ -122,7 +122,7 @@ export async function POST(
     if (couponId) {
       await CourseCouponRedemption.create({
         couponId,
-        studentId: session.user.id,
+        studentId: authenticatedUser.id,
         courseId: course._id,
       });
 
