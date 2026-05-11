@@ -147,10 +147,10 @@ export async function POST(
       (error as { code?: number }).code === 11000
     ) {
       const { id } = await params;
-      const retrySession = await getSafeServerSession();
+      const retryUser = await getAuthenticatedUser(request);
       const duplicateEnrollment = await CourseEnrollment.findOne({
         courseId: id,
-        studentId: retrySession?.user?.id,
+        studentId: retryUser?.id,
       });
 
       return NextResponse.json(
