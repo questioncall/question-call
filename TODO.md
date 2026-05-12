@@ -1,3 +1,1 @@
-1. ~~in the chat-area we need to make sure the user can navigate to other pages while the video or large photo is uploading -- don't make the user stay in the same page until the video gets uploaded. -- also the client complain that video uploading is slow why so ? make it somehow quick . use best practice to send video like whatsapp do or other best platform do~~ ✅ DONE
-   - Audio and Videos now route through Mux direct upload for fast uploading and use MuxPlayer for proper playback
-   - Images and Docs route through Cloudinary via `/api/upload`
+1. now make the notes feature real implement it in real for app and web. this note can be posted via teacher or student or amdin and in the web 

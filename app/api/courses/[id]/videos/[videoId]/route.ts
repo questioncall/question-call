@@ -4,6 +4,7 @@ import { Types } from "mongoose";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { checkCourseAccess } from "@/lib/course-access";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   applyDeletedVideosToEnrollments,
 } from "@/lib/course-progress";
@@ -59,9 +60,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string; videoId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(_request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -80,7 +81,7 @@ export async function GET(
       return NextResponse.json({ error: "Video not found." }, { status: 404 });
     }
 
-    const canAccess = await checkCourseAccess(session.user.id, id);
+    const canAccess = await checkCourseAccess(authenticatedUser.id, id);
     if (!canAccess) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -89,7 +90,12 @@ export async function GET(
       (error) => console.error("[CourseVideo viewCount increment]", error),
     );
 
-    return NextResponse.json(video);
+    const plain = video.toObject ? video.toObject() : { ...video };
+    const playbackUrl = video.muxPlaybackId
+      ? `https://stream.mux.com/${video.muxPlaybackId}.m3u8`
+      : video.videoUrl ?? null;
+
+    return NextResponse.json({ ...plain, playbackUrl });
   } catch (error) {
     console.error("[GET /api/courses/:id/videos/:videoId]", error);
     return NextResponse.json(
