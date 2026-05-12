@@ -125,8 +125,14 @@ export async function POST(request: Request) {
       // app is closed or backgrounded (Pusher alone won't wake the device).
       sendPushNotificationToUser(otherUserId, {
         type: "SYSTEM",
-        message: `${user.name || "Someone"} is calling you (${mode === "VIDEO" ? "video" : "audio"} call)`,
+        message: `${user.name || "Someone"} is calling you`,
         href: `/calls/${newCall._id.toString()}`,
+        extraData: {
+          callSessionId: newCall._id.toString(),
+          callerId: userId,
+          callerName: user.name || "Someone",
+          mode,
+        },
       })
     ]);
 

@@ -11,6 +11,8 @@ type NotificationPayload = {
   type: string;
   message: string;
   href?: string | null;
+  /** Extra string key/value pairs merged into the Expo push data object */
+  extraData?: Record<string, string>;
 };
 
 type WebPushPayload = {
@@ -104,6 +106,7 @@ export async function sendPushNotificationToUser(
         type: notification.type,
         url,
         href: url,
+        ...notification.extraData,
       },
       channelId: theme.channelId,
       priority: theme.priority,
