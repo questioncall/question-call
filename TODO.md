@@ -1,1 +1,2 @@
-1. now make the notes feature real implement it in real for app and web. this note can be posted via teacher or student or amdin and in the web 
+Make that note service real we are mocking right now in app. add that servciein the web first with proper model and schema. make this servcie postable via all users teacher student admin. and in the web if there is posted notes then show that note in teh workspace-home.tsx somewhere right side best suited .
+and in the app we have already the ui just integarte it with real one. 

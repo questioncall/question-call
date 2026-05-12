@@ -6,6 +6,7 @@ import { processExpiredChannels } from "@/lib/channel-expiration";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitChannelMessage, pusherServer } from "@/lib/pusher/pusherServer";
 import { getUserPusherName, CHANNEL_UPDATED_EVENT } from "@/lib/pusher/events";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 import Channel from "@/models/Channel";
 import Message from "@/models/Message";
 import Answer from "@/models/Answer";
@@ -113,7 +114,7 @@ export async function POST(request: Request, context: RouteParams) {
     // Broadcast via Pusher (non-fatal)
     await emitChannelMessage(channelId, chatMessage).catch(console.error);
 
-    // Also notify counterpart's channel list via user-specific Pusher channel
+    // Notify counterpart's channel list via user-specific Pusher channel
     const counterpartId = userId === askerId ? acceptorId : askerId;
     if (pusherServer) {
       await pusherServer
@@ -121,10 +122,20 @@ export async function POST(request: Request, context: RouteParams) {
           channelId,
           lastMessagePreview: chatMessage.content.substring(0, 80) || "Media message",
           lastMessageAt: chatMessage.sentAt,
-          unreadCountIncrement: 1, // We just added an unseen message
+          unreadCountIncrement: 1,
         })
         .catch(console.error);
     }
+
+    // Push notification to counterpart so they're alerted even when app is closed
+    const preview = chatMessage.content
+      ? chatMessage.content.substring(0, 100)
+      : "Sent a media message";
+    void sendPushNotificationToUser(counterpartId, {
+      type: "CHAT_MESSAGE",
+      message: `${user.name || "Someone"}: ${preview}`,
+      href: `/channel/${channelId}`,
+    }).catch(console.error);
 
     // Return the message with isOwn = true for the sender
     return NextResponse.json({ ...chatMessage, isOwn: true }, { status: 201 });

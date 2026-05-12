@@ -1293,7 +1293,7 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
                         <button
                           type="button"
                           className={cn(
-                            "absolute right-2 top-2 flex size-8 items-center justify-center rounded-full transition-all md:right-auto md:-left-10 md:top-1/2 md:-translate-y-1/2",
+                            "absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full transition-all md:right-auto md:-left-10 md:top-1/2 md:-translate-y-1/2",
                             msg.isMarkedAsAnswer
                               ? "bg-yellow-500/10 text-yellow-500 opacity-100"
                               : "bg-background/80 text-muted-foreground opacity-90 backdrop-blur-sm hover:bg-yellow-500/10 hover:text-yellow-500 md:bg-transparent md:opacity-0 md:backdrop-blur-0 md:group-hover:opacity-100",

@@ -48,7 +48,6 @@ const FORMAT_OPTIONS: {
   { value: "ANY", label: "Any Format", desc: "Let the answerer choose" },
   { value: "TEXT", label: "Text", desc: "Written explanation" },
   { value: "PHOTO", label: "Photo", desc: "Photo-based answer" },
-  { value: "VIDEO", label: "Video", desc: "Video walkthrough" },
 ];
 
 const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string }[] = [

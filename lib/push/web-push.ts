@@ -2,11 +2,8 @@ import "server-only";
 
 import webpush from "web-push";
 
-import {
-  getFirebaseMessaging,
-  isFirebaseConfigured,
-} from "@/lib/firebase-admin";
-import { getNotificationTitle, resolveNotificationHref } from "@/lib/notifications/metadata";
+import { sendExpoPush } from "@/lib/push/expo-push";
+import { getNotificationTheme, resolveNotificationHref } from "@/lib/notifications/metadata";
 import { connectToDatabase } from "@/lib/mongodb";
 import PushSubscriptionModel from "@/models/PushSubscription";
 
@@ -16,7 +13,7 @@ type NotificationPayload = {
   href?: string | null;
 };
 
-type PushPayload = {
+type WebPushPayload = {
   title: string;
   body: string;
   url: string;
@@ -34,24 +31,13 @@ function getVapidConfig() {
     "";
   const privateKey = process.env.VAPID_PRIVATE_KEY?.trim() || "";
   const subject = process.env.VAPID_SUBJECT?.trim() || "";
-
-  return {
-    publicKey,
-    privateKey,
-    subject,
-  };
+  return { publicKey, privateKey, subject };
 }
 
 function ensureWebPushConfigured() {
-  if (vapidConfigured) {
-    return true;
-  }
-
+  if (vapidConfigured) return true;
   const { publicKey, privateKey, subject } = getVapidConfig();
-  if (!publicKey || !privateKey || !subject) {
-    return false;
-  }
-
+  if (!publicKey || !privateKey || !subject) return false;
   webpush.setVapidDetails(subject, publicKey, privateKey);
   vapidConfigured = true;
   return true;
@@ -66,11 +52,13 @@ export function getWebPushPublicKey() {
   return getVapidConfig().publicKey;
 }
 
-function buildPushPayload(notification: NotificationPayload): PushPayload {
+function buildWebPushPayload(notification: NotificationPayload): WebPushPayload {
+  const theme = getNotificationTheme(notification.type, notification.href);
+  const url = resolveNotificationHref(notification);
   return {
-    title: getNotificationTitle(notification.type),
+    title: theme.title,
     body: notification.message,
-    url: resolveNotificationHref(notification),
+    url,
     tag: `notification-${notification.type.toLowerCase()}`,
     icon: "/icon.png",
     badge: "/icon.png",
@@ -82,32 +70,15 @@ function isGoneSubscriptionError(error: unknown) {
     typeof error === "object" && error && "statusCode" in error
       ? Number((error as { statusCode?: number }).statusCode)
       : undefined;
-
   return statusCode === 410;
 }
 
-function isInvalidFcmTokenError(error: unknown) {
-  const code =
-    typeof error === "object" && error && "code" in error
-      ? String((error as { code?: string }).code)
-      : "";
-  const message = error instanceof Error ? error.message : "";
-
-  return (
-    code === "messaging/invalid-registration-token" ||
-    code === "messaging/registration-token-not-registered" ||
-    message.includes("registration token is invalid") ||
-    message.includes("Requested entity was not found")
-  );
-}
-
-function shouldUseHighPriorityFcm(notification: NotificationPayload) {
-  return (
-    notification.href?.startsWith("/calls/") ||
-    notification.message.toLowerCase().includes("calling you")
-  );
-}
-
+/**
+ * Send a push notification to all of a user's registered devices.
+ *
+ * - Android (Expo Push Token) → delivered via Expo's push service (no Firebase key needed).
+ * - Web / iOS → delivered via Web Push API (VAPID).
+ */
 export async function sendPushNotificationToUser(
   userId: string,
   notification: NotificationPayload,
@@ -118,77 +89,51 @@ export async function sendPushNotificationToUser(
     .select("_id endpoint expirationTime keys platform")
     .lean();
 
-  if (subscriptions.length === 0) {
+  if (subscriptions.length === 0) return;
+
+  const theme = getNotificationTheme(notification.type, notification.href);
+  const url = resolveNotificationHref(notification);
+
+  // ── Android → Expo push ──────────────────────────────────────────────────
+  const androidSubs = subscriptions.filter((s) => (s.platform ?? "web") === "android");
+  if (androidSubs.length > 0) {
+    await sendExpoPush(androidSubs, {
+      title: theme.title,
+      body: notification.message,
+      data: {
+        type: notification.type,
+        url,
+        href: url,
+      },
+      channelId: theme.channelId,
+      priority: theme.priority,
+      sound: theme.sound,
+    }).catch((err) => {
+      console.error("[web-push] Expo push failed for user:", userId, err);
+    });
+  }
+
+  // ── Web / iOS → Web Push API (VAPID) ────────────────────────────────────
+  const webSubs = subscriptions.filter((s) => {
+    const platform = s.platform ?? "web";
+    return platform === "web" || platform === "ios";
+  });
+
+  if (webSubs.length === 0) return;
+
+  const webPushConfigured = ensureWebPushConfigured();
+  if (!webPushConfigured) {
+    console.warn(`[web-push] VAPID is not configured; skipping web/iOS push for user=${userId}`);
     return;
   }
 
-  const payload = buildPushPayload(notification);
-  const webPushConfigured = ensureWebPushConfigured();
-  const firebaseConfigured = isFirebaseConfigured();
-  const firebaseMessaging = firebaseConfigured ? getFirebaseMessaging() : null;
-
-  const endpointSuffix = (endpoint: string) =>
-    endpoint.length > 30 ? `…${endpoint.slice(-30)}` : endpoint;
+  const payload = buildWebPushPayload(notification);
+  const endpointTail = (ep: string) => (ep.length > 30 ? `…${ep.slice(-30)}` : ep);
 
   await Promise.allSettled(
-    subscriptions.map(async (subscription) => {
-      const platform = subscription.platform ?? "web";
-
-      if (platform === "android") {
-        if (!firebaseMessaging) {
-          console.warn(
-            `[fcm-push] Firebase is not configured; skipping Android push for user=${userId}`,
-          );
-          return;
-        }
-
-        try {
-          await firebaseMessaging.send({
-            token: subscription.endpoint,
-            notification: {
-              title: payload.title,
-              body: payload.body,
-            },
-            data: {
-              type: notification.type,
-              href: payload.url,
-              url: payload.url,
-            },
-            android: {
-              priority: shouldUseHighPriorityFcm(notification) ? "high" : "normal",
-              notification: {
-                channelId: shouldUseHighPriorityFcm(notification)
-                  ? "calls"
-                  : "general",
-                clickAction: "FLUTTER_NOTIFICATION_CLICK",
-              },
-            },
-          });
-        } catch (error) {
-          console.warn(
-            `[fcm-push] Send failed for user=${userId} token=${endpointSuffix(subscription.endpoint)}`,
-            error,
-          );
-
-          if (isInvalidFcmTokenError(error)) {
-            await PushSubscriptionModel.findByIdAndDelete(subscription._id).catch(() => null);
-          }
-        }
-
-        return;
-      }
-
-      if (!webPushConfigured) {
-        console.warn(
-          `[web-push] VAPID is not configured; skipping ${platform} push for user=${userId}`,
-        );
-        return;
-      }
-
+    webSubs.map(async (subscription) => {
       if (!subscription.keys?.p256dh || !subscription.keys?.auth) {
-        console.warn(
-          `[web-push] Subscription id=${String(subscription._id)} is missing keys; skipping`,
-        );
+        console.warn(`[web-push] Subscription id=${String(subscription._id)} missing keys; skipping`);
         return;
       }
 
@@ -203,9 +148,7 @@ export async function sendPushNotificationToUser(
             },
           },
           JSON.stringify(payload),
-          {
-            TTL: 300,
-          },
+          { TTL: 300 },
         );
       } catch (error) {
         const statusCode =
@@ -214,15 +157,10 @@ export async function sendPushNotificationToUser(
             : undefined;
 
         console.warn(
-          `[web-push] Send failed for user=${userId} endpoint=${endpointSuffix(subscription.endpoint)} status=${statusCode ?? "unknown"}`,
+          `[web-push] Send failed for user=${userId} endpoint=${endpointTail(subscription.endpoint)} status=${statusCode ?? "unknown"}`,
         );
 
-        // Only delete on 410 (Gone) — the endpoint is permanently invalid.
-        // 404 can be transient on Android (endpoint churn during subscription refresh).
         if (isGoneSubscriptionError(error)) {
-          console.warn(
-            `[web-push] Deleting gone subscription id=${String(subscription._id)} endpoint=${endpointSuffix(subscription.endpoint)}`,
-          );
           await PushSubscriptionModel.findByIdAndDelete(subscription._id).catch(() => null);
           return;
         }
