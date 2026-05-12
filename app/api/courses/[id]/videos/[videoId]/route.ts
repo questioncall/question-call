@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { Types } from "mongoose";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { checkCourseAccess } from "@/lib/course-access";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
@@ -110,13 +109,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; videoId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can update videos." },
         { status: 403 },
@@ -143,8 +142,8 @@ export async function PATCH(
     }
 
     if (
-      session.user.role !== "ADMIN" &&
-      course.instructorId.toString() !== session.user.id
+      authenticatedUser.role !== "ADMIN" &&
+      course.instructorId.toString() !== authenticatedUser.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -287,13 +286,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; videoId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(_request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can delete videos." },
         { status: 403 },
@@ -320,8 +319,8 @@ export async function DELETE(
     }
 
     if (
-      session.user.role !== "ADMIN" &&
-      course.instructorId.toString() !== session.user.id
+      authenticatedUser.role !== "ADMIN" &&
+      course.instructorId.toString() !== authenticatedUser.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

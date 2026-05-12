@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { Types } from "mongoose";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitCourseUpdated } from "@/lib/pusher/pusherServer";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
@@ -202,13 +201,13 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can update courses." },
         { status: 403 },
@@ -229,8 +228,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
 
-    const isAdmin = session.user.role === "ADMIN";
-    const isInstructor = course.instructorId.toString() === session.user.id;
+    const isAdmin = authenticatedUser.role === "ADMIN";
+    const isInstructor = course.instructorId.toString() === authenticatedUser.id;
 
     if (!isAdmin && !isInstructor) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -371,13 +370,13 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(_request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can delete courses." },
         { status: 403 },
@@ -398,8 +397,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
 
-    const isAdmin = session.user.role === "ADMIN";
-    const isInstructor = course.instructorId.toString() === session.user.id;
+    const isAdmin = authenticatedUser.role === "ADMIN";
+    const isInstructor = course.instructorId.toString() === authenticatedUser.id;
 
     if (!isAdmin && !isInstructor) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

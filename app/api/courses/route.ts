@@ -170,6 +170,19 @@ export async function GET(request: NextRequest) {
       query.isFeatured = featured;
     }
 
+    // When instructor=me is specified, return all courses by this instructor
+    // (including DRAFT, COMPLETED, ARCHIVED) — used by Course Studio
+    const instructorFilter = searchParams.get("instructor")?.trim();
+    if (
+      instructorFilter === "me" &&
+      authenticatedUser?.id &&
+      (authenticatedUser.role === "TEACHER" || authenticatedUser.role === "ADMIN")
+    ) {
+      query.instructorId = authenticatedUser.id;
+      // Remove ACTIVE-only filter so drafts show up
+      delete query.status;
+    }
+
     const [total, courses] = await Promise.all([
       Course.countDocuments(query),
       Course.find(query)

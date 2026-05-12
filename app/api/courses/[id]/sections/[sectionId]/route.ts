@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { Types } from "mongoose";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { applyDeletedVideosToEnrollments } from "@/lib/course-progress";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Course from "@/models/Course";
 import CourseSection from "@/models/CourseSection";
 import CourseVideo from "@/models/CourseVideo";
@@ -73,13 +73,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; sectionId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can update sections." },
         { status: 403 },
@@ -109,8 +109,8 @@ export async function PATCH(
     }
 
     if (
-      session.user.role !== "ADMIN" &&
-      course.instructorId.toString() !== session.user.id
+      authenticatedUser.role !== "ADMIN" &&
+      course.instructorId.toString() !== authenticatedUser.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -158,13 +158,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; sectionId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
+    const authenticatedUser = await getAuthenticatedUser(_request);
 
-    if (!session?.user?.id) {
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "TEACHER" && session.user.role !== "ADMIN") {
+    if (authenticatedUser.role !== "TEACHER" && authenticatedUser.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only teachers or admins can delete sections." },
         { status: 403 },
@@ -197,8 +197,8 @@ export async function DELETE(
     }
 
     if (
-      session.user.role !== "ADMIN" &&
-      course.instructorId.toString() !== session.user.id
+      authenticatedUser.role !== "ADMIN" &&
+      course.instructorId.toString() !== authenticatedUser.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

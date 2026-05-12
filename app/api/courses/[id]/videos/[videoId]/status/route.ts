@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import Mux from "@mux/mux-node";
 
-import { getSafeServerSession } from "@/lib/auth";
 import { incrementEnrollmentVideoTotals } from "@/lib/course-progress";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Course from "@/models/Course";
 import CourseSection from "@/models/CourseSection";
 import CourseVideo from "@/models/CourseVideo";
@@ -23,8 +23,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string; videoId: string }> },
 ) {
   try {
-    const session = await getSafeServerSession();
-    if (!session?.user?.id) {
+    const authenticatedUser = await getAuthenticatedUser(request);
+    if (!authenticatedUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
