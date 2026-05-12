@@ -188,7 +188,7 @@ export async function POST(
         userId: teacher._id,
         type: "RATING_RECEIVED",
         message: `Student rated 1 star. ${penalty} point(s) deducted.`,
-        href: `/channel/${channel._id.toString()}`,
+        href: `/workspace/${channel._id.toString()}`,
       }).catch(() => null);
       if (penaltyNotif) await emitNotification(teacher._id.toString(), penaltyNotif);
 
@@ -388,7 +388,7 @@ export async function POST(
         userId: teacher._id,
         type: "RATING_RECEIVED",
         message: notifMessage,
-        href: `/channel/${channel._id.toString()}`,
+        href: `/workspace/${channel._id.toString()}`,
       }).catch(() => null);
       if (notif) await emitNotification(teacher._id.toString(), notif);
     }

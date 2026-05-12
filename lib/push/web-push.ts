@@ -91,7 +91,10 @@ export async function sendPushNotificationToUser(
     .select("_id endpoint expirationTime keys platform")
     .lean();
 
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) {
+    console.warn(`[web-push] No push subscriptions found for user=${userId}`);
+    return;
+  }
 
   const theme = getNotificationTheme(notification.type, notification.href);
   const url = resolveNotificationHref(notification);

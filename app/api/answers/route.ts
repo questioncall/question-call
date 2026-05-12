@@ -229,7 +229,7 @@ export async function POST(req: Request) {
       userId: channel.askerId,
       type: "ANSWER_SUBMITTED",
       message: "The teacher has submitted an answer to your question. Please review and rate it.",
-      href: `/channel/${channelId}`,
+      href: `/workspace/${channelId}`,
     }).catch(() => null);
     if (askerNotif) {
       await emitNotification(channel.askerId.toString(), askerNotif);

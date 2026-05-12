@@ -339,7 +339,7 @@ export async function processExpiredChannels(
             pointsEarned > 0
               ? `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time). Points credited automatically.`
               : `Auto-reviewed: You received ${AUTO_CLOSE_RATING}/5 stars (asker didn't rate in time).`,
-          href: `/channel/${channelId}`,
+          href: `/workspace/${channelId}`,
         }).catch(() => null);
 
         if (teacherNotif) {
@@ -396,7 +396,7 @@ export async function processExpiredChannels(
         userId: teacherId,
         type: "QUESTION_RESET",
         message: `You did not submit an answer in time. ${penalty} point(s) deducted.`,
-        href: `/channel/${channelId}`,
+        href: `/workspace/${channelId}`,
       }).catch(() => null);
 
       if (penaltyNotif) {

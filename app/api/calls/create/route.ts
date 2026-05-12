@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       sendPushNotificationToUser(otherUserId, {
         type: "SYSTEM",
         message: `${user.name || "Someone"} is calling you`,
-        href: `/calls/${newCall._id.toString()}`,
+        href: `/call/${newCall._id.toString()}`,
         extraData: {
           callSessionId: newCall._id.toString(),
           callerId: userId,

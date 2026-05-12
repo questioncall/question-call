@@ -81,7 +81,11 @@ export async function sendExpoPush(
     .filter((s) => isExpoPushToken(s.endpoint))
     .map((s) => ({ token: s.endpoint, subId: s._id.toString() }));
 
-  if (valid.length === 0) return;
+  if (valid.length === 0) {
+    const endpoints = subscriptions.map((s) => s.endpoint.slice(0, 30));
+    console.warn("[expo-push] No valid Expo tokens among", endpoints);
+    return;
+  }
 
   for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
     await sendChunk(valid.slice(i, i + CHUNK_SIZE), message).catch((err) => {

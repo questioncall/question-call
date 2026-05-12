@@ -164,7 +164,7 @@ export async function POST(_request: Request, context: RouteParams) {
       userId: asker._id,
       type: "QUESTION_ACCEPTED",
       message: `${acceptorName} accepted your question. Channel is now open.`,
-      href: `/channel/${channel._id.toString()}`,
+      href: `/workspace/${channel._id.toString()}`,
     }).catch(() => null);
     if (acceptNotif) {
       await emitNotification(asker._id.toString(), acceptNotif);
