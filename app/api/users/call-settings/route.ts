@@ -6,7 +6,7 @@ import {
   normalizeCallSettings,
   type UserCallSettings,
 } from "@/lib/call-settings";
-import { getSafeServerSession } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 
@@ -16,17 +16,17 @@ const callSettingsSchema = z.object({
   outgoingRingtone: z.enum(CALL_RINGTONE_VALUES),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getSafeServerSession();
+    const authUser = await getAuthenticatedUser(request);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const user = await User.findById(session.user.id)
+    const user = await User.findById(authUser.id)
       .select("callSettings")
       .lean<{ callSettings?: Partial<UserCallSettings> | null } | null>();
 
@@ -49,9 +49,9 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getSafeServerSession();
+    const authUser = await getAuthenticatedUser(req);
 
-    if (!session?.user?.id) {
+    if (!authUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest) {
     await connectToDatabase();
 
     const updatedUser = await User.findByIdAndUpdate(
-      session.user.id,
+      authUser.id,
       { $set: { callSettings: parsed.data } },
       { new: true, runValidators: true },
     )
