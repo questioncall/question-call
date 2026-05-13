@@ -11,10 +11,13 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Clock3Icon,
+  FileIcon,
+  FileTextIcon,
   FlameIcon,
   Loader2Icon,
   LightbulbIcon,
   MessageSquareIcon,
+  PresentationIcon,
   StarIcon,
   ThumbsUpIcon,
   HelpCircleIcon,
@@ -281,6 +284,19 @@ export function WorkspaceHome({
   const [isTopTeachersLoading, setIsTopTeachersLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  // Community notes state
+  type CommunityNoteItem = {
+    id: string;
+    title: string;
+    subject: string;
+    grade: string;
+    fileType: "PDF" | "DOCX" | "PPT" | "Image";
+    uploaderName: string;
+    createdAt: string;
+  };
+  const [communityNotes, setCommunityNotes] = useState<CommunityNoteItem[]>([]);
+  const [isCommunityNotesLoading, setIsCommunityNotesLoading] = useState(false);
+
   const toggleAnswer = (questionId: string) => {
     setExpandedAnswers((prev) => {
       const next = new Set(prev);
@@ -445,6 +461,30 @@ export function WorkspaceHome({
 
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  // Fetch community notes
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCommunityNotes = async () => {
+      setIsCommunityNotesLoading(true);
+      try {
+        const res = await fetch("/api/notes?limit=5");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted) setCommunityNotes(data);
+      } catch {
+        // Keep resilient
+      } finally {
+        if (isMounted) setIsCommunityNotesLoading(false);
+      }
+    };
+
+    fetchCommunityNotes();
+
+    return () => {
     };
   }, []);
 
@@ -1011,6 +1051,106 @@ export function WorkspaceHome({
             <p className="mt-1 max-w-[200px] text-xs">
               Ratings are calculated periodically. Help out to climb the ranks!
             </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const NOTE_FILE_TYPE_ICON: Record<string, typeof FileTextIcon> = {
+    PDF: FileTextIcon,
+    DOCX: FileIcon,
+    PPT: PresentationIcon,
+    Image: ImageIcon,
+  };
+
+  const NOTE_FILE_TYPE_COLOR: Record<string, string> = {
+    PDF: "text-red-600 dark:text-red-400",
+    DOCX: "text-blue-600 dark:text-blue-400",
+    PPT: "text-amber-600 dark:text-amber-400",
+    Image: "text-violet-600 dark:text-violet-400",
+  };
+
+  const NOTE_FILE_TYPE_BG: Record<string, string> = {
+    PDF: "bg-red-500/10",
+    DOCX: "bg-blue-500/10",
+    PPT: "bg-amber-500/10",
+    Image: "bg-violet-500/10",
+  };
+
+  const renderCommunityNotesPanel = () => (
+    <Card className="overflow-hidden border border-border/70 bg-background shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 font-bold text-white shadow-inner">
+              <FileTextIcon className="size-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base tracking-tight">Community Notes</CardTitle>
+              <CardDescription className="text-xs">Latest shared study notes</CardDescription>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="ghost" className="shrink-0 text-xs">
+            <Link href="/notes">View all</Link>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2.5 pt-4">
+        {isCommunityNotesLoading ? (
+          [1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/10 p-3"
+            >
+              <Skeleton className="size-9 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          ))
+        ) : communityNotes.length > 0 ? (
+          communityNotes.map((note) => {
+            const NoteIcon = NOTE_FILE_TYPE_ICON[note.fileType] || FileTextIcon;
+            const iconColor = NOTE_FILE_TYPE_COLOR[note.fileType] || "text-muted-foreground";
+            const iconBg = NOTE_FILE_TYPE_BG[note.fileType] || "bg-muted";
+
+            return (
+              <Link
+                key={note.id}
+                href={`/notes/${note.id}`}
+                className="group flex items-center gap-3 overflow-hidden rounded-2xl border border-border/50 bg-background p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              >
+                <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", iconBg)}>
+                  <NoteIcon className={cn("size-4.5", iconColor)} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                    {note.title}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="font-medium">{note.subject}</span>
+                    <span className="size-0.5 rounded-full bg-muted-foreground/50" />
+                    <span>{note.grade}</span>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    by {note.uploaderName} · {formatTimeAgo(note.createdAt)}
+                  </p>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+            <FileTextIcon className="mb-3 size-8 text-muted-foreground/30" />
+            <p className="font-medium text-foreground">No notes yet</p>
+            <p className="mt-1 max-w-[200px] text-xs">
+              Share your study notes with the community!
+            </p>
+            <Button asChild size="sm" className="mt-3">
+              <Link href="/notes">Upload a note</Link>
+            </Button>
           </div>
         )}
       </CardContent>
@@ -1821,6 +1961,7 @@ export function WorkspaceHome({
         <div className="hidden space-y-6 md:block xl:hidden">
           {renderCourseHighlightsPanel()}
           {renderTopTeachersPanel()}
+          {renderCommunityNotesPanel()}
         </div>
 
         <div id="top-teachers" className="hidden space-y-6 xl:block">
@@ -1975,6 +2116,8 @@ export function WorkspaceHome({
             </Card>
 
             {renderTopTeachersPanel()}
+
+            {renderCommunityNotesPanel()}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   BookOpenIcon,
   CreditCardIcon,
+  FileTextIcon,
   GraduationCapIcon,
   HomeIcon,
   InfoIcon,
@@ -600,6 +601,15 @@ collapseSidebarOnClick: true,
       badge: resolvedUser.role === "STUDENT" ? "money" : "cashout",
       badgeClassName: "text-muted-foreground bg-muted",
       isActive: pathname.startsWith("/wallet"),
+      collapseSidebarOnClick: true,
+    },
+    {
+      href: "/notes",
+      icon: FileTextIcon,
+      label: "Notes",
+      badge: null,
+      badgeClassName: undefined,
+      isActive: pathname.startsWith("/notes"),
       collapseSidebarOnClick: true,
     },
     ...(resolvedUser.role === "STUDENT"
