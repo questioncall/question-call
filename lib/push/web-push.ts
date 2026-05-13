@@ -11,6 +11,10 @@ type NotificationPayload = {
   type: string;
   message: string;
   href?: string | null;
+  /** Override the default theme-based title (e.g. use sender's name) */
+  title?: string;
+  /** URL to a user avatar / icon shown as the notification large icon */
+  icon?: string | null;
   /** Extra string key/value pairs merged into the Expo push data object */
   extraData?: Record<string, string>;
 };
@@ -58,11 +62,11 @@ function buildWebPushPayload(notification: NotificationPayload): WebPushPayload 
   const theme = getNotificationTheme(notification.type, notification.href);
   const url = resolveNotificationHref(notification);
   return {
-    title: theme.title,
+    title: notification.title || theme.title,
     body: notification.message,
     url,
     tag: `notification-${notification.type.toLowerCase()}`,
-    icon: "/icon.png",
+    icon: notification.icon || "/icon.png",
     badge: "/icon.png",
   };
 }
@@ -103,7 +107,7 @@ export async function sendPushNotificationToUser(
   const androidSubs = subscriptions.filter((s) => (s.platform ?? "web") === "android");
   if (androidSubs.length > 0) {
     await sendExpoPush(androidSubs, {
-      title: theme.title,
+      title: notification.title || theme.title,
       body: notification.message,
       data: {
         type: notification.type,

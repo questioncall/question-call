@@ -130,7 +130,8 @@ export async function POST(request: Request, context: RouteParams) {
       }),
       sendPushNotificationToUser(counterpartId, {
         type: "CHAT_MESSAGE",
-        message: `${user.name || "Someone"}: ${preview}`,
+        title: user.name || "QuestionCall",
+        message: preview,
         href: `/workspace/${channelId}`,
       }),
     ]);
