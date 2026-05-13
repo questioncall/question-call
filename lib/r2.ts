@@ -13,16 +13,30 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// ── R2 S3 Client ────────────────────────────────────────────────────────────
+// ── R2 S3 Client (lazy-initialized) ─────────────────────────────────────────
 
-export const r2 = new S3Client({
-  region: "auto",
-  endpoint: process.env.R2_ENDPOINT!,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-});
+let _r2: S3Client | null = null;
+
+function getR2Client(): S3Client {
+  if (!_r2) {
+    const endpoint = process.env.R2_ENDPOINT;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+    if (!endpoint || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "Missing R2 env vars. Ensure R2_ENDPOINT, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY are set.",
+      );
+    }
+
+    _r2 = new S3Client({
+      region: "auto",
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+  }
+  return _r2;
+}
 
 // ── Allowed MIME types for R2 uploads ────────────────────────────────────────
 
@@ -108,14 +122,19 @@ export async function getPresignedUploadUrl(
   contentType: string,
   maxSizeBytes?: number,
 ): Promise<string> {
+  const bucket = process.env.R2_BUCKET_NAME;
+  if (!bucket) {
+    throw new Error("R2_BUCKET_NAME environment variable is not set.");
+  }
+
   const command = new PutObjectCommand({
-    Bucket: process.env.R2_BUCKET_NAME!,
+    Bucket: bucket,
     Key: key,
     ContentType: contentType,
     ...(maxSizeBytes ? { ContentLength: maxSizeBytes } : {}),
   });
 
-  return getSignedUrl(r2, command, {
+  return getSignedUrl(getR2Client(), command, {
     expiresIn: PRESIGN_EXPIRY_SECONDS,
   });
 }

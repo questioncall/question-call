@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Loader2Icon,
   CheckCircle2Icon,
-  XCircleIcon,
   UploadCloudIcon,
   XIcon,
   ImageIcon,
@@ -18,6 +17,11 @@ import {
   clearChatUploadJob,
   type ChatUploadJob,
 } from "@/lib/chat-upload-manager";
+import {
+  subscribeToGeneralUploads,
+  clearGeneralUploadJob,
+  type GeneralUploadJob,
+} from "@/lib/general-upload-manager";
 
 const FILE_TYPE_ICONS = {
   image: ImageIcon,
@@ -26,34 +30,91 @@ const FILE_TYPE_ICONS = {
   raw: FileIcon,
 } as const;
 
-const STATUS_LABELS: Record<ChatUploadJob["status"], string> = {
+// Unified shape so the UI can render both chat & general uploads identically
+type UnifiedJob = {
+  id: string;
+  source: "chat" | "general";
+  fileType: "image" | "video" | "audio" | "raw";
+  filename: string;
+  label?: string;
+  progress: number;
+  status: string;
+  error?: string;
+};
+
+function chatJobToUnified(job: ChatUploadJob): UnifiedJob {
+  return {
+    id: job.id,
+    source: "chat",
+    fileType: job.fileType,
+    filename: job.filename,
+    progress: job.progress,
+    status: job.status,
+    error: job.error,
+  };
+}
+
+function generalJobToUnified(job: GeneralUploadJob): UnifiedJob {
+  return {
+    id: job.id,
+    source: "general",
+    fileType: job.fileType,
+    filename: job.filename,
+    label: job.label,
+    progress: job.progress,
+    status: job.status,
+    error: job.error,
+  };
+}
+
+const STATUS_LABELS: Record<string, string> = {
   compressing: "Compressing…",
   uploading: "Uploading…",
   processing: "Processing…",
   saving: "Saving…",
-  done: "Sent ✓",
+  done: "Done ✓",
   error: "Failed",
 };
 
 /**
  * A floating indicator shown at the bottom-right of the screen whenever
- * there are active chat uploads. Survives navigation between pages.
+ * there are active uploads (chat or general). Survives navigation between pages.
  */
 export function GlobalUploadToast() {
-  const [jobs, setJobs] = useState<ChatUploadJob[]>([]);
+  const [chatJobs, setChatJobs] = useState<ChatUploadJob[]>([]);
+  const [generalJobs, setGeneralJobs] = useState<GeneralUploadJob[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    return subscribeToChatUploads(setJobs);
+    const unsubChat = subscribeToChatUploads(setChatJobs);
+    const unsubGeneral = subscribeToGeneralUploads(setGeneralJobs);
+    return () => {
+      unsubChat();
+      unsubGeneral();
+    };
   }, []);
 
-  // Filter to only show active or recently completed jobs
-  const visibleJobs = jobs.filter((j) => j.status !== "done");
+  // Merge both sources into a unified list
+  const allJobs: UnifiedJob[] = [
+    ...chatJobs.map(chatJobToUnified),
+    ...generalJobs.map(generalJobToUnified),
+  ];
+
+  // Filter to only show active or recently failed jobs
+  const visibleJobs = allJobs.filter((j) => j.status !== "done");
   const hasActive = visibleJobs.some(
     (j) => j.status !== "error",
   );
 
   if (visibleJobs.length === 0) return null;
+
+  const handleClear = (job: UnifiedJob) => {
+    if (job.source === "chat") {
+      clearChatUploadJob(job.id);
+    } else {
+      clearGeneralUploadJob(job.id);
+    }
+  };
 
   return (
     <div
@@ -107,7 +168,7 @@ export function GlobalUploadToast() {
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium text-foreground">
-                      {job.filename}
+                      {job.label || job.filename}
                     </p>
                     <p
                       className={cn(
@@ -119,7 +180,7 @@ export function GlobalUploadToast() {
                     >
                       {isError
                         ? job.error || "Upload failed"
-                        : STATUS_LABELS[job.status]}
+                        : STATUS_LABELS[job.status] || job.status}
                     </p>
                   </div>
 
@@ -131,7 +192,7 @@ export function GlobalUploadToast() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        clearChatUploadJob(job.id);
+                        handleClear(job);
                       }}
                       className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >

@@ -1,6 +1,7 @@
 import { HydratedDocument, InferSchemaType, Schema, model, models } from "mongoose";
 
 export const NOTE_FILE_TYPES = ["PDF", "DOCX", "PPT", "Image"] as const;
+export const NOTE_VISIBILITY = ["public", "private"] as const;
 
 const noteSchema = new Schema(
   {
@@ -36,6 +37,16 @@ const noteSchema = new Schema(
     fileUrl: {
       type: String,
       default: null,
+    },
+    visibility: {
+      type: String,
+      enum: NOTE_VISIBILITY,
+      default: "public",
+    },
+    price: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     uploaderId: {
       type: Schema.Types.ObjectId,

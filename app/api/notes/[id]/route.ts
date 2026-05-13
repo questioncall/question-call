@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import Note, { NOTE_FILE_TYPES } from "@/models/Note";
+import Note, { NOTE_FILE_TYPES, NOTE_VISIBILITY } from "@/models/Note";
 import User from "@/models/User";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 
@@ -34,6 +34,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       userImage?: string;
     } | null;
 
+    const isOwner = uploader?._id ? String(uploader._id) === authUser.id : false;
+
+    // Private notes can only be viewed by the owner
+    if ((note as any).visibility === "private" && !isOwner) {
+      return NextResponse.json({ error: "This note is private." }, { status: 403 });
+    }
+
     return NextResponse.json({
       id: String(note._id),
       title: note.title,
@@ -42,11 +49,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       grade: note.grade,
       fileType: note.fileType,
       fileUrl: note.fileUrl || null,
+      visibility: (note as any).visibility || "public",
+      price: (note as any).price || 0,
       uploaderId: uploader?._id ? String(uploader._id) : null,
       uploaderName: uploader?.name || "Unknown",
       uploaderUsername: uploader?.username || null,
       uploaderImage: uploader?.userImage || null,
-      isOwner: uploader?._id ? String(uploader._id) === authUser.id : false,
+      isOwner,
       createdAt: (note as any).createdAt?.toISOString?.() || new Date().toISOString(),
       updatedAt: (note as any).updatedAt?.toISOString?.() || new Date().toISOString(),
     });
@@ -87,7 +96,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { title, description, subject, grade, fileType, fileUrl } = body;
+    const { title, description, subject, grade, fileType, fileUrl, visibility, price } = body;
 
     if (title !== undefined) {
       if (!title.trim()) {
@@ -128,6 +137,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       note.fileUrl = fileUrl || null;
     }
 
+    if (visibility !== undefined) {
+      if (!NOTE_VISIBILITY.includes(visibility)) {
+        return NextResponse.json(
+          { error: `Invalid visibility. Must be one of: ${NOTE_VISIBILITY.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      note.visibility = visibility;
+    }
+
+    if (price !== undefined) {
+      note.price = Math.max(0, Number(price) || 0);
+    }
+
     await note.save();
 
     const user = await User.findById(authUser.id).select("name username userImage");
@@ -140,6 +163,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       grade: note.grade,
       fileType: note.fileType,
       fileUrl: note.fileUrl || null,
+      visibility: note.visibility || "public",
+      price: note.price || 0,
       uploaderId: authUser.id,
       uploaderName: user?.name || "Unknown",
       uploaderUsername: user?.username || null,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import Note, { NOTE_FILE_TYPES } from "@/models/Note";
+import Note, { NOTE_FILE_TYPES, NOTE_VISIBILITY } from "@/models/Note";
 import User from "@/models/User";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 
@@ -40,6 +40,9 @@ export async function GET(request: Request) {
 
     if (uploaderOnly) {
       query.uploaderId = authUser.id;
+    } else {
+      // Only show public notes in the general listing
+      query.visibility = { $ne: "private" };
     }
 
     if (cursor) {
@@ -68,10 +71,13 @@ export async function GET(request: Request) {
         grade: note.grade,
         fileType: note.fileType,
         fileUrl: note.fileUrl || null,
+        visibility: (note as any).visibility || "public",
+        price: (note as any).price || 0,
         uploaderId: uploader?._id ? String(uploader._id) : null,
         uploaderName: uploader?.name || "Unknown",
         uploaderUsername: uploader?.username || null,
         uploaderImage: uploader?.userImage || null,
+        isOwner: uploader?._id ? String(uploader._id) === authUser.id : false,
         createdAt: (note as any).createdAt?.toISOString?.() || new Date().toISOString(),
         updatedAt: (note as any).updatedAt?.toISOString?.() || new Date().toISOString(),
       };
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, description, subject, grade, fileType, fileUrl } = body;
+    const { title, description, subject, grade, fileType, fileUrl, visibility, price } = body;
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Title is required." }, { status: 400 });
@@ -120,6 +126,15 @@ export async function POST(request: Request) {
       );
     }
 
+    if (visibility && !NOTE_VISIBILITY.includes(visibility)) {
+      return NextResponse.json(
+        { error: `Invalid visibility. Must be one of: ${NOTE_VISIBILITY.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const notePrice = price !== undefined ? Math.max(0, Number(price) || 0) : 0;
+
     await connectToDatabase();
 
     const user = await User.findById(authUser.id).select("name username userImage");
@@ -134,6 +149,8 @@ export async function POST(request: Request) {
       grade: grade.trim(),
       fileType,
       fileUrl: fileUrl || null,
+      visibility: visibility || "public",
+      price: notePrice,
       uploaderId: authUser.id,
     });
 
@@ -146,6 +163,8 @@ export async function POST(request: Request) {
         grade: note.grade,
         fileType: note.fileType,
         fileUrl: note.fileUrl || null,
+        visibility: note.visibility || "public",
+        price: note.price || 0,
         uploaderId: authUser.id,
         uploaderName: user.name || "Unknown",
         uploaderUsername: user.username || null,
