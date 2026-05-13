@@ -231,21 +231,35 @@ function UploadNoteDialog({
       // 1. Upload file if exists
       if (selectedFile) {
         setIsUploading(true);
-        const formData = new FormData();
-        formData.append("file", selectedFile);
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const isImage = fileType === "Image" || selectedFile.type.startsWith("image/");
 
-        if (!uploadRes.ok) {
-          const err = await uploadRes.json();
-          throw new Error(err.error || "Failed to upload file to storage.");
+        if (isImage) {
+          // Images → Cloudinary via /api/upload
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            throw new Error(err.error || "Failed to upload file to storage.");
+          }
+
+          const uploadData = await uploadRes.json();
+          fileUrl = uploadData.secure_url;
+        } else {
+          // Documents (PDF, DOCX, PPT) → R2 via presigned upload
+          const { uploadFileToR2 } = await import("@/lib/client-upload");
+          const result = await uploadFileToR2(selectedFile, {
+            folder: "notes",
+          });
+          fileUrl = result.url;
         }
 
-        const uploadData = await uploadRes.json();
-        fileUrl = uploadData.secure_url;
         setIsUploading(false);
       }
 

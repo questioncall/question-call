@@ -386,6 +386,107 @@ export async function compressVideo(
   });
 }
 
+// ── R2 presigned upload ─────────────────────────────────────────────────────
+
+export type R2UploadResult = {
+  url: string;
+  key: string;
+};
+
+type R2UploadOptions = {
+  folder?: string;
+  onProgress?: UploadProgressHandler;
+  signal?: AbortSignal;
+};
+
+/**
+ * Upload a file directly to Cloudflare R2 via presigned PUT URL.
+ *
+ * Flow:
+ *   1. POST /api/upload/presign → { uploadUrl, publicUrl, key }
+ *   2. PUT file directly to R2 presigned URL (XHR for progress)
+ *
+ * This bypasses the Next.js server entirely for file transfer.
+ */
+export async function uploadFileToR2(
+  file: File,
+  options: R2UploadOptions = {},
+): Promise<R2UploadResult> {
+  // 1. Get presigned URL from our server
+  const presignRes = await fetch("/api/upload/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type || "application/octet-stream",
+      fileSize: file.size,
+      folder: options.folder,
+    }),
+  });
+
+  if (!presignRes.ok) {
+    const data = (await presignRes.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(data.error || "Failed to get upload URL.");
+  }
+
+  const { uploadUrl, publicUrl } = (await presignRes.json()) as {
+    uploadUrl: string;
+    publicUrl: string;
+    key: string;
+  };
+
+  // 2. PUT the file directly to R2
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    if (options.signal) {
+      const abortUpload = () => xhr.abort();
+      options.signal.addEventListener("abort", abortUpload, { once: true });
+      xhr.addEventListener(
+        "loadend",
+        () => options.signal!.removeEventListener("abort", abortUpload),
+        { once: true },
+      );
+    }
+
+    xhr.upload.addEventListener("progress", (evt) => {
+      if (evt.lengthComputable) {
+        const percent = clampPercent((evt.loaded / evt.total) * 100);
+        options.onProgress?.({
+          loaded: evt.loaded,
+          total: evt.total,
+          percent,
+        });
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        options.onProgress?.({ loaded: 1, total: 1, percent: 100 });
+        resolve();
+      } else {
+        reject(new Error(`R2 upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error during R2 upload."));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload cancelled."));
+    });
+
+    xhr.open("PUT", uploadUrl, true);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.send(file);
+  });
+
+  return { url: publicUrl, key: publicUrl.split("/").slice(-1)[0] || "" };
+}
+
 export async function getVideoDurationSeconds(file: File) {
   return new Promise<number>((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);

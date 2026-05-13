@@ -241,8 +241,14 @@ async function performChatUpload(
     let publicId: string | null = null;
 
     if (params.fileType === "video" || params.fileType === "audio") {
+      // Video/Audio → Mux direct upload
       uploadedUrl = await uploadVideoViaMux(jobId, params);
+    } else if (params.fileType === "raw") {
+      // Documents (PDF, DOCX, etc.) → R2 presigned upload
+      const result = await uploadFileViaR2(jobId, params);
+      uploadedUrl = result.url;
     } else {
+      // Images → Cloudinary via /api/upload
       const result = await uploadFileViaCloudinary(jobId, params);
       uploadedUrl = result.url;
       publicId = result.publicId;
@@ -506,4 +512,71 @@ async function uploadFileViaCloudinary(
     url: result.secure_url,
     publicId: result.public_id || null,
   };
+}
+
+// ── Document upload via R2 presigned URL ──────────────────────────────────
+
+async function uploadFileViaR2(
+  jobId: string,
+  params: StartChatUploadParams,
+): Promise<{ url: string }> {
+  updateJob(jobId, { status: "uploading" });
+
+  // 1. Get presigned URL from our server
+  const presignRes = await fetch("/api/upload/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filename: params.file.name,
+      contentType: params.file.type || "application/octet-stream",
+      fileSize: params.file.size,
+      folder: "chat-documents",
+    }),
+  });
+
+  if (!presignRes.ok) {
+    const data = (await presignRes.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(data.error || "Failed to prepare document upload.");
+  }
+
+  const { uploadUrl, publicUrl } = await presignRes.json();
+
+  // 2. PUT file directly to R2 via XHR for progress tracking
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener("progress", (evt) => {
+      if (evt.lengthComputable) {
+        const pct = Math.round((evt.loaded / evt.total) * 100);
+        updateJob(jobId, { progress: pct });
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Document upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error during document upload."));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Document upload was cancelled."));
+    });
+
+    xhr.open("PUT", uploadUrl, true);
+    xhr.setRequestHeader(
+      "Content-Type",
+      params.file.type || "application/octet-stream",
+    );
+    xhr.send(params.file);
+  });
+
+  return { url: publicUrl };
 }
