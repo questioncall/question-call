@@ -17,6 +17,7 @@ import {
   CHANNEL_WARNING_THRESHOLD_MS,
   MAX_CHANNEL_TIME_EXTENSIONS,
 } from "@/lib/channel-timer";
+import { consumeCachedCallToken } from "@/lib/call-token-cache";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
   CALL_ENDED_EVENT,
@@ -76,12 +77,26 @@ export default function CallSessionPage() {
     router.back();
   }, [channelId, router]);
 
+  // ── OPT-4: Try cached token first, then fall back to API fetch ──
   useEffect(() => {
     if (!callId) return;
 
     let mounted = true;
 
     async function fetchJoinDetails() {
+      // Check if the overlay already cached a token for us (OPT-1/OPT-3).
+      // This skips the entire /token network round-trip.
+      const cached = consumeCachedCallToken(callId);
+      if (cached && mounted) {
+        setToken(cached.token);
+        setServerUrl(cached.serverUrl);
+        setChannelId(cached.channelId);
+        setTimerDeadline(cached.timerDeadline);
+        setTimeExtensionCount(cached.timeExtensionCount);
+        return;
+      }
+
+      // Fallback: fetch from API (e.g. page reload, direct URL access)
       try {
         const response = await fetch(`/api/calls/${callId}/token`);
         const data = (await response.json()) as Partial<CallJoinPayload> & {

@@ -44,7 +44,9 @@ export async function GET(request: Request, context: RouteParams) {
       return NextResponse.json({ error: "Call has already ended." }, { status: 403 });
     }
 
-    if (!canIssueCallToken(callSession.status)) {
+    const callerId = callSession.callerId?.toString() ?? null;
+
+    if (!canIssueCallToken(callSession.status, userId, callerId)) {
       logCallLifecycle("token_blocked", {
         callSessionId: id,
         channelId: callSession.channelId.toString(),

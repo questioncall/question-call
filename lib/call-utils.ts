@@ -46,8 +46,34 @@ export function getCallParticipantIds(callSession: {
   };
 }
 
-export function canIssueCallToken(status: CallStatus) {
-  return status === "ACTIVE";
+/**
+ * Determines whether a LiveKit token can be issued for the given call status.
+ *
+ * - ACTIVE → both participants can get tokens (normal flow).
+ * - RINGING → only the **caller** can get a token so they can pre-join the
+ *   LiveKit room and be instantly connected when the callee accepts.
+ *
+ * @param requestingUserId - the user requesting the token
+ * @param callerId - the user who placed the call (may be null for legacy sessions)
+ */
+export function canIssueCallToken(
+  status: CallStatus,
+  requestingUserId?: string | null,
+  callerId?: string | null,
+) {
+  if (status === "ACTIVE") return true;
+
+  // Allow the caller to pre-fetch their token during RINGING
+  if (
+    status === "RINGING" &&
+    requestingUserId &&
+    callerId &&
+    requestingUserId === callerId
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function formatCallDuration(seconds: number): string {

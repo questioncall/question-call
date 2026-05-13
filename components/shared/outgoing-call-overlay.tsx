@@ -6,6 +6,7 @@ import { PhoneOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
+import { cacheCallToken } from "@/lib/call-token-cache";
 import { cn } from "@/lib/utils";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -44,11 +45,76 @@ export function OutgoingCallOverlay({
   const [cancellingCallId, setCancellingCallId] = useState<string | null>(null);
   const stopToneRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!call?.callSessionId) return;
     void router.prefetch(`/calls/${call.callSessionId}`);
   }, [call?.callSessionId, router]);
+
+  // ── OPT-3: Pre-fetch caller token while ringing ────────────────
+  // The caller can now get their token during RINGING (OPT-2 backend change).
+  // Cache it so when we navigate to the call page, it connects instantly.
+  useEffect(() => {
+    if (!call?.callSessionId) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/calls/${call.callSessionId}/token`);
+        if (!res.ok || cancelled) return;
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.token && data.serverUrl) {
+          cacheCallToken(call.callSessionId, {
+            token: data.token,
+            serverUrl: data.serverUrl,
+            channelId: data.channelId,
+            timerDeadline: data.timerDeadline,
+            timeExtensionCount: data.timeExtensionCount ?? 0,
+          });
+        }
+      } catch {
+        // Non-fatal — the call page will fetch its own token if the cache is empty
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [call?.callSessionId]);
+
+  // ── OPT-5: Pre-warm media during ringing ───────────────────────
+  useEffect(() => {
+    if (!call) return;
+
+    const constraints: MediaStreamConstraints = {
+      audio: true,
+      video: call.mode === "VIDEO",
+    };
+
+    let stream: MediaStream | null = null;
+
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((s) => {
+        stream = s;
+        mediaStreamRef.current = s;
+      })
+      .catch(() => {
+        // Non-fatal
+      });
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+      mediaStreamRef.current = null;
+    };
+  }, [call]);
 
   // ── Ringback tone playback ────────────────────────────────────
   useEffect(() => {
@@ -71,29 +137,41 @@ export function OutgoingCallOverlay({
     stopToneRef.current = null;
   }, []);
 
+  const releasePreWarmedMedia = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
   // ── Handle accepted ───────────────────────────────────────────
   useEffect(() => {
     if (!call || !wasAccepted) return;
     stopAudio();
+    releasePreWarmedMedia();
+    // Token is already cached from the pre-fetch above (OPT-3).
+    // The call page will pick it up from the cache instantly.
     router.push(`/calls/${call.callSessionId}`);
     onDismiss();
-  }, [call, wasAccepted, stopAudio, router, onDismiss]);
+  }, [call, wasAccepted, stopAudio, releasePreWarmedMedia, router, onDismiss]);
 
   // ── Handle rejected ───────────────────────────────────────────
   useEffect(() => {
     if (!call || !wasRejected) return;
     stopAudio();
+    releasePreWarmedMedia();
     toast.info("Call was declined");
     onDismiss();
-  }, [call, wasRejected, stopAudio, onDismiss]);
+  }, [call, wasRejected, stopAudio, releasePreWarmedMedia, onDismiss]);
 
   // ── Handle missed timeout from server ────────────────────────
   useEffect(() => {
     if (!call || !wasMissed) return;
     stopAudio();
+    releasePreWarmedMedia();
     toast.info("No answer");
     onDismiss();
-  }, [call, wasMissed, stopAudio, onDismiss]);
+  }, [call, wasMissed, stopAudio, releasePreWarmedMedia, onDismiss]);
 
   // ── Timeout: no answer ────────────────────────────────────────
   useEffect(() => {
@@ -101,6 +179,7 @@ export function OutgoingCallOverlay({
 
     timeoutRef.current = setTimeout(async () => {
       stopAudio();
+      releasePreWarmedMedia();
 
       // Cancel the call on the server
       try {
@@ -125,7 +204,7 @@ export function OutgoingCallOverlay({
         timeoutRef.current = null;
       }
     };
-  }, [call, stopAudio, onDismiss]);
+  }, [call, stopAudio, releasePreWarmedMedia, onDismiss]);
 
   // ── Cancel handler (caller clicks cancel) ─────────────────────
   const handleCancel = useCallback(async () => {
@@ -135,6 +214,7 @@ export function OutgoingCallOverlay({
     if (!call || isCancellingCurrentCall) return;
     setCancellingCallId(call.callSessionId);
     stopAudio();
+    releasePreWarmedMedia();
 
     try {
       await fetch(`/api/calls/${call.callSessionId}/cancel`, {
@@ -145,7 +225,7 @@ export function OutgoingCallOverlay({
     }
 
     onDismiss();
-  }, [call, cancellingCallId, stopAudio, onDismiss]);
+  }, [call, cancellingCallId, stopAudio, releasePreWarmedMedia, onDismiss]);
 
   if (!call) {
     return null;

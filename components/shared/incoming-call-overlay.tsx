@@ -6,6 +6,7 @@ import { PhoneIcon, PhoneOffIcon, VideoIcon } from "lucide-react";
 import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
+import { cacheCallToken } from "@/lib/call-token-cache";
 import { cn } from "@/lib/utils";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -42,11 +43,46 @@ export function IncomingCallOverlay({
   const [rejectingCallId, setRejectingCallId] = useState<string | null>(null);
   const stopToneRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!call?.callSessionId) return;
     void router.prefetch(`/calls/${call.callSessionId}`);
   }, [call?.callSessionId, router]);
+
+  // ── Pre-warm media during ringing (OPT-5) ─────────────────────
+  // Request camera/mic access while the phone is ringing so that by the
+  // time the user accepts, the browser has already granted permission and
+  // the tracks are warm. This saves ~200-500ms at connection time.
+  useEffect(() => {
+    if (!call) return;
+
+    const constraints: MediaStreamConstraints = {
+      audio: true,
+      video: call.mode === "VIDEO",
+    };
+
+    let stream: MediaStream | null = null;
+
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((s) => {
+        stream = s;
+        mediaStreamRef.current = s;
+      })
+      .catch(() => {
+        // Non-fatal: the user will be prompted again when LiveKit connects.
+        // This just means we can't pre-warm.
+      });
+
+    return () => {
+      // Release pre-warmed tracks if the overlay is dismissed without accepting
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+      mediaStreamRef.current = null;
+    };
+  }, [call]);
 
   // ── Ringtone playback ─────────────────────────────────────────
   useEffect(() => {
@@ -101,6 +137,14 @@ export function IncomingCallOverlay({
     stopToneRef.current = null;
   }, []);
 
+  // ── Release pre-warmed media ──────────────────────────────────
+  const releasePreWarmedMedia = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
   // ── Accept handler ────────────────────────────────────────────
   const handleAccept = useCallback(async () => {
     const isAcceptingCurrentCall =
@@ -120,13 +164,32 @@ export function IncomingCallOverlay({
         const data = await res.json();
         throw new Error(data.error || "Failed to accept call");
       }
+
+      // OPT-1 + OPT-4: The accept response includes the LiveKit token.
+      // Cache it so the call page can skip the separate /token fetch.
+      const data = await res.json();
+      if (data.token && data.serverUrl) {
+        cacheCallToken(call.callSessionId, {
+          token: data.token,
+          serverUrl: data.serverUrl,
+          channelId: data.channelId,
+          timerDeadline: data.timerDeadline,
+          timeExtensionCount: data.timeExtensionCount ?? 0,
+        });
+      }
+
+      // Release pre-warmed media — LiveKit will re-acquire with its own
+      // constraints, but the permission grant is cached by the browser so
+      // there's no second prompt.
+      releasePreWarmedMedia();
+
       onDismiss();
       router.push(`/calls/${call.callSessionId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error accepting call");
       setAcceptingCallId(null);
     }
-  }, [acceptingCallId, call, onDismiss, rejectingCallId, router, stopRingtone]);
+  }, [acceptingCallId, call, onDismiss, rejectingCallId, router, stopRingtone, releasePreWarmedMedia]);
 
   // ── Reject handler ────────────────────────────────────────────
   const handleReject = useCallback(async () => {
@@ -138,6 +201,7 @@ export function IncomingCallOverlay({
     if (!call || isAcceptingCurrentCall || isRejectingCurrentCall) return;
     setRejectingCallId(call.callSessionId);
     stopRingtone();
+    releasePreWarmedMedia();
 
     try {
       await fetch(`/api/calls/${call.callSessionId}/reject`, {
@@ -147,7 +211,7 @@ export function IncomingCallOverlay({
       // Non-fatal — dismiss regardless
     }
     onDismiss();
-  }, [acceptingCallId, call, onDismiss, rejectingCallId, stopRingtone]);
+  }, [acceptingCallId, call, onDismiss, rejectingCallId, stopRingtone, releasePreWarmedMedia]);
 
   if (!call) {
     return null;
