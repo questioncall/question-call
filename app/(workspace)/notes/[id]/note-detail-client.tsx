@@ -446,9 +446,9 @@ export function NoteDetailClient({
 
                 {!note.fileUrl && (
                   <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3">
-                    <CloudUploadIcon className="size-4 text-muted-foreground" />
+                    <FileIcon className="size-4 text-muted-foreground" />
                     <p className="text-xs text-muted-foreground">
-                      No file attached yet. File uploads coming soon.
+                      No file attached to this note.
                     </p>
                   </div>
                 )}

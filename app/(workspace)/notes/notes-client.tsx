@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BookOpenIcon,
   CloudUploadIcon,
@@ -54,11 +54,30 @@ type NoteItem = {
   updatedAt: string;
 };
 
-const FILE_TYPE_CONFIG: Record<FileType, { color: string; icon: typeof FileTextIcon; label: string }> = {
-  PDF: { color: "text-red-600 dark:text-red-400", icon: FileTextIcon, label: "PDF" },
-  DOCX: { color: "text-blue-600 dark:text-blue-400", icon: FileIcon, label: "DOCX" },
-  PPT: { color: "text-amber-600 dark:text-amber-400", icon: PresentationIcon, label: "PPT" },
-  Image: { color: "text-violet-600 dark:text-violet-400", icon: ImageIcon, label: "Image" },
+const FILE_TYPE_CONFIG: Record<
+  FileType,
+  { color: string; icon: typeof FileTextIcon; label: string }
+> = {
+  PDF: {
+    color: "text-red-600 dark:text-red-400",
+    icon: FileTextIcon,
+    label: "PDF",
+  },
+  DOCX: {
+    color: "text-blue-600 dark:text-blue-400",
+    icon: FileIcon,
+    label: "DOCX",
+  },
+  PPT: {
+    color: "text-amber-600 dark:text-amber-400",
+    icon: PresentationIcon,
+    label: "PPT",
+  },
+  Image: {
+    color: "text-violet-600 dark:text-violet-400",
+    icon: ImageIcon,
+    label: "Image",
+  },
 };
 
 const FILE_TYPE_BG: Record<FileType, string> = {
@@ -69,13 +88,25 @@ const FILE_TYPE_BG: Record<FileType, string> = {
 };
 
 const SUBJECTS = [
-  "Physics", "Biology", "Chemistry", "Mathematics", "English",
-  "Computer Science", "Social Studies", "Accountancy", "Other",
+  "Physics",
+  "Biology",
+  "Chemistry",
+  "Mathematics",
+  "English",
+  "Computer Science",
+  "Social Studies",
+  "Accountancy",
+  "Other",
 ];
 
 const GRADES = [
-  "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-  "Bachelor's", "Other",
+  "Grade 8",
+  "Grade 9",
+  "Grade 10",
+  "Grade 11",
+  "Grade 12",
+  "Bachelor's",
+  "Other",
 ];
 
 const FILE_TYPES: FileType[] = ["PDF", "DOCX", "PPT", "Image"];
@@ -104,7 +135,7 @@ function NoteCard({ note }: { note: NoteItem }) {
         <div
           className={cn(
             "flex size-12 shrink-0 items-center justify-center rounded-xl",
-            FILE_TYPE_BG[note.fileType]
+            FILE_TYPE_BG[note.fileType],
           )}
         >
           <FileIcon className={cn("size-6", cfg.color)} />
@@ -126,7 +157,7 @@ function NoteCard({ note }: { note: NoteItem }) {
               className={cn(
                 "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold",
                 FILE_TYPE_BG[note.fileType],
-                cfg.color
+                cfg.color,
               )}
             >
               {note.fileType}
@@ -163,6 +194,9 @@ function UploadNoteDialog({
   const [grade, setGrade] = useState(GRADES[0]);
   const [fileType, setFileType] = useState<FileType>("PDF");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setTitle("");
@@ -170,13 +204,52 @@ function UploadNoteDialog({
     setSubject(SUBJECTS[0]);
     setGrade(GRADES[0]);
     setFileType("PDF");
+    setSelectedFile(null);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Auto-set file type based on extension if possible
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (ext === "pdf") setFileType("PDF");
+      else if (["doc", "docx"].includes(ext || "")) setFileType("DOCX");
+      else if (["ppt", "pptx"].includes(ext || "")) setFileType("PPT");
+      else if (["jpg", "jpeg", "png", "webp"].includes(ext || ""))
+        setFileType("Image");
+    }
   };
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
 
     setIsSubmitting(true);
+    let fileUrl = null;
+
     try {
+      // 1. Upload file if exists
+      if (selectedFile) {
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json();
+          throw new Error(err.error || "Failed to upload file to storage.");
+        }
+
+        const uploadData = await uploadRes.json();
+        fileUrl = uploadData.secure_url;
+        setIsUploading(false);
+      }
+
+      // 2. Create note
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,6 +259,7 @@ function UploadNoteDialog({
           subject,
           grade,
           fileType,
+          fileUrl,
         }),
       });
 
@@ -197,31 +271,33 @@ function UploadNoteDialog({
         toast.success("Note uploaded successfully!");
       } else {
         const err = await res.json();
-        toast.error(err.error || "Failed to upload note.");
+        toast.error(err.error || "Failed to create note.");
       }
-    } catch {
-      toast.error("Failed to upload note.");
+    } catch (error: any) {
+      toast.error(error.message || "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-4xl max-h-screen overflow-y-auto p-6\">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CloudUploadIcon className="size-5 text-primary" />
             Upload Note
           </DialogTitle>
-          <DialogDescription>
-            Share your study notes with the community. All users can upload notes.
+          <DialogDescription className="text-foreground">
+            Share your study notes with the community. All users can upload
+            notes.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 w-full overflow-hidden\">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Title *
             </label>
             <Input
@@ -233,20 +309,20 @@ function UploadNoteDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the notes…"
-              className="min-h-[72px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="min-h-[72px] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               maxLength={2000}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Subject
             </label>
             <div className="flex flex-wrap gap-2">
@@ -259,7 +335,7 @@ function UploadNoteDialog({
                     "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                     subject === s
                       ? "border-primary bg-primary text-white"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      : "border-border bg-background text-foreground hover:border-primary/30 hover:text-foreground",
                   )}
                 >
                   {s}
@@ -269,7 +345,7 @@ function UploadNoteDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
               Grade / Class
             </label>
             <div className="flex flex-wrap gap-2">
@@ -282,7 +358,7 @@ function UploadNoteDialog({
                     "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                     grade === g
                       ? "border-primary bg-primary text-white"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      : "border-border bg-background text-foreground hover:border-primary/30 hover:text-foreground",
                   )}
                 >
                   {g}
@@ -292,7 +368,7 @@ function UploadNoteDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
               File Type
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -309,7 +385,7 @@ function UploadNoteDialog({
                       "flex flex-col items-center gap-1 rounded-xl border py-3 text-xs font-medium transition-all",
                       isActive
                         ? "border-primary/40 bg-primary/10 text-primary shadow-sm"
-                        : "border-border bg-background text-muted-foreground hover:border-primary/20 hover:text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/20 hover:text-foreground",
                     )}
                   >
                     <Icon className="size-5" />
@@ -320,27 +396,62 @@ function UploadNoteDialog({
             </div>
           </div>
 
-          {/* Placeholder for future file attachment */}
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-5 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-          >
-            <CloudUploadIcon className="size-5" />
-            Tap to attach file (coming soon)
-          </button>
+          {/* File Attachment */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileSelect}
+            accept=".pdf,.doc,.docx,.ppt,.pptx,image/*"
+          />
+
+          {!selectedFile ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-5 text-sm text-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+            >
+              <CloudUploadIcon className="size-5" />
+              Tap to attach file
+            </button>
+          ) : (
+            <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 overflow-hidden\">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <FileIcon className="size-5 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {selectedFile.name}
+                  </p>
+                  <p className="text-xs text-foreground/70">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="shrink-0 rounded-full p-1 hover:bg-primary/10 hover:text-primary"
+              >
+                <XIcon className="size-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim() || isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={!title.trim() || isSubmitting}
+          >
             {isSubmitting ? (
               <Loader2Icon className="mr-1.5 size-4 animate-spin" />
             ) : (
               <PlusIcon className="mr-1.5 size-4" />
             )}
-            Upload Note
+            {isUploading ? "Uploading File..." : "Upload Note"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -397,7 +508,7 @@ export function NotesClient() {
           n.title.toLowerCase().includes(search.toLowerCase()) ||
           n.subject.toLowerCase().includes(search.toLowerCase()) ||
           n.grade.toLowerCase().includes(search.toLowerCase()) ||
-          n.uploaderName.toLowerCase().includes(search.toLowerCase())
+          n.uploaderName.toLowerCase().includes(search.toLowerCase()),
       )
     : notes;
 
@@ -469,7 +580,9 @@ export function NotesClient() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <BookOpenIcon className="mb-4 size-12 text-muted-foreground/40" />
             <p className="text-lg font-medium text-foreground">
-              {notes.length === 0 ? "No notes yet" : "No notes match your search"}
+              {notes.length === 0
+                ? "No notes yet"
+                : "No notes match your search"}
             </p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               {notes.length === 0
@@ -477,7 +590,10 @@ export function NotesClient() {
                 : "Try a different search term."}
             </p>
             {notes.length === 0 && (
-              <Button onClick={() => setShowUpload(true)} className="mt-6 gap-2">
+              <Button
+                onClick={() => setShowUpload(true)}
+                className="mt-6 gap-2"
+              >
                 <PlusIcon className="size-4" />
                 Upload First Note
               </Button>
