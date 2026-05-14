@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     };
   }
 
+  // Upsert the new subscription
   await PushSubscriptionModel.findOneAndUpdate(
     { endpoint: subscription.endpoint },
     { $set: updateFields },
@@ -79,6 +80,18 @@ export async function POST(request: Request) {
       setDefaultsOnInsert: true,
     },
   );
+
+  // Remove any other subscriptions for the same user+platform that have a
+  // different endpoint. This cleans up stale tokens (e.g. old Expo Go tokens
+  // lingering after a standalone EAS build registers a new token).
+  // Only applies to mobile platforms — web can have multiple browser subs.
+  if (platform === "android" || platform === "ios") {
+    await PushSubscriptionModel.deleteMany({
+      userId: user.id,
+      platform,
+      endpoint: { $ne: subscription.endpoint },
+    }).catch(() => null);
+  }
 
   return NextResponse.json({ success: true });
 }

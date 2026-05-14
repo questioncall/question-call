@@ -6,6 +6,7 @@ import { sendExpoPush } from "@/lib/push/expo-push";
 import { getNotificationTheme, resolveNotificationHref } from "@/lib/notifications/metadata";
 import { connectToDatabase } from "@/lib/mongodb";
 import PushSubscriptionModel from "@/models/PushSubscription";
+import { logError } from "@/lib/error-logging";
 
 type NotificationPayload = {
   type: string;
@@ -89,6 +90,13 @@ export async function sendPushNotificationToUser(
   userId: string,
   notification: NotificationPayload,
 ) {
+  const startTime = Date.now();
+  const notifyType = notification.type ?? "unknown";
+
+  console.log(
+    `[web-push] Sending notification type=${notifyType} to user=${userId} message="${notification.message.slice(0, 60)}"`,
+  );
+
   await connectToDatabase();
 
   const subscriptions = await PushSubscriptionModel.find({ userId })
@@ -96,16 +104,34 @@ export async function sendPushNotificationToUser(
     .lean();
 
   if (subscriptions.length === 0) {
-    console.warn(`[web-push] No push subscriptions found for user=${userId}`);
+    console.warn(`[web-push] No push subscriptions found for user=${userId} type=${notifyType}`);
     return;
   }
 
   const theme = getNotificationTheme(notification.type, notification.href);
   const url = resolveNotificationHref(notification);
 
-  // ── Android → Expo push ──────────────────────────────────────────────────
+  // Compute counts by platform
   const androidSubs = subscriptions.filter((s) => (s.platform ?? "web") === "android");
+  const androidCount = androidSubs.length;
+  const webSubs = subscriptions.filter((s) => {
+    const platform = s.platform ?? "web";
+    return platform === "web" || platform === "ios";
+  });
+  const webCount = webSubs.filter((s) => (s.platform ?? "web") === "web").length;
+  const iosCount = webSubs.filter((s) => s.platform === "ios").length;
+
+  console.log(
+    `[web-push] User=${userId} type=${notifyType} has ${subscriptions.length} subscription(s) (android=${androidCount}${webCount > 0 ? ` web=${webCount}` : ""}${iosCount > 0 ? ` ios=${iosCount}` : ""})`,
+  );
+
+  let webErrorCount = 0;
+
+  // ── Android → Expo push ──────────────────────────────────────────────────
   if (androidSubs.length > 0) {
+    console.log(
+      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}`,
+    );
     await sendExpoPush(androidSubs, {
       title: notification.title || theme.title,
       body: notification.message,
@@ -119,32 +145,46 @@ export async function sendPushNotificationToUser(
       priority: theme.priority,
       sound: theme.sound,
     }).catch((err) => {
-      console.error("[web-push] Expo push failed for user:", userId, err);
+      console.error("[web-push] Expo push failed for user:", userId, "type:", notifyType, err);
+      logError("Expo push failed in web-push dispatcher", {
+        userId,
+        context: {
+          notificationType: notifyType,
+          androidSubCount: androidSubs.length,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      }).catch(() => {});
     });
   }
 
   // ── Web / iOS → Web Push API (VAPID) ────────────────────────────────────
-  const webSubs = subscriptions.filter((s) => {
-    const platform = s.platform ?? "web";
-    return platform === "web" || platform === "ios";
-  });
 
-  if (webSubs.length === 0) return;
+  if (webSubs.length === 0) {
+    const elapsed = Date.now() - startTime;
+    console.log(
+      `[web-push] Done user=${userId} type=${notifyType} — Android=${androidCount} web=${webCount} ios=${iosCount} errors=${webErrorCount} (${elapsed}ms)`,
+    );
+    return;
+  }
 
   const webPushConfigured = ensureWebPushConfigured();
   if (!webPushConfigured) {
-    console.warn(`[web-push] VAPID is not configured; skipping web/iOS push for user=${userId}`);
+    console.warn(`[web-push] VAPID is not configured; skipping web/iOS push for user=${userId} type=${notifyType}`);
+    const elapsed = Date.now() - startTime;
+    console.log(
+      `[web-push] Done user=${userId} type=${notifyType} — Android=${androidCount} web=${webCount} ios=${iosCount} (VAPID not configured, web/iOS skipped) (${elapsed}ms)`,
+    );
     return;
   }
 
   const payload = buildWebPushPayload(notification);
   const endpointTail = (ep: string) => (ep.length > 30 ? `…${ep.slice(-30)}` : ep);
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     webSubs.map(async (subscription) => {
       if (!subscription.keys?.p256dh || !subscription.keys?.auth) {
         console.warn(`[web-push] Subscription id=${String(subscription._id)} missing keys; skipping`);
-        return;
+        return { status: "skipped" as const, reason: "missing_keys" };
       }
 
       try {
@@ -160,6 +200,7 @@ export async function sendPushNotificationToUser(
           JSON.stringify(payload),
           { TTL: 300 },
         );
+        return { status: "ok" as const };
       } catch (error) {
         const statusCode =
           typeof error === "object" && error && "statusCode" in error
@@ -167,18 +208,41 @@ export async function sendPushNotificationToUser(
             : undefined;
 
         console.warn(
-          `[web-push] Send failed for user=${userId} endpoint=${endpointTail(subscription.endpoint)} status=${statusCode ?? "unknown"}`,
+          `[web-push] Send failed for user=${userId} type=${notifyType} endpoint=${endpointTail(subscription.endpoint)} status=${statusCode ?? "unknown"}`,
         );
 
         if (isGoneSubscriptionError(error)) {
           await PushSubscriptionModel.findByIdAndDelete(subscription._id).catch(() => null);
-          return;
+          return { status: "deleted" as const, reason: "gone_410" };
         }
 
         if (statusCode !== 404) {
           console.error("[web-push] Unexpected push send error", error);
+          logError("Web push send error", {
+            userId,
+            context: {
+              notificationType: notifyType,
+              statusCode,
+              endpointTail: endpointTail(subscription.endpoint),
+              platform: subscription.platform ?? "web",
+              error: error instanceof Error ? error.message : String(error),
+            },
+          }).catch(() => {});
         }
+
+        return { status: "error" as const, reason: `status_${statusCode ?? "unknown"}` };
       }
     }),
+  );
+
+  webErrorCount = results.filter(
+    (r) => r.status === "fulfilled" && r.value?.status === "error",
+  ).length;
+
+  const elapsed = Date.now() - startTime;
+  console.log(
+    `[web-push] Done user=${userId} type=${notifyType} — ` +
+      `Android=${androidCount} web=${webCount} ios=${iosCount} webErrors=${webErrorCount} ` +
+      `(${elapsed}ms)`,
   );
 }

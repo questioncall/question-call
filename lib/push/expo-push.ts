@@ -1,6 +1,7 @@
 import "server-only";
 
 import PushSubscriptionModel from "@/models/PushSubscription";
+import { logError } from "@/lib/error-logging";
 
 export type ExpoMessage = {
   title: string;
@@ -23,10 +24,6 @@ type ExpoTicket = ExpoTicketOk | ExpoTicketError;
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const CHUNK_SIZE = 100;
 
-export function isExpoPushToken(token: string): boolean {
-  return token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[");
-}
-
 async function sendChunk(
   entries: Array<{ token: string; subId: string }>,
   message: ExpoMessage,
@@ -48,48 +45,121 @@ async function sendChunk(
   });
 
   if (!res.ok) {
-    console.warn(`[expo-push] HTTP ${res.status} from Expo push service`);
+    const resBody = await res.text().catch(() => "(unreadable)");
+    console.warn(
+      `[expo-push] HTTP ${res.status} from Expo push service: ${resBody}`,
+    );
     return;
   }
 
   const json = (await res.json()) as { data: ExpoTicket[] };
   const tickets: ExpoTicket[] = json.data ?? [];
 
+  let okCount = 0;
+  let errorCount = 0;
+  const errorCodes: Record<string, number> = {};
+
   for (let i = 0; i < tickets.length; i++) {
     const ticket = tickets[i];
     if (ticket.status === "error") {
-      const errorCode = ticket.details?.error;
+      errorCount++;
+      const errorCode = ticket.details?.error ?? "unknown";
+      errorCodes[errorCode] = (errorCodes[errorCode] ?? 0) + 1;
+
       const tokenTail = entries[i].token.slice(-12);
-      console.warn(`[expo-push] Ticket error ...${tokenTail}: ${ticket.message} (${errorCode})`);
+      console.warn(
+        `[expo-push] Ticket error ...${tokenTail}: ${ticket.message} (${errorCode})`,
+      );
+
       // DeviceNotRegistered = token is stale — prune it so we don't keep trying
       if (errorCode === "DeviceNotRegistered") {
-        await PushSubscriptionModel.findByIdAndDelete(entries[i].subId).catch(() => null);
+        await PushSubscriptionModel.findByIdAndDelete(entries[i].subId).catch(
+          () => null,
+        );
+      }
+    } else {
+      okCount++;
+    }
+  }
+
+  // Log batch summary
+  const total = tickets.length;
+  if (errorCount > 0) {
+    const codeSummary = Object.entries(errorCodes)
+      .map(([code, count]) => `${code}=${count}`)
+      .join(", ");
+    console.warn(
+      `[expo-push] Batch result: ${okCount}/${total} ok, ${errorCount} errors (${codeSummary})`,
+    );
+
+    // Persist the most severe errors for monitoring
+    // Uses a stable message so logError deduplicates by errorKey and increments count correctly
+    for (const [code, codeCount] of Object.entries(errorCodes)) {
+      if (codeCount > 0) {
+        logError(`Expo push ticket error: ${code}`, {
+          context: {
+            errorCode: code,
+            batchCount: codeCount,
+            batchSize: total,
+            notificationType: message.data?.type,
+            channelId: message.channelId,
+          },
+        }).catch(() => {});
       }
     }
+  } else {
+    console.log(
+      `[expo-push] Batch result: ${okCount}/${total} ok, 0 errors`,
+    );
   }
 }
 
 /**
  * Send a push notification via Expo's push service to one or more Android subscriptions.
- * Only sends to valid ExponentPushToken entries; silently skips raw FCM tokens.
+ *
+ * Expo's push API accepts both Expo push tokens (ExpoPushToken[...]) and raw FCM/device
+ * tokens, so we forward every Android subscription through the service. If a token is
+ * stale, Expo returns DeviceNotRegistered and we prune it from the database.
  */
 export async function sendExpoPush(
   subscriptions: Array<{ _id: { toString(): string }; endpoint: string }>,
   message: ExpoMessage,
 ): Promise<void> {
-  const valid = subscriptions
-    .filter((s) => isExpoPushToken(s.endpoint))
-    .map((s) => ({ token: s.endpoint, subId: s._id.toString() }));
+  const entries = subscriptions.map((s) => ({
+    token: s.endpoint,
+    subId: s._id.toString(),
+  }));
 
-  if (valid.length === 0) {
-    const endpoints = subscriptions.map((s) => s.endpoint.slice(0, 30));
-    console.warn("[expo-push] No valid Expo tokens among", endpoints);
-    return;
-  }
+  if (entries.length === 0) return;
 
-  for (let i = 0; i < valid.length; i += CHUNK_SIZE) {
-    await sendChunk(valid.slice(i, i + CHUNK_SIZE), message).catch((err) => {
-      console.error("[expo-push] Chunk send failed:", err);
+  const totalChunks = Math.ceil(entries.length / CHUNK_SIZE);
+  console.log(
+    `[expo-push] Sending ${entries.length} notification(s) ` +
+      `(type=${message.data?.type ?? "unknown"}, ` +
+      `channelId=${message.channelId ?? "default"}, ` +
+      `chunks=${totalChunks})`,
+  );
+
+  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+    await sendChunk(entries.slice(i, i + CHUNK_SIZE), message).catch((err) => {
+      const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
+      console.error(
+        `[expo-push] Chunk ${chunkIndex}/${totalChunks} send failed:`,
+        err,
+      );
+      logError("Expo push chunk send failed", {
+        context: {
+          chunkIndex,
+          totalChunks,
+          entriesInChunk: Math.min(CHUNK_SIZE, entries.length - i),
+          notificationType: message.data?.type,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      }).catch(() => {});
     });
   }
+
+  console.log(
+    `[expo-push] Done sending ${entries.length} notification(s) (${totalChunks} chunk(s))`,
+  );
 }
