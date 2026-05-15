@@ -120,7 +120,9 @@ export async function POST(request: Request, context: RouteParams) {
       ? rawPreview.substring(0, 100) + (rawPreview.length > 100 ? "…" : "")
       : "Sent a media message";
 
-    await Promise.allSettled([
+    console.log(`[messages] Sending push to counterpart=${counterpartId} from=${userId}`);
+
+    const results = await Promise.allSettled([
       emitChannelMessage(channelId, chatMessage),
       pusherServer?.trigger(getUserPusherName(counterpartId), CHANNEL_UPDATED_EVENT, {
         channelId,
@@ -135,6 +137,13 @@ export async function POST(request: Request, context: RouteParams) {
         href: `/workspace/${channelId}`,
       }),
     ]);
+
+    const [pusherResult, channelUpdateResult, pushResult] = results;
+    if (pushResult.status === "rejected") {
+      console.error("[messages] Push notification FAILED:", pushResult.reason);
+    } else {
+      console.log("[messages] Push notification sent OK");
+    }
 
     // Return the message with isOwn = true for the sender
     return NextResponse.json({ ...chatMessage, isOwn: true }, { status: 201 });
