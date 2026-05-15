@@ -73,7 +73,7 @@ export async function GET(request: Request, context: RouteParams) {
       body?: string;
       answerFormat?: AnswerFormat;
       answerVisibility?: string;
-    };
+    } | null;
 
     const asker = channel.askerId as unknown as {
       _id: { toString(): string };
@@ -90,7 +90,7 @@ export async function GET(request: Request, context: RouteParams) {
     };
 
     const config = await getPlatformConfig();
-    const formatDurationMinutes = getFormatDurationMinutes(config, question.answerFormat || "ANY");
+    const formatDurationMinutes = getFormatDurationMinutes(config, question?.answerFormat ?? "ANY");
 
     const isAnswerSubmitted = await Answer.exists({ channelId: id });
 
@@ -104,7 +104,7 @@ export async function GET(request: Request, context: RouteParams) {
 
     const channelDetail: ChannelDetail = {
       id: channel._id.toString(),
-      questionId: (channel.questionId as unknown as { _id: { toString(): string } })._id.toString(),
+      questionId: question ? (channel.questionId as unknown as { _id: { toString(): string } })._id.toString() : id,
       askerId: askerId,
       acceptorId: acceptorId,
       openedAt: new Date(channel.openedAt).toISOString(),
@@ -116,10 +116,10 @@ export async function GET(request: Request, context: RouteParams) {
       ratingGiven: channel.ratingGiven ?? null,
       createdAt: new Date(channel.createdAt!).toISOString(),
       updatedAt: new Date(channel.updatedAt!).toISOString(),
-      questionTitle: question.title || "Untitled",
-      questionBody: question.body || "",
-      answerFormat: question.answerFormat || "ANY",
-      answerVisibility: question.answerVisibility || "PUBLIC",
+      questionTitle: question?.title || "Untitled",
+      questionBody: question?.body || "",
+      answerFormat: question?.answerFormat || "ANY",
+      answerVisibility: question?.answerVisibility || "PUBLIC",
       askerName: asker.name || "Anonymous",
       askerUsername: asker.username || undefined,
       askerImage: asker.userImage || undefined,
