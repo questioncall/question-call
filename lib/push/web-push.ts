@@ -144,6 +144,7 @@ export async function sendPushNotificationToUser(
       channelId: theme.channelId,
       priority: theme.priority,
       sound: theme.sound,
+      categoryId: notification.extraData?.callSessionId ? "incoming_call" : undefined,
     }).catch((err) => {
       console.error("[web-push] Expo push failed for user:", userId, "type:", notifyType, err);
       logError("Expo push failed in web-push dispatcher", {

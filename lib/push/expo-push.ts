@@ -11,6 +11,8 @@ export type ExpoMessage = {
   channelId?: string;
   priority?: "high" | "normal" | "default";
   sound?: "default" | null;
+  /** Notification category ID — maps to client-registered action sets (e.g. Accept/Decline for calls) */
+  categoryId?: string;
 };
 
 type ExpoTicketOk = { status: "ok"; id: string };
@@ -36,6 +38,7 @@ async function sendChunk(
     channelId: message.channelId ?? "default",
     priority: message.priority ?? "normal",
     sound: message.sound !== undefined ? message.sound : "default",
+    ...(message.categoryId ? { categoryId: message.categoryId } : {}),
   }));
 
   const res = await fetch(EXPO_PUSH_URL, {
