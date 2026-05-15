@@ -3752,7 +3752,7 @@ function Footer({
           <div style={{ marginTop: 4 }}>
             {socialLinks ? <SocialHandlesDirect links={socialLinks} /> : null}
           </div>
-          <div style={{ marginTop: "auto", paddingTop: 16 }}>
+          {/* <div style={{ marginTop: "auto", paddingTop: 16 }}>
             <a
               href="https://github.com/siddthecoder"
               className="lpb-footer-link"
@@ -3772,7 +3772,7 @@ function Footer({
             >
               Developed by siddthecoder
             </a>
-          </div>
+          </div> */}
           <p
             style={{
               fontSize: 12,

@@ -77,6 +77,18 @@ export const CALL_RINGTONE_OPTIONS = [
       "A deep resonant gong hit with a long, fading decay — meditative and grounding.",
     file: "/sounds/reverie.wav",
   },
+  {
+    value: "incoming_ringtone",
+    label: "Incoming Call",
+    description: "A clear ringing tone for incoming calls.",
+    file: "/sounds/incoming_ringtone.mp3",
+  },
+  {
+    value: "outgoing_ringtone",
+    label: "Outgoing Call",
+    description: "A steady ringback tone while your call connects.",
+    file: "/sounds/outgoing_ringtone.mp3",
+  },
 ] as const satisfies readonly CallToneOption[];
 
 export type CallRingtone = (typeof CALL_RINGTONE_OPTIONS)[number]["value"];
@@ -97,8 +109,8 @@ export const CALL_RINGTONE_VALUES = CALL_RINGTONE_OPTIONS.map(
 
 export const DEFAULT_CALL_SETTINGS: UserCallSettings = {
   silentIncomingCalls: false,
-  incomingRingtone: "aria",
-  outgoingRingtone: "reverie",
+  incomingRingtone: "incoming_ringtone",
+  outgoingRingtone: "outgoing_ringtone",
 };
 
 export function isCallRingtone(value: string): value is CallRingtone {
