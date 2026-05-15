@@ -73,10 +73,10 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           <div className="mb-4 text-muted-foreground">
-            <Menu className="h-6 w-6" />
+            <Menu className="h-7 w-7" />
           </div>
           {filteredChannels.slice(0, 6).map((channel) => (
-            <Avatar key={channel.id} className="mb-4 h-10 w-10 border border-border">
+            <Avatar key={channel.id} className="mb-4 h-12 w-12 border border-border">
               <AvatarFallback>
                 {channel.counterpartName.substring(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -90,17 +90,17 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
             isCollapsed ? "pointer-events-none opacity-0" : "opacity-100",
           )}
         >
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-border p-4">
-            <h2 className="text-lg font-bold text-foreground">Channels</h2>
+          <div className="flex h-20 shrink-0 items-center justify-between border-b border-border p-6">
+            <h2 className="text-xl font-bold text-foreground">Channels</h2>
           </div>
 
-          <div className="shrink-0 p-4">
+          <div className="shrink-0 p-6">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-3 h-5 w-5 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search channels..."
-                className="w-full bg-muted/50 pl-9"
+                className="w-full bg-muted/50 pl-10"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
@@ -111,7 +111,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
             <div className="px-2 pb-4">
               {isLoading && !isHydrated && (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
                 </div>
               )}
 
@@ -134,18 +134,18 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
                       key={channel.id}
                       href={getChannelPath(channel.id)}
                       className={cn(
-                        "flex min-w-0 items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50",
+                        "flex min-w-0 items-start gap-4 rounded-lg p-4 transition-colors hover:bg-muted/50",
                         isActive ? "bg-muted" : "bg-transparent",
                       )}
                     >
                       <div className="relative shrink-0">
-                        <Avatar className="h-12 w-12 border border-border">
+                        <Avatar className="h-14 w-14 border border-border">
                           <AvatarFallback>
                             {channel.counterpartName.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         {channel.unreadCount > 0 && (
-                          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                          <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-red-500 text-[11px] font-bold text-white shadow-sm">
                             {channel.unreadCount > 99 ? "99+" : channel.unreadCount}
                           </span>
                         )}
@@ -154,7 +154,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <div className="flex min-w-0 items-baseline justify-between gap-2 pt-0.5">
                           <p
-                            className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                            className="min-w-0 flex-1 truncate text-base font-medium text-foreground"
                             title={channel.counterpartName}
                           >
                             {channel.counterpartName}
@@ -165,7 +165,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
                         </div>
 
                         <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                          <StatusIcon className="size-3 shrink-0" />
+                          <StatusIcon className="size-4 shrink-0" />
                           <span className="truncate">
                             {channel.role === "asker" ? "You asked" : "You're helping"} •{" "}
                             {STATUS_LABEL[channel.status]}
@@ -190,12 +190,12 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {isChannelPage && (
-          <div className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background p-4 md:hidden">
+          <div className="flex h-20 shrink-0 items-center justify-between border-b border-border bg-background p-6 md:hidden">
             <Link
               href="/message"
               className="flex items-center text-muted-foreground hover:text-foreground"
             >
-              <ChevronLeft className="mr-2 h-5 w-5" />
+              <ChevronLeft className="mr-2 h-6 w-6" />
               <span>Channels</span>
             </Link>
           </div>
