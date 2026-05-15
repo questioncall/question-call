@@ -129,22 +129,32 @@ export async function sendPushNotificationToUser(
 
   // ── Android → Expo push ──────────────────────────────────────────────────
   if (androidSubs.length > 0) {
+    const isIncomingCall = Boolean(notification.extraData?.callSessionId);
+    const resolvedTitle = notification.title || theme.title;
+
     console.log(
-      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}`,
+      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}${isIncomingCall ? " [data-only call]" : ""}`,
     );
     await sendExpoPush(androidSubs, {
-      title: notification.title || theme.title,
+      title: resolvedTitle,
       body: notification.message,
       data: {
         type: notification.type,
         url,
         href: url,
         ...notification.extraData,
+        // Mirror title/body inside `data` for incoming calls so the headless
+        // background task can render fallback UI without relying on top-level
+        // notification fields (which we omit for data-only delivery).
+        ...(isIncomingCall
+          ? { title: resolvedTitle, body: notification.message }
+          : {}),
       },
       channelId: theme.channelId,
       priority: theme.priority,
       sound: theme.sound,
-      categoryId: notification.extraData?.callSessionId ? "incoming_call" : undefined,
+      categoryId: isIncomingCall ? "incoming_call" : undefined,
+      dataOnly: isIncomingCall,
     }).catch((err) => {
       console.error("[web-push] Expo push failed for user:", userId, "type:", notifyType, err);
       logError("Expo push failed in web-push dispatcher", {

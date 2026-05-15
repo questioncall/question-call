@@ -13,6 +13,15 @@ export type ExpoMessage = {
   sound?: "default" | null;
   /** Notification category ID — maps to client-registered action sets (e.g. Accept/Decline for calls) */
   categoryId?: string;
+  /**
+   * When true, the push is delivered as a data-only FCM message (no top-level
+   * `title`/`body`). This is required for incoming-call pushes so Android
+   * wakes the app's JS engine and runs the `INCOMING_CALL_NOTIFICATION`
+   * background task instead of showing a plain heads-up. The client then
+   * renders the full-screen CallKeep UI and the Expo-registered Accept/Decline
+   * action category.
+   */
+  dataOnly?: boolean;
 };
 
 type ExpoTicketOk = { status: "ok"; id: string };
@@ -32,12 +41,16 @@ async function sendChunk(
 ): Promise<void> {
   const payload = entries.map((e) => ({
     to: e.token,
-    title: message.title,
-    body: message.body,
+    // For data-only pushes we MUST omit title/body so Android delivers it as a
+    // data message (which wakes the JS background task). Otherwise FCM shows
+    // the notification itself and our headless task never runs.
+    ...(message.dataOnly ? {} : { title: message.title, body: message.body }),
     data: message.data ?? {},
     channelId: message.channelId ?? "default",
     priority: message.priority ?? "normal",
-    sound: message.sound !== undefined ? message.sound : "default",
+    // Data-only messages should be silent at the FCM layer; the client decides
+    // whether to play a ringtone (CallKeep does for incoming calls).
+    sound: message.dataOnly ? null : message.sound !== undefined ? message.sound : "default",
     ...(message.categoryId ? { categoryId: message.categoryId } : {}),
   }));
 
