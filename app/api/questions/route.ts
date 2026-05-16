@@ -32,11 +32,11 @@ export async function POST(request: Request) {
 
     if (
       typeof body.title !== "string" ||
-      body.title.trim().length < 6 ||
+      body.title.trim().length < 3 ||
       body.title.trim().length > 180
     ) {
       return NextResponse.json(
-        { error: "Title must be between 6 and 180 characters" },
+        { error: "Title must be between 3 and 180 characters" },
         { status: 400 },
       );
     }

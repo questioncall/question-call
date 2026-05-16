@@ -35,7 +35,7 @@ const questionSchema = new Schema(
       type: String,
       required: true,
       trim: true,
-      minlength: 6,
+      minlength: 3,
       maxlength: 180,
     },
     body: {
