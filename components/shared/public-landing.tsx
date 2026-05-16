@@ -3752,12 +3752,12 @@ function Footer({
           <div style={{ marginTop: 4 }}>
             {socialLinks ? <SocialHandlesDirect links={socialLinks} /> : null}
           </div>
-          {/* <div style={{ marginTop: "auto", paddingTop: 16 }}>
-            <a
-              href="https://github.com/siddthecoder"
+          <div style={{ marginTop: "auto", paddingTop: 16 }}>
+            <span
+              // href="https://github.com/siddthecoder"
               className="lpb-footer-link"
-              target="_blank"
-              rel="noreferrer"
+              // target="_blank"
+              // rel="noreferrer"
               style={{
                 fontSize: 11,
                 color: isDark ? "#e5e7eb" : "#374151",
@@ -3770,9 +3770,9 @@ function Footer({
                 marginLeft: "-10px",
               }}
             >
-              Developed by siddthecoder
-            </a>
-          </div> */}
+              Learning & Earning at same time
+            </span>
+          </div>
           <p
             style={{
               fontSize: 12,
