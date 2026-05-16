@@ -39,13 +39,6 @@ export async function DELETE(
       );
     }
 
-    if (question.status !== "OPEN" && question.status !== "RESET") {
-      return NextResponse.json(
-        { error: "You can only delete questions that have not been accepted or answered" },
-        { status: 400 }
-      );
-    }
-
     await Question.findByIdAndDelete(id);
 
     const userToUpdate = await User.findById(authenticatedUser.id);
