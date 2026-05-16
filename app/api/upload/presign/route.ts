@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   isAllowedR2ContentType,
-  getMaxFileSizeBytes,
+  getMaxFileSizeBytesForRole,
   generateObjectKey,
   getPresignedUploadUrl,
   getPublicUrl,
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     // ── Validate file size ────────────────────────────────────────────────
 
-    const maxBytes = getMaxFileSizeBytes();
+    const maxBytes = getMaxFileSizeBytesForRole(user.role);
 
     if (
       typeof fileSize === "number" &&

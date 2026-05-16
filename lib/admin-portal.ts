@@ -168,6 +168,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["questions", "qna", "delete question", "filter question"],
   },
   {
+    id: "notes",
+    label: "Notes",
+    href: "/admin/notes",
+    description:
+      "Browse, search, and delete all platform notes (public and private). Upload new notes as admin.",
+    group: "Learning & Content",
+    keywords: ["notes", "pdf", "docx", "ppt", "upload note", "study material", "delete note"],
+  },
+  {
     id: "ai-keys",
     label: "AI Keys",
     href: "/admin/ai-keys",
@@ -265,6 +274,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/notices", label: "Notices" },
   { href: "/admin/quiz-management", label: "Quiz management" },
   { href: "/admin/questions", label: "Questions" },
+  { href: "/admin/notes", label: "Notes" },
   { href: "/admin/ai-keys", label: "AI Keys" },
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/courses/coupons", label: "Coupons" },

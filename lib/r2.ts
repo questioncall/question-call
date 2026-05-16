@@ -60,26 +60,29 @@ const ALLOWED_MIME_TYPES = new Set([
   "text/csv",
 ]);
 
-/** Max file size: 100 MB */
-const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_FILE_SIZE_STUDENT_BYTES = 100 * 1024 * 1024;  // 100 MB
+const MAX_FILE_SIZE_TEACHER_BYTES = 500 * 1024 * 1024;  // 500 MB
+const MAX_FILE_SIZE_ADMIN_BYTES   = 1024 * 1024 * 1024; // 1 GB
 
 /** Presigned URL expiry: 10 minutes */
 const PRESIGN_EXPIRY_SECONDS = 600;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Validate that a content type is allowed for R2 uploads.
- */
 export function isAllowedR2ContentType(contentType: string): boolean {
   return ALLOWED_MIME_TYPES.has(contentType);
 }
 
 /**
- * Get the maximum file size in bytes.
+ * Returns the note upload size cap for the given role.
+ * Students: 100 MB · Teachers: 500 MB · Admins: 1 GB.
  */
-export function getMaxFileSizeBytes(): number {
-  return MAX_FILE_SIZE_BYTES;
+export function getMaxFileSizeBytesForRole(
+  role: "STUDENT" | "TEACHER" | "ADMIN",
+): number {
+  if (role === "ADMIN") return MAX_FILE_SIZE_ADMIN_BYTES;
+  if (role === "TEACHER") return MAX_FILE_SIZE_TEACHER_BYTES;
+  return MAX_FILE_SIZE_STUDENT_BYTES;
 }
 
 /**
