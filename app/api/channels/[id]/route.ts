@@ -29,7 +29,7 @@ export async function GET(request: Request, context: RouteParams) {
     await connectToDatabase();
 
     let channel = await Channel.findById(id)
-      .populate("questionId", "title body answerFormat answerVisibility")
+      .populate("questionId", "title body images answerFormat answerVisibility")
       .populate("askerId", "name username userImage")
       .populate("acceptorId", "name username userImage")
       .lean();
@@ -54,7 +54,7 @@ export async function GET(request: Request, context: RouteParams) {
       if (timerDeadlineMs <= Date.now()) {
         await processExpiredChannels({ channelId: id });
         channel = await Channel.findById(id)
-          .populate("questionId", "title body answerFormat answerVisibility")
+          .populate("questionId", "title body images answerFormat answerVisibility")
           .populate("askerId", "name username userImage")
           .populate("acceptorId", "name username userImage")
           .lean();
@@ -71,6 +71,7 @@ export async function GET(request: Request, context: RouteParams) {
     const question = channel.questionId as unknown as {
       title?: string;
       body?: string;
+      images?: string[];
       answerFormat?: AnswerFormat;
       answerVisibility?: string;
     } | null;
@@ -118,6 +119,7 @@ export async function GET(request: Request, context: RouteParams) {
       updatedAt: new Date(channel.updatedAt!).toISOString(),
       questionTitle: question?.title || "Untitled",
       questionBody: question?.body || "",
+      questionImages: Array.isArray(question?.images) ? question.images : [],
       answerFormat: question?.answerFormat || "ANY",
       answerVisibility: question?.answerVisibility || "PUBLIC",
       askerName: asker.name || "Anonymous",

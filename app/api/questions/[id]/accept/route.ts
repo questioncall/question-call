@@ -91,8 +91,8 @@ export async function POST(_request: Request, context: RouteParams) {
         ? `${Math.floor(formatDurationMinutes / 60)} hour${Math.floor(formatDurationMinutes / 60) > 1 ? "s" : ""}`
         : `${formatDurationMinutes} minutes`;
 
-    // Create the auto-message from acceptor
-    const autoMessageContent = `Hey there! I accepted your question — the answer will be with you within ${durationText}. 🚀`;
+    // Create the auto-message from acceptor — concise, includes the question title
+    const autoMessageContent = `✅ Question accepted! Answer coming within ${durationText}.\n\n📌 "${question.title}"`;
     const autoMessage = await Message.create({
       channelId: channel._id,
       senderId: authenticatedUser.id,

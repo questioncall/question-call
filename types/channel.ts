@@ -32,6 +32,7 @@ export type ChannelRecord = {
 export type ChannelDetail = ChannelRecord & {
   questionTitle: string;
   questionBody: string;
+  questionImages: string[];
   answerFormat: AnswerFormat;
   answerVisibility: string;
   askerName: string;
