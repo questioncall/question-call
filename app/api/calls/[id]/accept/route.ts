@@ -145,6 +145,8 @@ export async function POST(request: Request, context: RouteParams) {
       channelId,
       timerDeadline,
       timeExtensionCount,
+      mode: callSession.mode,
+      callerId: callSession.callerId?.toString() ?? null,
     });
   } catch (error) {
     console.error("[POST /api/calls/[id]/accept]", error);
