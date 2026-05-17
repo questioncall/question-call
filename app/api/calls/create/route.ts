@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AccessToken } from "livekit-server-sdk";
 
 import { logCallLifecycle } from "@/lib/call-logging";
 import { CALL_RATE_LIMITS } from "@/lib/call-policies";
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     let channel = await Channel.findById(channelId)
-      .select("status timerDeadline askerId acceptorId")
+      .select("status timerDeadline timeExtensionCount askerId acceptorId")
       .lean();
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       if (timerDeadlineMs <= Date.now()) {
         await processExpiredChannels({ channelId });
         channel = await Channel.findById(channelId)
-          .select("status timerDeadline askerId acceptorId")
+          .select("status timerDeadline timeExtensionCount askerId acceptorId")
           .lean();
 
         if (!channel) {
@@ -91,9 +92,14 @@ export async function POST(request: Request) {
     const teacherId = acceptorId;
     const studentId = askerId;
 
-    const roomName = `call_${channelId}_${Date.now()}`;
+    // Deterministic room name per channel — lets clients pre-warm a LiveKit
+    // connection while in the workspace, before any call is even initiated.
+    // Channels live ~30-40 min and end with the channel, so re-use across
+    // back-to-back calls in the same channel is safe.
+    const roomName = `channel_${channelId}`;
+    const otherUserId = userId === askerId ? acceptorId : askerId;
 
-    const newCall = await CallSession.create({
+    const newCallPromise = CallSession.create({
       channelId,
       roomName,
       teacherId,
@@ -103,43 +109,75 @@ export async function POST(request: Request) {
       status: "RINGING",
     });
 
-    // Fetch caller's avatar for the incoming call overlay
-    const callerUser = await User.findById(userId).select("userImage").lean();
-    const callerImage = callerUser?.userImage || null;
+    const callerUserPromise = User.findById(userId).select("userImage name").lean();
 
-    // Notify the other participant via Pusher (user-scoped channel for global reach)
-    const otherUserId = userId === askerId ? acceptorId : askerId;
-    const { emitIncomingCall } = await import("@/lib/pusher/pusherServer");
-    
-    // We await these network calls so they do not freeze mid-flight in Vercel Edge/Serverless environments.
-    await Promise.allSettled([
-      emitIncomingCall(otherUserId, {
-        callSessionId: newCall._id.toString(),
-        channelId,
-        callerName: user.name || "A user",
-        callerImage,
-        callerId: userId,
-        mode: mode as "AUDIO" | "VIDEO",
-      }),
-      // Fire a device push notification so the callee is alerted even when the
-      // app is closed or backgrounded (Pusher alone won't wake the device).
-      sendPushNotificationToUser(otherUserId, {
-        type: "SYSTEM",
-        title: user.name || "Incoming Call",
-        message: mode === "VIDEO" ? "📹 Video call" : "📞 Audio call",
-        href: `/call/${newCall._id.toString()}`,
-        icon: callerImage,
-        extraData: {
-          callSessionId: newCall._id.toString(),
-          callerId: userId,
-          callerName: user.name || "Someone",
-          mode,
-        },
-      })
+    // Issue LiveKit tokens for BOTH participants up-front. The callee token
+    // travels in the Pusher payload so they can pre-warm the room while the
+    // ringtone plays — eliminating the GET /token round-trip on accept.
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const wsUrl = process.env.LIVEKIT_URL;
+    const livekitConfigured = Boolean(apiKey && apiSecret && wsUrl);
+
+    async function mintToken(identity: string, displayName: string) {
+      if (!livekitConfigured) return null;
+      const at = new AccessToken(apiKey!, apiSecret!, {
+        identity,
+        name: displayName,
+        ttl: 7200,
+      });
+      at.addGrant({ roomJoin: true, room: roomName, roomRecord: false });
+      return at.toJwt();
+    }
+
+    const [newCall, callerUser, callerToken, calleeToken] = await Promise.all([
+      newCallPromise,
+      callerUserPromise,
+      mintToken(userId, user.name || "Caller"),
+      mintToken(otherUserId, "Callee"),
     ]);
 
+    const callerImage = callerUser?.userImage || null;
+    const callSessionId = newCall._id.toString();
+    const timerDeadlineIso = new Date(channel.timerDeadline).toISOString();
+    const timeExtensionCount = channel.timeExtensionCount ?? 0;
+
+    const { emitIncomingCall } = await import("@/lib/pusher/pusherServer");
+
+    // Pusher is awaited — if it fails the callee never rings, which we want
+    // surfaced as an error. The push notification is fire-and-forget; it's a
+    // wake-up signal not a correctness requirement.
+    await emitIncomingCall(otherUserId, {
+      callSessionId,
+      channelId,
+      callerName: user.name || "A user",
+      callerImage,
+      callerId: userId,
+      mode: mode as "AUDIO" | "VIDEO",
+      token: calleeToken,
+      serverUrl: wsUrl || null,
+      timerDeadline: timerDeadlineIso,
+      timeExtensionCount,
+    });
+
+    void sendPushNotificationToUser(otherUserId, {
+      type: "SYSTEM",
+      title: user.name || "Incoming Call",
+      message: mode === "VIDEO" ? "📹 Video call" : "📞 Audio call",
+      href: `/call/${callSessionId}`,
+      icon: callerImage,
+      extraData: {
+        callSessionId,
+        callerId: userId,
+        callerName: user.name || "Someone",
+        mode,
+      },
+    }).catch((err) => {
+      console.warn("[calls/create] push notification failed:", err);
+    });
+
     logCallLifecycle("created", {
-      callSessionId: newCall._id.toString(),
+      callSessionId,
       channelId,
       callerId: userId,
       calleeId: otherUserId,
@@ -147,7 +185,23 @@ export async function POST(request: Request) {
       callerHasAvatar: Boolean(callerImage),
     });
 
-    return NextResponse.json({ callSessionId: newCall._id.toString() }, { status: 201 });
+    return NextResponse.json(
+      {
+        callSessionId,
+        channelId,
+        roomName,
+        mode,
+        callerId: userId,
+        teacherId,
+        studentId,
+        status: "RINGING",
+        token: callerToken,
+        serverUrl: wsUrl || null,
+        timerDeadline: timerDeadlineIso,
+        timeExtensionCount,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("[POST /api/calls/create]", error);
     return NextResponse.json(

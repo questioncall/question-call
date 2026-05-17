@@ -174,6 +174,12 @@ export async function emitIncomingCall(
     callerImage: string | null;
     callerId: string;
     mode: "AUDIO" | "VIDEO";
+    // Pre-warm fields: callee uses these to connect to LiveKit while the
+    // ringtone is playing, skipping the GET /token round-trip on accept.
+    token?: string | null;
+    serverUrl?: string | null;
+    timerDeadline?: string | null;
+    timeExtensionCount?: number;
   },
 ) {
   const userPusherChannel = getUserPusherName(targetUserId);
