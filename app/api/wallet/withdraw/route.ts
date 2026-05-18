@@ -15,6 +15,7 @@ import User from "@/models/User";
 import WithdrawalRequest from "@/models/WithdrawalRequest";
 import { getMasterAdminEmails } from "@/lib/user-directory";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 class WithdrawalRequestError extends Error {
   status: number;
@@ -218,6 +219,22 @@ export async function POST(req: Request) {
           },
         })
         .catch(console.error);
+    }
+
+    // Push confirmation to the user who submitted the request
+    void sendPushNotificationToUser(user.id, {
+      type: "PAYMENT",
+      message: `Your withdrawal request of NPR ${finalizedRequest.nprEquivalent} has been submitted and is awaiting admin review.`,
+      href: "/wallet",
+    }).catch(console.error);
+
+    // Push notifications to admins who are on mobile
+    for (const admin of admins) {
+      void sendPushNotificationToUser(admin._id.toString(), {
+        type: "PAYMENT",
+        message: `${requesterLabel} ${finalizedRequester.name} requested a withdrawal of NPR ${finalizedRequest.nprEquivalent}.`,
+        href: "/admin/withdrawals",
+      }).catch(console.error);
     }
 
     const masterAdminEmails = await getMasterAdminEmails();

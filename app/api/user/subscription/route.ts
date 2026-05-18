@@ -48,6 +48,7 @@ export async function GET() {
       subscriptionStatus: resolvedSubscription.subscriptionStatus,
       subscriptionEnd: resolvedSubscription.subscriptionEnd,
       pendingManualPayment: !!pendingTx,
+      pendingPlanSlug: pendingTx?.planSlug ?? null,
       questionsAsked,
       questionsRemaining,
       maxQuestions,

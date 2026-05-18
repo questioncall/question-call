@@ -10,6 +10,7 @@ import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 class CompleteWithdrawalError extends Error {
   status: number;
@@ -156,10 +157,12 @@ export async function POST(
     }
 
     if (requesterId) {
+      const withdrawalMessage = `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`;
+
       const notif = await Notification.create({
         userId: requesterId,
         type: "PAYMENT",
-        message: `Your withdrawal of NPR ${roundPoints(amountSentValue)} has been processed. eSewa Txn ID: ${transactionId}`,
+        message: withdrawalMessage,
         href: "/wallet",
         isRead: false,
       }).catch(() => null);
@@ -167,6 +170,12 @@ export async function POST(
       if (notif) {
         await emitNotification(requesterId, notif).catch(() => {});
       }
+
+      void sendPushNotificationToUser(requesterId, {
+        type: "PAYMENT",
+        message: withdrawalMessage,
+        href: "/wallet",
+      }).catch(console.error);
     }
 
     return NextResponse.json({ success: true });

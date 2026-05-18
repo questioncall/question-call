@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
+import User from "@/models/User";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -31,6 +32,11 @@ export async function GET(request: Request, context: RouteParams) {
       return NextResponse.json({ error: "Not a participant" }, { status: 403 });
     }
 
+    const [teacher, student] = await Promise.all([
+      User.findById(teacherId).select("name image").lean(),
+      User.findById(studentId).select("name image").lean(),
+    ]);
+
     return NextResponse.json({
       callSessionId: id,
       channelId: callSession.channelId.toString(),
@@ -42,6 +48,10 @@ export async function GET(request: Request, context: RouteParams) {
       roomName: callSession.roomName,
       startedAt: callSession.startedAt ?? null,
       endedAt: callSession.endedAt ?? null,
+      teacherName: (teacher as any)?.name ?? null,
+      studentName: (student as any)?.name ?? null,
+      teacherImage: (teacher as any)?.image ?? null,
+      studentImage: (student as any)?.image ?? null,
     });
   } catch (error) {
     console.error("[GET /api/calls/[id]]", error);

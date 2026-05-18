@@ -8,6 +8,11 @@ import { getSafeServerSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { generateEsewaSignature } from "@/lib/payment/esewa";
 import Transaction from "@/models/Transaction";
+import Notification from "@/models/Notification";
+import { emitNotification } from "@/lib/pusher/pusherServer";
+import { generateReceiptPdf } from "@/lib/generate-receipt-pdf";
+import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 interface EsewaResponseData {
   transaction_code: string;
@@ -119,8 +124,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let completedPurchase: Awaited<ReturnType<typeof completeCoursePurchase>>;
   try {
-    await completeCoursePurchase({
+    completedPurchase = await completeCoursePurchase({
       transactionDocumentId: transaction._id.toString(),
       gateway: "ESEWA",
       metaPatch: {
@@ -139,6 +145,61 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 },
     );
+  }
+
+  // Notify the user (in-app + push + email-with-PDF) — only for newly completed,
+  // not on the idempotent already-completed path.
+  if (!completedPurchase.alreadyCompleted) {
+    const courseName = completedPurchase.courseName || "Course";
+    const purchaseMessage = `Your eSewa payment for ${courseName} was successful. Course access is unlocked.`;
+    const txnId = decoded.transaction_code || decoded.transaction_uuid;
+
+    const notif = await Notification.create({
+      userId: session.user.id,
+      type: "PAYMENT",
+      message: purchaseMessage,
+      href: "/courses/my",
+      isRead: false,
+    }).catch(() => null);
+
+    if (notif) {
+      await emitNotification(session.user.id, notif).catch(() => {});
+    }
+
+    void sendPushNotificationToUser(session.user.id, {
+      type: "PAYMENT",
+      message: purchaseMessage,
+      href: "/courses/my",
+    }).catch(console.error);
+
+    if (session.user.email) {
+      const issuedAt = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const receiptPdf = await generateReceiptPdf({
+        transactionId: txnId,
+        amount: `NPR ${decoded.total_amount}`,
+        paymentMethod: "eSewa",
+        itemLabel: "Course",
+        itemName: courseName,
+        validUntil: null,
+        issuedTo: session.user.email,
+        issuedAt,
+        note: null,
+      }).catch(() => null);
+
+      void sendTransactionEmail(
+        session.user.email,
+        "Payment Successful",
+        purchaseMessage,
+        txnId,
+        `NPR ${decoded.total_amount}`,
+        session.user.email,
+        receiptPdf,
+      ).catch(console.error);
+    }
   }
 
   return NextResponse.json({

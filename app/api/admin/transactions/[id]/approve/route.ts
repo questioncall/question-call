@@ -10,7 +10,8 @@ import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
-import { getMasterAdminEmails } from "@/lib/user-directory";
+import { generateReceiptPdf } from "@/lib/generate-receipt-pdf";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 export async function POST(
   req: Request,
@@ -47,7 +48,7 @@ export async function POST(
 
     if (transaction.type === "SUBSCRIPTION_MANUAL") {
       const user = await User.findById(transaction.userId).select(
-        "name subscriptionStatus subscriptionEnd trialUsed",
+        "name subscriptionStatus subscriptionEnd trialUsed planSlug questionsAsked bonusQuestions",
       );
 
       if (!user) {
@@ -75,11 +76,19 @@ export async function POST(
           plan.durationDays * 24 * 60 * 60 * 1000,
       );
 
+      // Carry forward any unused questions from the previous plan as bonus
+      // instead of wiping the counter (e.g. free trial questions not yet used)
+      const oldPlan = plans.find((p) => p.slug === (user.planSlug ?? "free"));
+      const oldPlanMax = (oldPlan?.maxQuestions ?? 0) + (user.bonusQuestions ?? 0);
+      const oldAsked = user.questionsAsked ?? 0;
+      const carryOver = Math.max(0, oldPlanMax - oldAsked);
+
       user.subscriptionStatus = "ACTIVE";
       user.subscriptionEnd = nextSubscriptionEnd;
       user.trialUsed = true;
       user.planSlug = transaction.planSlug;
       user.questionsAsked = 0;
+      user.bonusQuestions = carryOver;
       await user.save();
 
       await emitSubscriptionUpdated(transaction.userId.toString(), {
@@ -87,6 +96,7 @@ export async function POST(
         subscriptionEnd: nextSubscriptionEnd.toISOString(),
         planSlug: transaction.planSlug,
         questionsAsked: 0,
+        bonusQuestions: carryOver,
       }).catch(console.error);
 
       transaction.status = "COMPLETED";
@@ -128,6 +138,7 @@ export async function POST(
       successPayload = {
         success: true,
         courseId: coursePurchase.courseId,
+        courseName: coursePurchase.courseName,
         enrollmentId: coursePurchase.enrollmentId,
         teacherEarnings: coursePurchase.teacherEarnings,
       };
@@ -141,11 +152,14 @@ export async function POST(
       );
     }
 
+    const notificationHref =
+      transaction.type === "COURSE_PURCHASE" ? "/courses/my" : "/subscription";
+
     const notification = await Notification.create({
       userId: transaction.userId,
       type: "PAYMENT",
       message: notificationMessage,
-      href: "/subscription",
+      href: notificationHref,
       isRead: false,
     }).catch(() => null);
 
@@ -153,29 +167,72 @@ export async function POST(
       await emitNotification(transaction.userId.toString(), notification).catch(() => {});
     }
 
-    const recipientUser = await User.findById(transaction.userId).select("email");
+    const recipientUser = await User.findById(transaction.userId).select("email name");
+
+    // Build and attach receipt PDF (works for both subscription & course)
+    let receiptPdf: Buffer | null = null;
+    if (recipientUser?.email) {
+      const issuedAt = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const commonReceipt = {
+        transactionId: transaction.transactionId ?? transaction._id.toString(),
+        amount: `NPR ${transaction.amount}`,
+        paymentMethod: "Manual (eSewa)",
+        issuedTo: recipientUser.email,
+        issuedAt,
+        note: (transaction.meta as any)?.adminNote || null,
+      };
+
+      if (transaction.type === "SUBSCRIPTION_MANUAL") {
+        const validUntil =
+          successPayload.subscriptionEnd
+            ? new Date(successPayload.subscriptionEnd as string).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            : null;
+        receiptPdf = await generateReceiptPdf({
+          ...commonReceipt,
+          itemLabel: "Plan",
+          itemName: transaction.planSlug?.toUpperCase() ?? "PLAN",
+          validUntil,
+        }).catch(() => null);
+      } else if (transaction.type === "COURSE_PURCHASE") {
+        const courseName =
+          (successPayload as any).courseName ||
+          (transaction.metadata as any)?.courseName ||
+          "Course";
+        receiptPdf = await generateReceiptPdf({
+          ...commonReceipt,
+          itemLabel: "Course",
+          itemName: courseName,
+          validUntil: null,
+        }).catch(() => null);
+      }
+    }
+
     if (recipientUser?.email) {
       void sendTransactionEmail(
         recipientUser.email,
         "Transaction Approved",
         notificationMessage,
         transaction.transactionId,
-        `Amount: ${transaction.amount}`,
-        recipientUser.email
+        `NPR ${transaction.amount}`,
+        recipientUser.email,
+        receiptPdf,
       ).catch(console.error);
     }
 
-    const masterAdminEmails = await getMasterAdminEmails();
-    if (masterAdminEmails.length > 0) {
-      void sendTransactionEmail(
-        masterAdminEmails,
-        "Manual Transaction Approved",
-        `Admin has approved a manual transaction for ${recipientUser?.email ?? "Unknown"}.`,
-        transaction.transactionId,
-        `Amount: ${transaction.amount}`,
-        recipientUser?.email ?? "Unknown"
-      ).catch(console.error);
-    }
+    // Push notification to user's devices
+    void sendPushNotificationToUser(transaction.userId.toString(), {
+      type: "PAYMENT",
+      message: notificationMessage,
+      href: notificationHref,
+    }).catch(console.error);
 
     return NextResponse.json(successPayload);
   } catch (error) {

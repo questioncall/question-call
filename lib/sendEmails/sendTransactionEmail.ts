@@ -9,6 +9,7 @@ export async function sendTransactionEmail(
   transactionId?: string,
   amount?: string,
   userEmail?: string,
+  pdfAttachment?: Buffer | null,
 ) {
   const recipients = Array.isArray(email) ? email : [email];
 
@@ -16,12 +17,23 @@ export async function sendTransactionEmail(
     return { success: false, error: "No recipients provided" };
   }
 
+  const attachments =
+    pdfAttachment
+      ? [
+          {
+            filename: `receipt-${transactionId ?? "transaction"}.pdf`,
+            content: pdfAttachment,
+          },
+        ]
+      : undefined;
+
   try {
     const { data, error } = await resend.emails.send({
       from: getResendFrom(),
       to: recipients,
       subject: title,
-      react: TransactionAlertEmail({ title, message, transactionId, amount, userEmail }),
+      react: TransactionAlertEmail({ title, message, transactionId, amount, userEmail, hasPdfAttachment: !!pdfAttachment }),
+      attachments,
     });
 
     if (error) {

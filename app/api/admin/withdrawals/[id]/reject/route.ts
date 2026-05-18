@@ -8,6 +8,7 @@ import WithdrawalRequest from "@/models/WithdrawalRequest";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 import { emitNotification } from "@/lib/pusher/pusherServer";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
 
 class RejectWithdrawalError extends Error {
   status: number;
@@ -84,10 +85,12 @@ export async function POST(
     }
 
     if (requesterId) {
+      const rejectMessage = `Your withdrawal request of ${requestedPoints} pts was rejected. Reason: ${adminNote || "No reason given."}`;
+
       const notif = await Notification.create({
         userId: requesterId,
         type: "PAYMENT",
-        message: `Your withdrawal request of ${requestedPoints} pts was rejected. Reason: ${adminNote || "No reason given."}`,
+        message: rejectMessage,
         href: "/wallet",
         isRead: false,
       }).catch(() => null);
@@ -95,6 +98,12 @@ export async function POST(
       if (notif) {
         await emitNotification(requesterId, notif).catch(() => {});
       }
+
+      void sendPushNotificationToUser(requesterId, {
+        type: "PAYMENT",
+        message: rejectMessage,
+        href: "/wallet",
+      }).catch(console.error);
     }
 
     return NextResponse.json({ success: true });

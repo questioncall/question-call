@@ -9,6 +9,7 @@ import {
   CreditCardIcon,
   FileTextIcon,
   LayoutDashboardIcon,
+  ReceiptIcon,
   SettingsIcon,
   ShieldAlertIcon,
   TagIcon,
@@ -33,6 +34,7 @@ import { ADMIN_NAV_ITEMS } from "@/lib/admin-portal";
 const iconMap: Record<string, React.ElementType> = {
   "Transactions": CircleDollarSignIcon,
   "Withdrawals": BanknoteIcon,
+  "Receipts": ReceiptIcon,
   "Settings": SettingsIcon,
   "Social Media": Share2Icon,
   "Users": UsersIcon,
@@ -58,7 +60,7 @@ const iconMap: Record<string, React.ElementType> = {
 const groupedItems = [
   {
     category: "OPERATIONS",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Transactions", "Withdrawals", "Users"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Transactions", "Withdrawals", "Receipts", "Users"].includes(item.label))
   },
   {
     category: "COMMUNICATION",

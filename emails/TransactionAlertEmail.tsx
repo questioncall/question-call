@@ -7,6 +7,7 @@ interface TransactionAlertEmailProps {
   transactionId?: string;
   amount?: string;
   userEmail?: string;
+  hasPdfAttachment?: boolean;
 }
 
 export function TransactionAlertEmail({
@@ -15,77 +16,174 @@ export function TransactionAlertEmail({
   transactionId,
   amount,
   userEmail,
+  hasPdfAttachment,
 }: TransactionAlertEmailProps) {
+  const hasDetails = transactionId || amount || userEmail;
+
   return (
     <div
       style={{
-        fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        backgroundColor: "#f8fafc",
-        padding: "40px 20px",
-        color: "#0f172a",
+        backgroundColor: "#ffffff",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        color: "#111827",
+        padding: "48px 32px",
+        maxWidth: "480px",
+        margin: "0 auto",
       }}
     >
-      <table
-        cellPadding={0}
-        cellSpacing={0}
+      {/* Brand */}
+      <p
         style={{
-          maxWidth: "500px",
-          margin: "0 auto",
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)",
-          overflow: "hidden",
-          width: "100%",
-          border: "1px solid #f1f5f9",
+          margin: "0 0 40px 0",
+          fontSize: "13px",
+          fontWeight: "700",
+          letterSpacing: "0.05em",
+          color: "#16a34a",
+          textTransform: "uppercase",
         }}
       >
-        <tbody>
-          <tr>
-            <td
-              style={{
-                background: "linear-gradient(135deg, #1e293b, #0f172a)",
-                padding: "24px 32px",
-              }}
-            >
-              <h1 style={{ margin: "0", fontSize: "20px", fontWeight: "bold", color: "#ffffff" }}>
-                {title}
-              </h1>
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "32px" }}>
-              <p style={{ margin: "0 0 24px 0", fontSize: "16px", lineHeight: "1.6", color: "#334155" }}>
-                {message}
-              </p>
+        {APP_NAME}
+      </p>
 
-              {(transactionId || amount || userEmail) && (
-                <div style={{ backgroundColor: "#f1f5f9", padding: "20px", borderRadius: "8px", marginBottom: "24px", border: "1px solid #e2e8f0" }}>
-                  {transactionId && (
-                    <p style={{ margin: "0 0 12px 0", fontSize: "14px", fontFamily: "monospace", color: "#475569" }}>
-                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>Transaction ID:</strong> {transactionId}
-                    </p>
-                  )}
-                  {amount && (
-                    <p style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#475569" }}>
-                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>Amount:</strong> {amount}
-                    </p>
-                  )}
-                  {userEmail && (
-                    <p style={{ margin: "0", fontSize: "14px", color: "#475569" }}>
-                      <strong style={{ color: "#0f172a", marginRight: "8px" }}>User Email:</strong> {userEmail}
-                    </p>
-                  )}
-                </div>
-              )}
+      {/* Title */}
+      <h1
+        style={{
+          margin: "0 0 12px 0",
+          fontSize: "22px",
+          fontWeight: "700",
+          color: "#111827",
+          lineHeight: "1.3",
+        }}
+      >
+        {title}
+      </h1>
 
-              <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "32px 0 24px 0", padding: "0" }} />
-              <p style={{ margin: "0", fontSize: "13px", color: "#64748b", textAlign: "center" }}>
-                This is an automated notification from {APP_NAME}.
-              </p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* Message */}
+      <p
+        style={{
+          margin: "0 0 32px 0",
+          fontSize: "15px",
+          lineHeight: "1.65",
+          color: "#4b5563",
+        }}
+      >
+        {message}
+      </p>
+
+      {/* Detail rows */}
+      {hasDetails && (
+        <table
+          cellPadding={0}
+          cellSpacing={0}
+          style={{
+            width: "100%",
+            borderTop: "1px solid #e5e7eb",
+            marginBottom: "32px",
+          }}
+        >
+          <tbody>
+            {transactionId && (
+              <tr>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "13px",
+                    color: "#6b7280",
+                    borderBottom: "1px solid #f3f4f6",
+                    whiteSpace: "nowrap",
+                    paddingRight: "16px",
+                  }}
+                >
+                  Transaction ID
+                </td>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "13px",
+                    color: "#111827",
+                    fontFamily: "monospace",
+                    textAlign: "right",
+                    borderBottom: "1px solid #f3f4f6",
+                  }}
+                >
+                  {transactionId}
+                </td>
+              </tr>
+            )}
+            {amount && (
+              <tr>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "13px",
+                    color: "#6b7280",
+                    borderBottom: transactionId || userEmail ? "1px solid #f3f4f6" : undefined,
+                    paddingRight: "16px",
+                  }}
+                >
+                  Amount
+                </td>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "14px",
+                    fontWeight: "700",
+                    color: "#16a34a",
+                    textAlign: "right",
+                    borderBottom: transactionId || userEmail ? "1px solid #f3f4f6" : undefined,
+                  }}
+                >
+                  {amount}
+                </td>
+              </tr>
+            )}
+            {userEmail && (
+              <tr>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "13px",
+                    color: "#6b7280",
+                    paddingRight: "16px",
+                  }}
+                >
+                  Account
+                </td>
+                <td
+                  style={{
+                    padding: "12px 0",
+                    fontSize: "13px",
+                    color: "#111827",
+                    textAlign: "right",
+                  }}
+                >
+                  {userEmail}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {/* PDF notice */}
+      {hasPdfAttachment && (
+        <p
+          style={{
+            margin: "0 0 32px 0",
+            fontSize: "13px",
+            color: "#16a34a",
+          }}
+        >
+          📎 Your receipt is attached — download it from your email client.
+        </p>
+      )}
+
+      {/* Divider + footer */}
+      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
+        <p style={{ margin: "0", fontSize: "12px", color: "#9ca3af" }}>
+          {APP_NAME} &middot; automated notification &middot; do not reply
+        </p>
+      </div>
     </div>
   );
 }

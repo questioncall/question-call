@@ -3,9 +3,13 @@ import { getSafeServerSession } from "@/lib/auth";
 import { generateEsewaSignature } from "@/lib/payment/esewa";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
+import Notification from "@/models/Notification";
 import { connectToDatabase } from "@/lib/mongodb";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { getMasterAdminEmails } from "@/lib/user-directory";
+import { generateReceiptPdf } from "@/lib/generate-receipt-pdf";
+import { sendPushNotificationToUser } from "@/lib/push/web-push";
+import { emitNotification, emitSubscriptionUpdated } from "@/lib/pusher/pusherServer";
 
 interface EsewaResponseData {
   transaction_code: string;
@@ -131,14 +135,77 @@ export async function POST(req: NextRequest) {
     questionsAsked: 0,
   });
 
-  // Notify all master admins about the successful eSewa payment
+  // Notify the user (in-app + Pusher + push + email-with-PDF)
+  const subscriptionMessage = `Your eSewa payment for ${planSlug.toUpperCase()} was successful. Access is active until ${subscriptionEnd.toLocaleDateString()}.`;
+  const txnId = decoded.transaction_code || decoded.transaction_uuid;
+
+  void emitSubscriptionUpdated(session.user.id, {
+    subscriptionStatus: "ACTIVE",
+    subscriptionEnd: subscriptionEnd.toISOString(),
+    planSlug,
+    questionsAsked: 0,
+  }).catch(console.error);
+
+  const notif = await Notification.create({
+    userId: session.user.id,
+    type: "PAYMENT",
+    message: subscriptionMessage,
+    href: "/subscription",
+    isRead: false,
+  }).catch(() => null);
+
+  if (notif) {
+    await emitNotification(session.user.id, notif).catch(() => {});
+  }
+
+  void sendPushNotificationToUser(session.user.id, {
+    type: "PAYMENT",
+    message: subscriptionMessage,
+    href: "/subscription",
+  }).catch(console.error);
+
+  if (session.user.email) {
+    const issuedAt = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const validUntil = subscriptionEnd.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const receiptPdf = await generateReceiptPdf({
+      transactionId: txnId,
+      amount: `NPR ${decoded.total_amount}`,
+      paymentMethod: "eSewa",
+      itemLabel: "Plan",
+      itemName: planSlug.toUpperCase(),
+      validUntil,
+      issuedTo: session.user.email,
+      issuedAt,
+      note: null,
+    }).catch(() => null);
+
+    void sendTransactionEmail(
+      session.user.email,
+      "Payment Successful",
+      subscriptionMessage,
+      txnId,
+      `NPR ${decoded.total_amount}`,
+      session.user.email,
+      receiptPdf,
+    ).catch(console.error);
+  }
+
+  // Notify master admins (record-keeping only, no PDF)
   const masterAdminEmails = await getMasterAdminEmails();
   if (masterAdminEmails.length > 0) {
     void sendTransactionEmail(
       masterAdminEmails,
       "eSewa Subscription Payment Verified",
       `A user has completed an eSewa payment for subscription plan "${planSlug}". Subscription activated until ${subscriptionEnd.toLocaleDateString()}.`,
-      decoded.transaction_code || decoded.transaction_uuid,
+      txnId,
       `NPR ${decoded.total_amount}`,
       session.user.email ?? "Unknown"
     ).catch(console.error);

@@ -132,6 +132,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["transactions", "manual payment", "course sale", "refund", "approve"],
   },
   {
+    id: "receipts",
+    label: "Receipt Templates",
+    href: "/admin/receipts",
+    description:
+      "Preview the exact PDF receipts auto-generated and emailed to users on subscription approval.",
+    group: "Revenue & Finance",
+    keywords: ["receipts", "pdf", "email", "template", "subscription receipt", "preview"],
+  },
+  {
     id: "notifications",
     label: "Notifications",
     href: "/admin/notifications",
@@ -264,6 +273,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/developer", label: "Developer" },
   { href: "/admin/transactions", label: "Transactions" },
   { href: "/admin/withdrawals", label: "Withdrawals" },
+  { href: "/admin/receipts", label: "Receipts" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/social", label: "Social Media" },
   { href: "/admin/users", label: "Users" },

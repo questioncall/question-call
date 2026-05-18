@@ -158,6 +158,7 @@ export async function emitSubscriptionUpdated(
     subscriptionEnd: string | null;
     planSlug: string;
     questionsAsked?: number;
+    bonusQuestions?: number;
   },
 ) {
   const pusherChannel = getUserPusherName(userId);
