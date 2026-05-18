@@ -2,26 +2,13 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 
+import { getGoogleAudiences } from "@/lib/google-audiences";
 import { connectToDatabase } from "@/lib/mongodb";
 import { generateAccessToken, generateRefreshToken } from "@/lib/mobile-auth";
 import User from "@/models/User";
 
 // Google OAuth2 client for validating Google ID tokens
 const googleClient = new OAuth2Client();
-
-function getGoogleAudiences() {
-  return Array.from(
-    new Set(
-      [
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_ANDROID_CLIENT_ID,
-        process.env.GOOGLE_IOS_CLIENT_ID,
-      ]
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
-  );
-}
 
 export const dynamic = "force-dynamic";
 

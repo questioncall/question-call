@@ -3,6 +3,7 @@ import { OAuth2Client } from "google-auth-library";
 import { NextResponse } from "next/server";
 
 import { APP_NAME } from "@/lib/constants";
+import { getGoogleAudiences } from "@/lib/google-audiences";
 import { connectToDatabase } from "@/lib/mongodb";
 import { generateUniqueUsername } from "@/lib/user-directory";
 import { generateAccessToken, generateRefreshToken } from "@/lib/mobile-auth";
@@ -17,20 +18,6 @@ import User from "@/models/User";
 import type { UserRecord } from "@/models/User";
 
 const googleClient = new OAuth2Client();
-
-function getGoogleAudiences() {
-  return Array.from(
-    new Set(
-      [
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_ANDROID_CLIENT_ID,
-        process.env.GOOGLE_IOS_CLIENT_ID,
-      ]
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
-  );
-}
 
 function isAllowedRole(value?: string): value is "STUDENT" | "TEACHER" {
   return value === "STUDENT" || value === "TEACHER";
