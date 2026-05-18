@@ -6,7 +6,6 @@ import { PhoneOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
-import { cacheCallToken } from "@/lib/call-token-cache";
 import { cn } from "@/lib/utils";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -52,40 +51,10 @@ export function OutgoingCallOverlay({
     void router.prefetch(`/calls/${call.callSessionId}`);
   }, [call?.callSessionId, router]);
 
-  // ── OPT-3: Pre-fetch caller token while ringing ────────────────
-  // The caller can now get their token during RINGING (OPT-2 backend change).
-  // Cache it so when we navigate to the call page, it connects instantly.
-  useEffect(() => {
-    if (!call?.callSessionId) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await fetch(`/api/calls/${call.callSessionId}/token`);
-        if (!res.ok || cancelled) return;
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        if (data.token && data.serverUrl) {
-          cacheCallToken(call.callSessionId, {
-            token: data.token,
-            serverUrl: data.serverUrl,
-            channelId: data.channelId,
-            timerDeadline: data.timerDeadline,
-            timeExtensionCount: data.timeExtensionCount ?? 0,
-          });
-        }
-      } catch {
-        // Non-fatal — the call page will fetch its own token if the cache is empty
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [call?.callSessionId]);
+  // Token pre-fetch removed: the /api/calls/create response now ships the
+  // caller's LiveKit token directly, and channel-chat caches it via
+  // cacheCallToken before this overlay even mounts. The call page consumes
+  // the cache on mount, so a separate /token round-trip would be wasted work.
 
   // ── OPT-5: Pre-warm media during ringing ───────────────────────
   useEffect(() => {

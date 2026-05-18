@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
 import { logCallLifecycle } from "@/lib/call-logging";
+import { getChannelRoomName, prepareChannelRoom } from "@/lib/livekit-room";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
@@ -24,7 +25,7 @@ export async function GET(_request: Request, context: RouteParams) {
     await connectToDatabase();
 
     const channel = await Channel.findById(channelId)
-      .select("status timerDeadline timeExtensionCount askerId acceptorId")
+      .select("status timerDeadline timeExtensionCount askerId acceptorId roomName")
       .lean();
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
@@ -63,7 +64,10 @@ export async function GET(_request: Request, context: RouteParams) {
       );
     }
 
-    const roomName = `channel_${channelId}`;
+    const roomName = channel.roomName || getChannelRoomName(channelId);
+    if (!channel.roomName) {
+      void prepareChannelRoom(channelId);
+    }
     const at = new AccessToken(apiKey, apiSecret, {
       identity: userId,
       name: user.name || "Participant",

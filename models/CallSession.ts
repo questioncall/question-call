@@ -17,7 +17,6 @@ const callSessionSchema = new Schema(
     roomName: {
       type: String,
       required: true,
-      unique: true,
       index: true,
     },
     teacherId: {

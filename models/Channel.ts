@@ -63,6 +63,15 @@ const channelSchema = new Schema(
       min: 1,
       max: 5,
     },
+    // Deterministic LiveKit room shared by every call in this channel.
+    // Pre-created and stored at channel-accept time so clients can pre-warm
+    // a connection while in the workspace. Nullable for legacy channels
+    // created before this field existed — callers fall back to
+    // `channel_${_id}` in that case.
+    roomName: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

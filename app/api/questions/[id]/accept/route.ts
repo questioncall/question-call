@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 import { connectToDatabase } from "@/lib/mongodb";
+import { getChannelRoomName, prepareChannelRoom } from "@/lib/livekit-room";
 import { emitQuestionUpdated, emitChannelMessage, emitNotification, emitNewChannel } from "@/lib/pusher/pusherServer";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
@@ -71,15 +73,25 @@ export async function POST(_request: Request, context: RouteParams) {
     question.acceptedAt = now;
     await question.save();
 
-    // Create the channel
+    // Create the channel. We pre-generate the _id so we can persist the
+    // deterministic roomName in the same write — no follow-up update needed.
+    const channelId = new mongoose.Types.ObjectId();
+    const roomName = getChannelRoomName(channelId.toString());
     const channel = await Channel.create({
+      _id: channelId,
       questionId: question._id,
       askerId: question.askerId._id,
       acceptorId: authenticatedUser.id,
       openedAt: now,
       timerDeadline,
       status: "ACTIVE",
+      roomName,
     });
+
+    // Fire-and-forget: provision the LiveKit room on the SFU so the first
+    // participant to connect skips the cold-start. Never awaited — channel
+    // accept must not block on LiveKit availability.
+    void prepareChannelRoom(channelId.toString());
 
     // Get acceptor's name for the auto-message
     const acceptor = await User.findById(authenticatedUser.id).select("name userImage").lean();

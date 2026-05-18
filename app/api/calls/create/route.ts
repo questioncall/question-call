@@ -4,6 +4,7 @@ import { AccessToken } from "livekit-server-sdk";
 import { logCallLifecycle } from "@/lib/call-logging";
 import { CALL_RATE_LIMITS } from "@/lib/call-policies";
 import { processExpiredChannels } from "@/lib/channel-expiration";
+import { getChannelRoomName, prepareChannelRoom } from "@/lib/livekit-room";
 import { connectToDatabase } from "@/lib/mongodb";
 import { enforceRequestRateLimit } from "@/lib/request-rate-limit";
 import { sendPushNotificationToUser } from "@/lib/push/web-push";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     let channel = await Channel.findById(channelId)
-      .select("status timerDeadline timeExtensionCount askerId acceptorId")
+      .select("status timerDeadline timeExtensionCount askerId acceptorId roomName")
       .lean();
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       if (timerDeadlineMs <= Date.now()) {
         await processExpiredChannels({ channelId });
         channel = await Channel.findById(channelId)
-          .select("status timerDeadline timeExtensionCount askerId acceptorId")
+          .select("status timerDeadline timeExtensionCount askerId acceptorId roomName")
           .lean();
 
         if (!channel) {
@@ -92,11 +93,15 @@ export async function POST(request: Request) {
     const teacherId = acceptorId;
     const studentId = askerId;
 
-    // Deterministic room name per channel — lets clients pre-warm a LiveKit
-    // connection while in the workspace, before any call is even initiated.
-    // Channels live ~30-40 min and end with the channel, so re-use across
-    // back-to-back calls in the same channel is safe.
-    const roomName = `channel_${channelId}`;
+    // Deterministic room name per channel — shared across every call in the
+    // channel so clients can pre-warm a LiveKit connection in the workspace
+    // before any call is initiated. Stored on the Channel doc at accept time;
+    // fall back to the deterministic value for legacy channels that predate
+    // that field, and self-heal by kicking off room prep async.
+    const roomName = channel.roomName || getChannelRoomName(channelId);
+    if (!channel.roomName) {
+      void prepareChannelRoom(channelId);
+    }
     const otherUserId = userId === askerId ? acceptorId : askerId;
 
     const newCallPromise = CallSession.create({

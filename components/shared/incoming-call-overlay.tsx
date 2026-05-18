@@ -19,6 +19,12 @@ export type IncomingCallPayload = {
   callerImage: string | null;
   callerId: string;
   mode: "AUDIO" | "VIDEO";
+  // Pre-warm fields shipped in the Pusher event — let the callee skip the
+  // /accept token round-trip and join LiveKit the instant they click Accept.
+  token?: string | null;
+  serverUrl?: string | null;
+  timerDeadline?: string | null;
+  timeExtensionCount?: number;
 };
 
 type IncomingCallOverlayProps = {
@@ -49,6 +55,29 @@ export function IncomingCallOverlay({
     if (!call?.callSessionId) return;
     void router.prefetch(`/calls/${call.callSessionId}`);
   }, [call?.callSessionId, router]);
+
+  // ── Cache LiveKit token from the Pusher payload ─────────────
+  // The /api/calls/create endpoint mints a token for the callee and ships
+  // it inside the CALL_INCOMING_EVENT Pusher payload. Caching it here means
+  // handleAccept doesn't have to await the /accept response just to get the
+  // token — the call page consumes the cache the instant we navigate.
+  useEffect(() => {
+    if (!call?.token || !call.serverUrl || !call.timerDeadline) return;
+    cacheCallToken(call.callSessionId, {
+      token: call.token,
+      serverUrl: call.serverUrl,
+      channelId: call.channelId,
+      timerDeadline: call.timerDeadline,
+      timeExtensionCount: call.timeExtensionCount ?? 0,
+    });
+  }, [
+    call?.callSessionId,
+    call?.channelId,
+    call?.token,
+    call?.serverUrl,
+    call?.timerDeadline,
+    call?.timeExtensionCount,
+  ]);
 
   // ── Pre-warm media during ringing (OPT-5) ─────────────────────
   // Request camera/mic access while the phone is ringing so that by the
@@ -156,6 +185,38 @@ export function IncomingCallOverlay({
     setAcceptingCallId(call.callSessionId);
     stopRingtone();
 
+    // Fast path: Pusher already shipped the LiveKit token, the cache effect
+    // above stored it. Navigate immediately and fire /accept in the
+    // background — the server still needs to flip RINGING → ACTIVE and
+    // notify the caller, but the call page can join LiveKit in parallel.
+    const hasPushedToken = Boolean(
+      call.token && call.serverUrl && call.timerDeadline,
+    );
+    if (hasPushedToken) {
+      releasePreWarmedMedia();
+      onDismiss();
+      router.push(`/calls/${call.callSessionId}`);
+      void (async () => {
+        try {
+          const res = await fetch(`/api/calls/${call.callSessionId}/accept`, {
+            method: "POST",
+          });
+          if (!res.ok && res.status !== 409) {
+            const data = await res.json().catch(() => ({}));
+            console.warn(
+              "[incoming-call] background /accept failed:",
+              data?.error ?? res.statusText,
+            );
+          }
+        } catch (err) {
+          console.warn("[incoming-call] background /accept threw:", err);
+        }
+      })();
+      return;
+    }
+
+    // Fallback (Pusher payload missing token — older server, misconfigured
+    // LiveKit, or downgrade scenario): keep the old blocking flow.
     try {
       const res = await fetch(`/api/calls/${call.callSessionId}/accept`, {
         method: "POST",
@@ -165,8 +226,6 @@ export function IncomingCallOverlay({
         throw new Error(data.error || "Failed to accept call");
       }
 
-      // OPT-1 + OPT-4: The accept response includes the LiveKit token.
-      // Cache it so the call page can skip the separate /token fetch.
       const data = await res.json();
       if (data.token && data.serverUrl) {
         cacheCallToken(call.callSessionId, {
@@ -178,11 +237,7 @@ export function IncomingCallOverlay({
         });
       }
 
-      // Release pre-warmed media — LiveKit will re-acquire with its own
-      // constraints, but the permission grant is cached by the browser so
-      // there's no second prompt.
       releasePreWarmedMedia();
-
       onDismiss();
       router.push(`/calls/${call.callSessionId}`);
     } catch (err) {

@@ -47,6 +47,7 @@ import {
 import { canDeleteChatMessage } from "@/lib/message-deletion";
 import { getAnswerFormatLabel } from "@/lib/question-types";
 import { cn } from "@/lib/utils";
+import { cacheCallToken } from "@/lib/call-token-cache";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
   CHANNEL_MESSAGE_EVENT,
@@ -246,6 +247,18 @@ export function ChannelChat({ channelId }: ChannelChatProps) {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Failed to start call");
+      }
+      // The /create response now ships a LiveKit token for the caller.
+      // Cache it here so the call page can join instantly without a separate
+      // /token round-trip after the callee accepts.
+      if (data.token && data.serverUrl) {
+        cacheCallToken(data.callSessionId, {
+          token: data.token,
+          serverUrl: data.serverUrl,
+          channelId: data.channelId ?? channelId,
+          timerDeadline: data.timerDeadline,
+          timeExtensionCount: data.timeExtensionCount ?? 0,
+        });
       }
       void router.prefetch(`/calls/${data.callSessionId}`);
       // Signal the global outgoing call overlay via custom DOM event
