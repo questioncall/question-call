@@ -4,6 +4,7 @@ import {
   CALL_RINGTONE_VALUES,
   DEFAULT_CALL_SETTINGS,
 } from "@/lib/call-settings";
+import { DEFAULT_NOTIFICATION_PREFS } from "@/lib/notification-prefs";
 
 export type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "EXPIRED";
@@ -218,6 +219,28 @@ const userSchema = new Schema(
         type: String,
         enum: CALL_RINGTONE_VALUES,
         default: DEFAULT_CALL_SETTINGS.outgoingRingtone,
+      },
+    },
+    // Per-category push notification toggles. Pushes for a disabled category
+    // are skipped at the dispatcher (lib/push/web-push.ts) but the in-app
+    // notification record is still persisted so the notification center shows
+    // it. See lib/notification-prefs.ts for the category → type mapping.
+    notificationPrefs: {
+      questions: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFS.questions,
+      },
+      chat: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFS.chat,
+      },
+      wallet: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFS.wallet,
+      },
+      announcements: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFS.announcements,
       },
     },
     isSuspended: {

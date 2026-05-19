@@ -4,8 +4,13 @@ import webpush from "web-push";
 
 import { sendExpoPush } from "@/lib/push/expo-push";
 import { getNotificationTheme, resolveNotificationHref } from "@/lib/notifications/metadata";
+import {
+  isNotificationEnabledForUser,
+  type UserNotificationPrefs,
+} from "@/lib/notification-prefs";
 import { connectToDatabase } from "@/lib/mongodb";
 import PushSubscriptionModel from "@/models/PushSubscription";
+import User from "@/models/User";
 import { logError } from "@/lib/error-logging";
 
 type NotificationPayload = {
@@ -98,6 +103,29 @@ export async function sendPushNotificationToUser(
   );
 
   await connectToDatabase();
+
+  // Per-user category gating. Run this BEFORE the subscription query so a
+  // muted category short-circuits without touching push tables. The in-app
+  // notification record is still saved upstream — this only stops the FCM /
+  // web-push delivery.
+  //
+  // Incoming calls (extraData.callSessionId) are exempt — they're governed by
+  // callSettings.silentIncomingCalls in the call flow, not here.
+  const userPrefs = await User.findById(userId)
+    .select("notificationPrefs")
+    .lean<{ notificationPrefs?: Partial<UserNotificationPrefs> | null } | null>();
+  const allowed = isNotificationEnabledForUser(
+    userPrefs?.notificationPrefs,
+    notification.type,
+    notification.href,
+    notification.extraData as Record<string, unknown> | null | undefined,
+  );
+  if (!allowed) {
+    console.log(
+      `[web-push] User=${userId} muted type=${notifyType} via notificationPrefs — skipping push (in-app notification still recorded)`,
+    );
+    return;
+  }
 
   const subscriptions = await PushSubscriptionModel.find({ userId })
     .select("_id endpoint expirationTime keys platform")
