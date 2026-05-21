@@ -270,6 +270,11 @@ const userSchema = new Schema(
       type: [String],
       default: [],
     },
+    lastActiveAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -4,6 +4,17 @@ import { verifyAccessToken, TokenPayload } from "@/lib/mobile-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 
+const PRESENCE_THROTTLE_MS = 2 * 60 * 1000;
+const recentPresenceUpdates = new Map<string, number>();
+
+function touchPresence(userId: string) {
+  const now = Date.now();
+  const last = recentPresenceUpdates.get(userId) ?? 0;
+  if (now - last < PRESENCE_THROTTLE_MS) return;
+  recentPresenceUpdates.set(userId, now);
+  User.updateOne({ _id: userId }, { $set: { lastActiveAt: new Date() } }).exec();
+}
+
 /**
  * Get authenticated user from either session cookies (web) or Bearer token (mobile)
  * Returns null if not authenticated
@@ -30,6 +41,7 @@ export async function getAuthenticatedUser(request?: Request): Promise<{
         );
 
         if (user && !user.isSuspended) {
+          touchPresence(tokenPayload.userId);
           return {
             id: tokenPayload.userId,
             role: tokenPayload.role,
@@ -51,6 +63,7 @@ export async function getAuthenticatedUser(request?: Request): Promise<{
     const user = await User.findById(session.user.id).select("isSuspended");
 
     if (user && !user.isSuspended) {
+      touchPresence(session.user.id);
       return {
         id: session.user.id,
         role: session.user.role,
