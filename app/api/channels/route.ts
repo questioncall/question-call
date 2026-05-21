@@ -127,6 +127,7 @@ export async function GET(request: Request) {
         return {
           id: ch._id.toString(),
           questionTitle: "Error",
+          counterpartId: "",
           counterpartName: "Unknown",
           counterpartImage: undefined,
           status: ch.status as ChannelListItem["status"],

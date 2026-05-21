@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
+  BellIcon,
   ChevronDownIcon,
   EyeIcon,
   EyeOffIcon,
@@ -32,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,6 +111,8 @@ export function NoticeClient() {
   const [type, setType] = useState<Notice["type"]>("GENERAL");
   const [targetAudience, setTargetAudience] = useState<Notice["targetAudience"]>("ALL");
   const [targetEmails, setTargetEmails] = useState("");
+  const [sendPush, setSendPush] = useState(false);
+  const [pushMessage, setPushMessage] = useState("");
 
   const fetchNotices = useCallback(async () => {
     try {
@@ -149,6 +153,8 @@ export function NoticeClient() {
           type,
           targetAudience,
           targetEmails: emailsArray,
+          sendPush,
+          pushMessage: sendPush ? pushMessage.trim() || body.substring(0, 120) : undefined,
         }),
       });
 
@@ -156,7 +162,7 @@ export function NoticeClient() {
         throw new Error("Failed to create notice");
       }
 
-      toast.success("Notice created and deployed");
+      toast.success(sendPush ? "Notice saved & push sent" : "Notice saved");
       fetchNotices();
       setIsCreateOpen(false);
       setTitle("");
@@ -164,6 +170,8 @@ export function NoticeClient() {
       setType("GENERAL");
       setTargetAudience("ALL");
       setTargetEmails("");
+      setSendPush(false);
+      setPushMessage("");
     } catch {
       toast.error("An error occurred");
     } finally {
@@ -326,16 +334,54 @@ export function NoticeClient() {
                       />
                     </div>
                   ) : null}
+
+                  {/* Push notification toggle */}
+                  <div className="rounded-xl border border-border/70 bg-muted/30 p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id="send-push"
+                        checked={sendPush}
+                        onCheckedChange={(val) => setSendPush(Boolean(val))}
+                      />
+                      <div className="flex items-center gap-2">
+                        <BellIcon className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="send-push" className="cursor-pointer font-medium">
+                          Also send as push notification
+                        </Label>
+                      </div>
+                    </div>
+                    {sendPush && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          Push message{" "}
+                          <span className="text-muted-foreground/60">
+                            (short, leave blank to use notice body)
+                          </span>
+                        </Label>
+                        <Input
+                          value={pushMessage}
+                          onChange={(e) => setPushMessage(e.target.value)}
+                          placeholder={body.substring(0, 80) || "Enter a short push message…"}
+                          maxLength={150}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                        Publishing...
+                        {sendPush ? "Saving & Sending…" : "Saving…"}
+                      </>
+                    ) : sendPush ? (
+                      <>
+                        <BellIcon className="mr-2 h-4 w-4" />
+                        Save Notice & Send Push
                       </>
                     ) : (
-                      "Publish Notice"
+                      "Save Notice"
                     )}
                   </Button>
                 </DialogFooter>
