@@ -50,6 +50,7 @@ export type ChannelDetail = ChannelRecord & {
 export type ChannelListItem = {
   id: string;
   questionTitle: string;
+  counterpartId: string;
   counterpartName: string;
   counterpartImage?: string;
   status: ChannelStatus;

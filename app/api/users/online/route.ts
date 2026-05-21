@@ -23,18 +23,15 @@ export async function GET(request: Request) {
       lastActiveAt: { $gte: cutoff },
       isSuspended: { $ne: true },
     })
-      .select("name userImage role")
-      .limit(30)
+      .select("_id")
+      .limit(200)
       .lean();
 
-    const result = onlineUsers.map((u) => ({
-      _id: (u._id as { toString(): string }).toString(),
-      name: u.name as string,
-      image: (u.userImage as string) || null,
-      role: u.role as string,
-    }));
+    const ids = onlineUsers.map((u) =>
+      (u._id as { toString(): string }).toString(),
+    );
 
-    return NextResponse.json(result);
+    return NextResponse.json(ids);
   } catch (error) {
     console.error("[GET /api/users/online]", error);
     return NextResponse.json(

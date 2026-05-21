@@ -110,6 +110,7 @@ export async function GET(request: Request) {
         return {
           id: ch._id.toString(),
           questionTitle: questionObj?.title || "Untitled",
+          counterpartId: counterpart?._id?.toString() || "",
           counterpartName: counterpart?.name || "Unknown",
           counterpartImage: counterpart?.userImage || undefined,
           status: ch.status as ChannelListItem["status"],
