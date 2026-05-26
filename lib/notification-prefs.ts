@@ -97,7 +97,7 @@ export function getNotificationPrefKey(
  * True if the user has this notification type enabled (or it's not gated).
  */
 export function isNotificationEnabledForUser(
-  prefs: UserNotificationPrefs | null | undefined,
+  prefs: Partial<UserNotificationPrefs> | null | undefined,
   type: string,
   href?: string | null,
   extraData?: Record<string, unknown> | null,
