@@ -10,6 +10,8 @@ import type { FeedQuestion } from "@/types/question";
 
 export const dynamic = "force-dynamic";
 
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
     const questions = await Question.find(filter)
       .sort(sort)
       .limit(limit)
-      .populate("askerId", "name username userImage")
+      .populate("askerId", "name username userImage lastActiveAt")
       .populate("acceptedById", "name username")
       .populate("answerId") // populate linked public answer
       .lean();
@@ -80,7 +82,11 @@ export async function GET(request: Request) {
           name?: string;
           username?: string;
           userImage?: string;
+          lastActiveAt?: Date;
         } | null;
+        const askerIsOnline = asker?.lastActiveAt
+          ? Date.now() - new Date(asker.lastActiveAt).getTime() < ONLINE_THRESHOLD_MS
+          : false;
 
         const acceptor = q.acceptedById as unknown as {
           _id: { toString(): string };
@@ -128,6 +134,7 @@ export async function GET(request: Request) {
           askerName: asker?.name || "Anonymous",
           askerUsername: asker?.username || undefined,
           askerImage: asker?.userImage || undefined,
+          askerIsOnline,
           title: q.title,
           body: q.body,
           images: Array.isArray(q.images) ? q.images : [],
