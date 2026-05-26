@@ -8,6 +8,7 @@ import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getSignInPath } from "@/lib/user-paths";
 import { getPlatformConfig, getPlatformSocialLinks } from "@/models/PlatformConfig";
+import { recordDailyActiveUser } from "@/lib/daily-active";
 
 export const metadata: Metadata = {
   robots: {
@@ -37,6 +38,9 @@ export default async function WorkspaceLayout({
   if (session.user.role === "ADMIN") {
     redirect(getDefaultPath(session.user.role));
   }
+
+  // Fire-and-forget — must not block the page render
+  void recordDailyActiveUser(session.user.id, "web");
 
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";

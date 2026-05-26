@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UsersIcon, Loader2Icon, ShieldAlertIcon, ShieldCheckIcon, SearchIcon } from "lucide-react";
+import {
+  UsersIcon,
+  Loader2Icon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
+  SearchIcon,
+  BarChart3Icon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +26,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type UserRecord = {
   _id: string;
@@ -33,8 +47,115 @@ type UserRecord = {
   createdAt: string;
 };
 
+type DauRow = {
+  date: string;
+  web: number;
+  app: number;
+  total: number;
+};
+
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function DailyActiveUsersModal() {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<DauRow[]>([]);
+  const [days, setDays] = useState(30);
+
+  const fetchDau = async (d: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/daily-active-users?days=${d}`);
+      if (!res.ok) throw new Error("Failed to fetch daily active users");
+      const json = await res.json();
+      setRows((json.data as DauRow[]).reverse()); // newest first
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) fetchDau(days);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, days]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <BarChart3Icon className="mr-1.5 size-4" />
+          Daily Active Users
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BarChart3Icon className="size-5 text-primary" />
+            Daily Active Users
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 pb-2">
+          {[7, 30, 60, 90].map((d) => (
+            <Button
+              key={d}
+              variant={days === d ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDays(d)}
+            >
+              {d}d
+            </Button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2Icon className="size-5 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2 text-center">Web</th>
+                  <th className="px-3 py-2 text-center">App</th>
+                  <th className="px-3 py-2 text-center font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row) => (
+                  <tr key={row.date} className="hover:bg-muted/30">
+                    <td className="px-3 py-2 font-mono text-foreground">{row.date}</td>
+                    <td className="px-3 py-2 text-center text-blue-600 dark:text-blue-400">
+                      {row.web}
+                    </td>
+                    <td className="px-3 py-2 text-center text-violet-600 dark:text-violet-400">
+                      {row.app}
+                    </td>
+                    <td className="px-3 py-2 text-center font-semibold text-foreground">
+                      {row.total}
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                      No data yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function UsersClient() {
@@ -82,8 +203,8 @@ export function UsersClient() {
       if (!res.ok) throw new Error(data.error || "Failed to update suspension status");
 
       toast.success(data.message);
-      
-      setUsers(prev => prev.map(u => 
+
+      setUsers(prev => prev.map(u =>
         u._id === suspendTarget._id ? { ...u, isSuspended: data.isSuspended } : u
       ));
       setSuspendTarget(null);
@@ -123,14 +244,17 @@ export function UsersClient() {
                 Total: {filteredUsers.length} of {users.length} users
               </CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <DailyActiveUsersModal />
+              <div className="relative w-full sm:w-64">
+                <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -160,8 +284,8 @@ export function UsersClient() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        user.role === "TEACHER" 
-                          ? "bg-violet-500/10 text-violet-700 dark:text-violet-400" 
+                        user.role === "TEACHER"
+                          ? "bg-violet-500/10 text-violet-700 dark:text-violet-400"
                           : "bg-blue-500/10 text-blue-700 dark:text-blue-400"
                       }`}>
                         {user.role}
@@ -217,7 +341,7 @@ export function UsersClient() {
                               {user.isSuspended ? "Unsuspend User?" : "Suspend User?"}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              {user.isSuspended 
+                              {user.isSuspended
                                 ? `Are you sure you want to unsuspend ${user.name}? They will regain access to the platform.`
                                 : `Are you sure you want to suspend ${user.name}? They will lose access to the platform immediately.`
                               }
