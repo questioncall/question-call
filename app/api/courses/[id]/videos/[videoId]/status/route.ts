@@ -2,21 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import Mux from "@mux/mux-node";
 
-import { incrementEnrollmentVideoTotals } from "@/lib/course-progress";
 import { connectToDatabase } from "@/lib/mongodb";
+import { finalizeReadyCourseVideo } from "@/lib/course-video-ready";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
-import Course from "@/models/Course";
-import CourseSection from "@/models/CourseSection";
 import CourseVideo from "@/models/CourseVideo";
 
 const mux = new Mux({
   tokenId: process.env.MUX_TOKEN_ID || "demo",
   tokenSecret: process.env.MUX_TOKEN_SECRET || "demo",
 });
-
-function minutesFromSeconds(seconds: number) {
-  return Math.round((seconds / 60) * 100) / 100;
-}
 
 export async function GET(
   request: NextRequest,
@@ -115,37 +109,13 @@ export async function GET(
         }
 
         if (asset.status === "ready") {
-            const durationMinutes = asset.duration ? minutesFromSeconds(asset.duration) : 0;
-            
-            const updatedVideo = await CourseVideo.findOneAndUpdate(
-                { _id: videoId, status: "PROCESSING" },
-                { 
-                    $set: { 
-                        status: "READY",
-                        muxAssetId: asset.id,
-                        muxPlaybackId: asset.playback_ids?.[0]?.id,
-                        durationMinutes,
-                    }
-                },
-                { new: true }
-            );
-
-            if (updatedVideo) {
-                const section = await CourseSection.findById(video.sectionId);
-                if (section) {
-                    section.totalVideos = (section.totalVideos ?? 0) + 1;
-                    section.totalDurationMinutes = (section.totalDurationMinutes ?? 0) + durationMinutes;
-                    await section.save();
-                }
-
-                const course = await Course.findById(id);
-                if (course) {
-                    course.totalDurationMinutes = (course.totalDurationMinutes ?? 0) + durationMinutes;
-                    await course.save();
-                }
-
-                await incrementEnrollmentVideoTotals(id, 1);
-            }
+            // Shared with the Mux webhook — atomically flips PROCESSING → READY,
+            // rolls up duration totals, and notifies the instructor exactly once.
+            const updatedVideo = await finalizeReadyCourseVideo(videoId, {
+                assetId: asset.id,
+                playbackId: asset.playback_ids?.[0]?.id ?? null,
+                durationSeconds: asset.duration ?? null,
+            });
 
             return NextResponse.json({ status: "READY", video: updatedVideo || video });
         }

@@ -70,6 +70,10 @@ export function getNotificationTheme(
     case "DAILY_TARGET_BONUS":
       return { title: "Daily Target Reached", channelId: "wallet", priority: "normal", sound: "default" };
 
+    // ── Course studio ────────────────────────────────────────────────────────
+    case "COURSE_VIDEO_READY":
+      return { title: "Video Ready 🎬", channelId: "default", priority: "high", sound: "default" };
+
     // ── System / Calls (use href to distinguish) ─────────────────────────────
     case "SYSTEM": {
       if (href?.startsWith("/calls/") || href?.startsWith("/call/")) {
@@ -95,6 +99,8 @@ export function getDefaultNotificationHref(type?: string | null) {
       return "/wallet";
     case "DAILY_TARGET_BONUS":
       return "/wallet";
+    case "COURSE_VIDEO_READY":
+      return "/studio";
     case "SYSTEM":
       return "/settings";
     default:
