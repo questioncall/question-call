@@ -7,6 +7,7 @@ import { ArrowLeftIcon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import type { ChapterDetailData } from "@/lib/chapter-page-data";
+import { consumeMobileReturn } from "@/components/payment/mobile-return-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,8 @@ export function ChapterBuyClient({ chapter }: { chapter: ChapterDetailData }) {
         throw new Error(data.error || "Failed to submit payment.");
       }
       toast.success("Payment submitted for review.");
+      // Manual proof awaits admin review → return as "submitted", not "success".
+      if (consumeMobileReturn("submitted", "manual")) return;
       router.push(`/chapters/${chapter.slug}`);
       router.refresh();
     } catch (error) {

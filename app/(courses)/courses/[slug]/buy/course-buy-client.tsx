@@ -18,6 +18,7 @@ import { LegalDialog } from "@/components/shared/legal-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { postMultipartWithProgress } from "@/lib/client-upload";
+import { consumeMobileReturn } from "@/components/payment/mobile-return-redirect";
 import type { CourseDetailData } from "@/lib/course-page-data";
 import { APP_NAME } from "@/lib/constants";
 
@@ -93,6 +94,8 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
         const enrollData = await enrollRes.json().catch(() => ({}));
         if (!enrollRes.ok) throw new Error(enrollData.error || "Unable to enroll.");
         toast.success("Access unlocked!");
+        // Access is granted immediately for a 100% coupon → return as success.
+        if (consumeMobileReturn("success")) return;
         router.push(continueHref);
         router.refresh();
       } else {
@@ -129,6 +132,8 @@ export function CourseBuyClient({ course, isAuthenticated }: Props) {
       );
 
       toast.success(data.message || "Payment proof submitted for review.");
+      // Manual proof awaits admin review → return as "submitted", not "success".
+      if (consumeMobileReturn("submitted", "manual")) return;
       router.push(`/courses/${course!.slug}`);
       router.refresh();
     } catch (err) {

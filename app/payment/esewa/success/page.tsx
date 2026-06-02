@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import { updateProfile } from "@/store/features/user/user-slice";
+import { MobileReturnRedirect } from "@/components/payment/mobile-return-redirect";
 
 type VerifyStatus = "verifying" | "success" | "failed";
 
@@ -84,6 +85,7 @@ function EsewaSuccessContent() {
 
       {status === "success" && (
         <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+          <MobileReturnRedirect status="success" />
           <div className="flex items-center justify-center w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full mb-2">
              <div className="text-green-600 dark:text-green-400 text-4xl">✓</div>
           </div>

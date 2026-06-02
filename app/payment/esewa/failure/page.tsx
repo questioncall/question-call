@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { MobileReturnRedirect } from "@/components/payment/mobile-return-redirect";
 
 export default function EsewaFailurePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] gap-4 text-center px-4">
+      <MobileReturnRedirect status="cancelled" />
       <div className="flex items-center justify-center w-24 h-24 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
         <div className="text-red-500 text-5xl">✗</div>
       </div>

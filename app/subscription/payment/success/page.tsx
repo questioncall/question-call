@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { MobileReturnRedirect } from "@/components/payment/mobile-return-redirect";
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function PaymentSuccessPage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] text-neutral-900 dark:text-white flex flex-col items-center justify-center p-6 text-center">
+      <MobileReturnRedirect status="submitted" method="manual" />
       <div className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-10 max-w-md w-full border border-neutral-200 dark:border-neutral-800 shadow-xl flex flex-col items-center">
         
         <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mb-6">
