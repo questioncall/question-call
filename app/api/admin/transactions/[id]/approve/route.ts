@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { completeCoursePurchase } from "@/lib/course-purchases";
+import { completeChapterPurchase } from "@/lib/chapter-purchases";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitNotification, emitSubscriptionUpdated } from "@/lib/pusher/pusherServer";
 import Notification from "@/models/Notification";
@@ -142,18 +143,48 @@ export async function POST(
         enrollmentId: coursePurchase.enrollmentId,
         teacherEarnings: coursePurchase.teacherEarnings,
       };
+    } else if (transaction.type === "CHAPTER_PURCHASE") {
+      const chapterPurchase = await completeChapterPurchase({
+        transactionDocumentId: transaction._id.toString(),
+        gateway: "MANUAL",
+        metaPatch: {
+          adminAction: "APPROVED",
+          adminApprovedAt: new Date().toISOString(),
+          adminApprovedBy: session.user.id,
+          adminNote: adminNote?.trim() || null,
+          paymentChannel:
+            transaction.meta &&
+            typeof transaction.meta === "object" &&
+            "paymentChannel" in transaction.meta
+              ? transaction.meta.paymentChannel
+              : "ESEWA_MANUAL",
+        },
+      });
+
+      notificationMessage = `Your manual payment for ${chapterPurchase.chapterName} was approved. Chapter access is now unlocked.`;
+      successPayload = {
+        success: true,
+        chapterId: chapterPurchase.chapterId,
+        chapterName: chapterPurchase.chapterName,
+        enrollmentId: chapterPurchase.enrollmentId,
+        teacherEarnings: chapterPurchase.teacherEarnings,
+      };
     } else {
       return NextResponse.json(
         {
           error:
-            "Only manual subscription and manual course purchase transactions can be approved",
+            "Only manual subscription, course and chapter purchase transactions can be approved",
         },
         { status: 400 },
       );
     }
 
     const notificationHref =
-      transaction.type === "COURSE_PURCHASE" ? "/courses/my" : "/subscription";
+      transaction.type === "COURSE_PURCHASE"
+        ? "/courses/my"
+        : transaction.type === "CHAPTER_PURCHASE"
+          ? "/chapters/my"
+          : "/subscription";
 
     const notification = await Notification.create({
       userId: transaction.userId,
@@ -210,6 +241,17 @@ export async function POST(
           ...commonReceipt,
           itemLabel: "Course",
           itemName: courseName,
+          validUntil: null,
+        }).catch(() => null);
+      } else if (transaction.type === "CHAPTER_PURCHASE") {
+        const chapterName =
+          (successPayload as any).chapterName ||
+          (transaction.metadata as any)?.chapterName ||
+          "Chapter";
+        receiptPdf = await generateReceiptPdf({
+          ...commonReceipt,
+          itemLabel: "Chapter",
+          itemName: chapterName,
           validUntil: null,
         }).catch(() => null);
       }

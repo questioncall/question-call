@@ -25,6 +25,7 @@ import {
   ClapperboardIcon,
   HelpCircle,
   NotebookTextIcon,
+  Layers3Icon,
 } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
@@ -46,6 +47,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Quiz management": UserCheckIcon,
   "AI Keys": KeyRoundIcon,
   "Courses": BookOpenIcon,
+  "Chapters": Layers3Icon,
   "Coupons": FileTextIcon,
   "Live sessions": VideoIcon,
   "Onboarding Videos": ClapperboardIcon,
@@ -68,7 +70,7 @@ const groupedItems = [
   },
   {
     category: "CONTENT",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Questions", "Notes", "Courses", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Questions", "Notes", "Courses", "Chapters", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
   },
   {
     category: "PLATFORM",

@@ -85,6 +85,7 @@ export type CourseDetailData = {
   level: string;
   pricingModel: CoursePricingModel;
   price: number | null;
+  freePreviewCount: number;
   thumbnailUrl: string | null;
   totalDurationMinutes: number;
   enrollmentCount: number;
@@ -126,6 +127,7 @@ export type ManageCourseData = {
     level: string;
     pricingModel: CoursePricingModel;
     price: number | null;
+    freePreviewCount: number;
     status: CourseStatus;
     isFeatured: boolean;
     thumbnailUrl: string | null;
@@ -161,6 +163,7 @@ export type WatchPageData = {
     _id: string;
     slug: string;
     title: string;
+    freePreviewCount: number;
   };
   currentVideo: {
     _id: string;
@@ -173,6 +176,9 @@ export type WatchPageData = {
   sections: DetailSectionData[];
   completedVideoIds: string[];
   initialWatchedPercent: number;
+  // True when the viewer is watching this video as a free preview (not enrolled,
+  // not the instructor/admin). The client shows an upsell and skips progress.
+  isPreview: boolean;
 };
 
 function toCourseCardData(
@@ -283,6 +289,27 @@ function firstVideoId(sections: DetailSectionData[]) {
   }
 
   return null;
+}
+
+/**
+ * The first `count` videos in curriculum order (section order, then video order)
+ * are free to preview without enrollment. Returns their ids as a Set for O(1)
+ * lookups. A count of 0 yields an empty set.
+ */
+function getFreePreviewVideoIds(
+  sections: DetailSectionData[],
+  count: number,
+): Set<string> {
+  if (!Number.isFinite(count) || count <= 0) {
+    return new Set();
+  }
+
+  const ids = sections
+    .flatMap((section) => section.videos)
+    .slice(0, count)
+    .map((video) => video._id);
+
+  return new Set(ids);
 }
 
 export async function getCourseBrowsePageData(input: {
@@ -528,6 +555,7 @@ export async function getCourseDetailPageData(input: {
     level: course.level,
     pricingModel: course.pricingModel,
     price: course.price ?? null,
+    freePreviewCount: course.freePreviewCount ?? 0,
     thumbnailUrl: course.thumbnailUrl ?? null,
     totalDurationMinutes: course.totalDurationMinutes ?? 0,
     enrollmentCount: course.enrollmentCount ?? 0,
@@ -722,6 +750,7 @@ export async function getManageCoursePageData(input: {
       level: course.level,
       pricingModel: course.pricingModel,
       price: course.price ?? null,
+      freePreviewCount: course.freePreviewCount ?? 0,
       status: course.status,
       isFeatured: Boolean(course.isFeatured),
       thumbnailUrl: course.thumbnailUrl ?? null,
@@ -781,10 +810,6 @@ export async function getCourseWatchPageData(input: {
         .select("_id")
         .lean();
 
-  if (!canManage && !enrollment) {
-    return null;
-  }
-
   const [currentVideo, sectionsRaw, videosRaw, progressItems] = await Promise.all([
     CourseVideo.findOne({
       _id: input.videoId,
@@ -796,7 +821,7 @@ export async function getCourseWatchPageData(input: {
     CourseVideo.find({ courseId: course._id })
       .sort({ sectionId: 1, order: 1 })
       .lean(),
-    canManage
+    canManage || !enrollment
       ? Promise.resolve([])
       : VideoProgress.find({
           studentId: input.userId,
@@ -811,6 +836,21 @@ export async function getCourseWatchPageData(input: {
   }
 
   const sections = sortSectionsAndVideos(sectionsRaw, videosRaw);
+
+  // Non-enrolled viewers may only watch a video if it's one of the first N
+  // free-preview videos in curriculum order. Enrolled users and the
+  // instructor/admin always have full access.
+  const isPreview =
+    !canManage &&
+    !enrollment &&
+    getFreePreviewVideoIds(sections, course.freePreviewCount ?? 0).has(
+      currentVideo._id.toString(),
+    );
+
+  if (!canManage && !enrollment && !isPreview) {
+    return null;
+  }
+
   const currentProgress = progressItems.find(
     (item) => item.videoId.toString() === currentVideo._id.toString(),
   );
@@ -820,6 +860,7 @@ export async function getCourseWatchPageData(input: {
       _id: course._id.toString(),
       slug: course.slug,
       title: course.title,
+      freePreviewCount: course.freePreviewCount ?? 0,
     },
     currentVideo: {
       _id: currentVideo._id.toString(),
@@ -834,5 +875,6 @@ export async function getCourseWatchPageData(input: {
       .filter((item) => item.isCompleted)
       .map((item) => item.videoId.toString()),
     initialWatchedPercent: currentProgress?.watchedPercent ?? 0,
+    isPreview,
   };
 }

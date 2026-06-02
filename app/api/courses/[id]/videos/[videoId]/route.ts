@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { Types } from "mongoose";
 
-import { checkCourseAccess } from "@/lib/course-access";
+import { checkCourseAccess, getCourseFreePreviewVideoIds } from "@/lib/course-access";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import {
   applyDeletedVideosToEnrollments,
@@ -81,8 +81,14 @@ export async function GET(
     }
 
     const canAccess = await checkCourseAccess(authenticatedUser.id, id);
+    // Non-enrolled users can still watch the course's free-preview videos.
+    let isPreview = false;
     if (!canAccess) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const previewIds = await getCourseFreePreviewVideoIds(id);
+      isPreview = previewIds.has(videoId);
+      if (!isPreview) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     void CourseVideo.findByIdAndUpdate(video._id, { $inc: { viewCount: 1 } }).catch(
@@ -94,7 +100,7 @@ export async function GET(
       ? `https://stream.mux.com/${video.muxPlaybackId}.m3u8`
       : video.videoUrl ?? null;
 
-    return NextResponse.json({ ...plain, playbackUrl });
+    return NextResponse.json({ ...plain, playbackUrl, isPreview });
   } catch (error) {
     console.error("[GET /api/courses/:id/videos/:videoId]", error);
     return NextResponse.json(

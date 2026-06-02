@@ -69,6 +69,10 @@ export function CourseDetailClient({
   const upcomingLiveSessions = course.liveSessions.filter(
     (session) => session.status === "SCHEDULED" || session.status === "LIVE",
   );
+  const previewVideoIds = course.sections
+    .flatMap((section) => section.videos)
+    .slice(0, course.freePreviewCount)
+    .map((video) => video._id);
 
   return (
     <div className="bg-[#f6f8fb] dark:bg-background">
@@ -207,6 +211,7 @@ export function CourseDetailClient({
                   completedVideoIds={course.completedVideoIds}
                   courseSlug={course.slug}
                   allowLinks={course.hasAccess}
+                  previewVideoIds={previewVideoIds}
                 />
               </div>
             </div>

@@ -8,7 +8,9 @@ export interface ITransaction extends Document {
     | "WITHDRAWAL"
     | "SUBSCRIPTION_MANUAL"
     | "COURSE_PURCHASE"
-    | "COURSE_SALE_CREDIT";
+    | "COURSE_SALE_CREDIT"
+    | "CHAPTER_PURCHASE"
+    | "CHAPTER_SALE_CREDIT";
   amount: number;
   status: "PENDING" | "COMPLETED" | "FAILED";
   
@@ -39,7 +41,9 @@ const TransactionSchema = new Schema<ITransaction>(
         "SUBSCRIPTION_MANUAL",
         "COURSE_PURCHASE",
         "COURSE_SALE_CREDIT",
-      ], 
+        "CHAPTER_PURCHASE",
+        "CHAPTER_SALE_CREDIT",
+      ],
       required: true 
     },
     amount: { type: Number, required: true },

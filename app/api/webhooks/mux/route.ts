@@ -3,7 +3,13 @@ import Mux from "@mux/mux-node";
 
 import { connectToDatabase } from "@/lib/mongodb";
 import { finalizeReadyCourseVideo } from "@/lib/course-video-ready";
+import { finalizeReadyChapterContent } from "@/lib/chapter-content-ready";
+import ChapterContent from "@/models/ChapterContent";
 import CourseVideo from "@/models/CourseVideo";
+
+// Chapter video uploads tag their asset passthrough with this prefix so the
+// webhook can route readiness to ChapterContent instead of CourseVideo.
+const CHAPTER_PASSTHROUGH_PREFIX = "chapter:";
 
 // Webhook signature verification needs the raw body, so force the Node runtime
 // (Edge would not give us a stable raw-text body here) and disable caching.
@@ -61,26 +67,43 @@ export async function POST(request: NextRequest) {
   try {
     const type = event?.type;
     const data = event?.data ?? {};
-    const videoId =
+    const rawPassthrough =
       typeof data.passthrough === "string" && data.passthrough.length > 0
         ? data.passthrough
         : null;
 
-    if (type === "video.asset.ready" && videoId && data.id) {
-      await finalizeReadyCourseVideo(videoId, {
+    const isChapter = Boolean(rawPassthrough?.startsWith(CHAPTER_PASSTHROUGH_PREFIX));
+    const recordId = isChapter
+      ? rawPassthrough!.slice(CHAPTER_PASSTHROUGH_PREFIX.length)
+      : rawPassthrough;
+
+    if (type === "video.asset.ready" && recordId && data.id) {
+      const asset = {
         assetId: data.id,
         playbackId: data.playback_ids?.[0]?.id ?? null,
         durationSeconds: typeof data.duration === "number" ? data.duration : null,
-      });
+      };
+      if (isChapter) {
+        await finalizeReadyChapterContent(recordId, asset);
+      } else {
+        await finalizeReadyCourseVideo(recordId, asset);
+      }
     } else if (
       (type === "video.asset.errored" || type === "video.upload.errored") &&
-      videoId
+      recordId
     ) {
       await connectToDatabase();
-      await CourseVideo.updateOne(
-        { _id: videoId, status: "PROCESSING" },
-        { $set: { status: "ERRORED" } },
-      );
+      if (isChapter) {
+        await ChapterContent.updateOne(
+          { _id: recordId, status: "PROCESSING" },
+          { $set: { status: "ERRORED" } },
+        );
+      } else {
+        await CourseVideo.updateOne(
+          { _id: recordId, status: "PROCESSING" },
+          { $set: { status: "ERRORED" } },
+        );
+      }
     }
 
     // Ack everything (including event types we don't handle) so Mux stops

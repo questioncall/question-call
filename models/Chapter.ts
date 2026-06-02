@@ -7,11 +7,14 @@ import {
   models,
 } from "mongoose";
 
-const COURSE_PRICING_MODELS = ["FREE", "SUBSCRIPTION_INCLUDED", "PAID"] as const;
-const COURSE_STATUSES = ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] as const;
-const COURSE_INSTRUCTOR_ROLES = ["TEACHER", "ADMIN"] as const;
+// A Chapter is a standalone, simplified course: it has its own pricing and
+// catalog entry like a Course, but its content is a single flat, ordered list
+// of videos and documents (see ChapterContent) — there are no sections.
+const CHAPTER_PRICING_MODELS = ["FREE", "SUBSCRIPTION_INCLUDED", "PAID"] as const;
+const CHAPTER_STATUSES = ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] as const;
+const CHAPTER_INSTRUCTOR_ROLES = ["TEACHER", "ADMIN"] as const;
 
-const courseSchema = new Schema(
+const chapterSchema = new Schema(
   {
     title: {
       type: String,
@@ -46,7 +49,7 @@ const courseSchema = new Schema(
     },
     pricingModel: {
       type: String,
-      enum: COURSE_PRICING_MODELS,
+      enum: CHAPTER_PRICING_MODELS,
       required: true,
       index: true,
     },
@@ -55,9 +58,7 @@ const courseSchema = new Schema(
       default: null,
       min: 0,
     },
-    // Number of the first videos (in curriculum order) that are playable without
-    // enrollment as a free preview. 0 = no preview. Applies to PAID/SUBSCRIPTION
-    // courses; FREE courses are fully open regardless.
+    // First N contents (in order) playable/openable without enrollment.
     freePreviewCount: {
       type: Number,
       default: 0,
@@ -71,7 +72,7 @@ const courseSchema = new Schema(
     },
     status: {
       type: String,
-      enum: COURSE_STATUSES,
+      enum: CHAPTER_STATUSES,
       default: "DRAFT",
       index: true,
     },
@@ -104,25 +105,13 @@ const courseSchema = new Schema(
     },
     instructorRole: {
       type: String,
-      enum: COURSE_INSTRUCTOR_ROLES,
+      enum: CHAPTER_INSTRUCTOR_ROLES,
       required: true,
     },
     enrollmentCount: {
       type: Number,
       default: 0,
       min: 0,
-    },
-    liveSessionsEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    startDate: {
-      type: Date,
-      default: null,
-    },
-    expectedEndDate: {
-      type: Date,
-      default: null,
     },
     tags: {
       type: [String],
@@ -134,8 +123,8 @@ const courseSchema = new Schema(
   },
 );
 
-export type CourseRecord = InferSchemaType<typeof courseSchema>;
-export type CourseDocument = HydratedDocument<CourseRecord>;
+export type ChapterRecord = InferSchemaType<typeof chapterSchema>;
+export type ChapterDocument = HydratedDocument<ChapterRecord>;
 
 function slugifyTitle(title: string) {
   const normalized = title
@@ -145,18 +134,18 @@ function slugifyTitle(title: string) {
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
 
-  return normalized || "course";
+  return normalized || "chapter";
 }
 
-async function generateUniqueSlug(course: CourseDocument) {
-  const CourseModel = course.constructor as Model<CourseRecord>;
-  const baseSlug = slugifyTitle(course.title);
+async function generateUniqueSlug(chapter: ChapterDocument) {
+  const ChapterModel = chapter.constructor as Model<ChapterRecord>;
+  const baseSlug = slugifyTitle(chapter.title);
   let candidate = baseSlug;
 
   while (
-    await CourseModel.exists({
+    await ChapterModel.exists({
       slug: candidate,
-      _id: { $ne: course._id },
+      _id: { $ne: chapter._id },
     })
   ) {
     candidate = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`;
@@ -165,26 +154,22 @@ async function generateUniqueSlug(course: CourseDocument) {
   return candidate;
 }
 
-courseSchema.pre("validate", function () {
+chapterSchema.pre("validate", function () {
   if (this.pricingModel === "PAID") {
     if (typeof this.price !== "number" || Number.isNaN(this.price) || this.price <= 0) {
-      this.invalidate("price", "Paid courses must have a positive price.");
+      this.invalidate("price", "Paid chapters must have a positive price.");
     }
   } else {
     this.price = null;
   }
 });
 
-courseSchema.pre("save", async function () {
-  if (this.pricingModel === "FREE") {
-    this.liveSessionsEnabled = false;
-  }
-
+chapterSchema.pre("save", async function () {
   if (this.isNew || this.isModified("title")) {
-    this.slug = await generateUniqueSlug(this as CourseDocument);
+    this.slug = await generateUniqueSlug(this as ChapterDocument);
   }
 });
 
-const Course = models.Course || model("Course", courseSchema);
+const Chapter = models.Chapter || model("Chapter", chapterSchema);
 
-export default Course;
+export default Chapter;

@@ -204,6 +204,15 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["courses", "instructor", "pricing model", "content", "manage courses"],
   },
   {
+    id: "chapters",
+    label: "Chapters",
+    href: "/admin/chapters",
+    description:
+      "Review standalone chapters, pricing models, instructors, approvals, and chapter performance data.",
+    group: "Learning & Content",
+    keywords: ["chapters", "chapter", "instructor", "pricing model", "content", "manage chapters"],
+  },
+  {
     id: "coupons",
     label: "Coupons",
     href: "/admin/courses/coupons",
@@ -287,6 +296,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/notes", label: "Notes" },
   { href: "/admin/ai-keys", label: "AI Keys" },
   { href: "/admin/courses", label: "Courses" },
+  { href: "/admin/chapters", label: "Chapters" },
   { href: "/admin/courses/coupons", label: "Coupons" },
   { href: "/admin/live-sessions", label: "Live sessions" },
   { href: "/admin/onboarding-videos", label: "Onboarding Videos" },

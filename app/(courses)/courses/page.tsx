@@ -1,4 +1,5 @@
 import { getSafeServerSession } from "@/lib/auth";
+import { getChapterBrowseData } from "@/lib/chapter-page-data";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
 import { createPageMetadata } from "@/lib/seo";
 import { CoursesBrowseClient } from "./courses-browse";
@@ -22,6 +23,10 @@ export default async function CoursesPage() {
     userId: session?.user?.id ?? null,
     role: session?.user?.role ?? null,
   });
+  const chapterData = await getChapterBrowseData({
+    userId: session?.user?.id ?? null,
+    role: session?.user?.role ?? null,
+  });
 
   return (
     <CoursesBrowseClient
@@ -29,6 +34,10 @@ export default async function CoursesPage() {
       featuredCourses={data.featuredCourses}
       enrolledCourses={data.enrolledCourses}
       managedCourses={data.managedCourses}
+      chapters={chapterData.chapters}
+      featuredChapters={chapterData.featuredChapters}
+      enrolledChapters={chapterData.enrolledChapters}
+      managedChapters={chapterData.managedChapters}
       subjects={data.subjects}
       levels={data.levels}
       stats={data.stats}

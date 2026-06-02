@@ -91,6 +91,7 @@ export function ManageCourseClient({
     pricingModel: course.pricingModel,
     price: course.price,
     status: course.status,
+    freePreviewCount: course.freePreviewCount ?? 0,
   });
 
   // ── Sections state ──
@@ -133,7 +134,10 @@ export function ManageCourseClient({
       const res = await fetch(`/api/courses/${course._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          freePreviewCount: form.pricingModel === "FREE" ? 0 : form.freePreviewCount,
+        }),
       });
       if (!res.ok) throw new Error("Failed to update course");
       toast.success("Course details saved!");
@@ -773,6 +777,77 @@ export function ManageCourseClient({
                       )}
                     </div>
                   )}
+
+                  <div className="space-y-3 sm:col-span-2">
+                    <div>
+                      <Label>Free preview videos</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Let students watch the first videos before enrolling.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)]">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: "No", enabled: false },
+                          { label: "Yes", enabled: true },
+                        ].map((option) => {
+                          const disabled = form.pricingModel === "FREE";
+                          const selected =
+                            (form.freePreviewCount > 0) === option.enabled;
+
+                          return (
+                            <Button
+                              key={option.label}
+                              type="button"
+                              variant={selected ? "default" : "outline"}
+                              disabled={disabled}
+                              className={
+                                selected
+                                  ? "bg-emerald-600 hover:bg-emerald-700"
+                                  : ""
+                              }
+                              onClick={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  freePreviewCount: option.enabled
+                                    ? Math.max(1, f.freePreviewCount || 0)
+                                    : 0,
+                                }))
+                              }
+                            >
+                              {option.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+
+                      {form.pricingModel === "FREE" ? (
+                        <div className="flex min-h-10 items-center rounded-md border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+                          Free courses are already fully open.
+                        </div>
+                      ) : form.freePreviewCount > 0 ? (
+                        <Input
+                          type="number"
+                          min={1}
+                          value={form.freePreviewCount}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              freePreviewCount: Math.max(
+                                0,
+                                parseInt(e.target.value, 10) || 0,
+                              ),
+                            }))
+                          }
+                          placeholder="Number of first videos"
+                        />
+                      ) : (
+                        <div className="flex min-h-10 items-center rounded-md border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+                          No preview videos selected.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-2">

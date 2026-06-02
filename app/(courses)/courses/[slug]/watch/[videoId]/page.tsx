@@ -37,6 +37,11 @@ export default async function CourseWatchPage({
     redirect(`/courses/${slug}`);
   }
 
+  const previewVideoIds = data.sections
+    .flatMap((section) => section.videos)
+    .slice(0, data.course.freePreviewCount)
+    .map((video) => video._id);
+
   return (
     <div className="min-h-svh bg-[#f6f8fb] dark:bg-background">
       <div className="border-b border-border bg-background/95 backdrop-blur">
@@ -66,7 +71,23 @@ export default async function CourseWatchPage({
             courseId={data.course._id}
             videoId={data.currentVideo._id}
             initialWatchedPercent={data.initialWatchedPercent}
+            isPreview={data.isPreview}
           />
+
+          {data.isPreview ? (
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50/70 p-5 dark:bg-emerald-950/20">
+              <h2 className="text-lg font-semibold text-foreground">
+                You&apos;re watching a free preview
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Enroll or buy the course to unlock every lesson and save your
+                progress.
+              </p>
+              <Button asChild className="mt-4 bg-emerald-600 hover:bg-emerald-700">
+                <Link href={`/courses/${data.course.slug}`}>Unlock full course</Link>
+              </Button>
+            </div>
+          ) : null}
 
           {data.currentVideo.description ? (
             <div className="rounded-2xl border border-border bg-background p-5">
@@ -93,7 +114,8 @@ export default async function CourseWatchPage({
               currentVideoId={data.currentVideo._id}
               completedVideoIds={data.completedVideoIds}
               courseSlug={data.course.slug}
-              allowLinks
+              allowLinks={!data.isPreview}
+              previewVideoIds={previewVideoIds}
             />
           </div>
         </div>

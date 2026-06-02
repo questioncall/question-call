@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import Course from "@/models/Course";
 import CourseEnrollment from "@/models/CourseEnrollment";
 import CourseVideo from "@/models/CourseVideo";
+import Chapter from "@/models/Chapter";
+import ChapterContent from "@/models/ChapterContent";
+import ChapterEnrollment from "@/models/ChapterEnrollment";
 import { createNoIndexMetadata } from "@/lib/seo";
 import { CourseStudioClient } from "./studio-client";
 
@@ -29,7 +32,9 @@ export default async function CourseStudioPage() {
     session.user.role === "ADMIN" ? {} : { instructorId: session.user.id };
 
   const courses = await Course.find(courseQuery).sort({ createdAt: -1 }).lean();
+  const chapters = await Chapter.find(courseQuery).sort({ createdAt: -1 }).lean();
   const courseIds = courses.map((course) => course._id);
+  const chapterIds = chapters.map((chapter) => chapter._id);
 
   const [enrollmentCounts, videoCounts] = courseIds.length
     ? await Promise.all([
@@ -51,6 +56,26 @@ export default async function CourseStudioPage() {
     videoCounts.map((entry) => [String(entry._id), entry.count as number]),
   );
 
+  const [chapterEnrollmentCounts, chapterContentCounts] = chapterIds.length
+    ? await Promise.all([
+        ChapterEnrollment.aggregate([
+          { $match: { chapterId: { $in: chapterIds } } },
+          { $group: { _id: "$chapterId", count: { $sum: 1 } } },
+        ]),
+        ChapterContent.aggregate([
+          { $match: { chapterId: { $in: chapterIds } } },
+          { $group: { _id: "$chapterId", count: { $sum: 1 } } },
+        ]),
+      ])
+    : [[], []];
+
+  const enrollmentCountByChapter = new Map(
+    chapterEnrollmentCounts.map((entry) => [String(entry._id), entry.count as number]),
+  );
+  const contentCountByChapter = new Map(
+    chapterContentCounts.map((entry) => [String(entry._id), entry.count as number]),
+  );
+
   return (
     <CourseStudioClient
       courses={courses.map((course) => ({
@@ -68,6 +93,22 @@ export default async function CourseStudioPage() {
         enrollmentCount: enrollmentCountByCourse.get(course._id.toString()) ?? 0,
         videoCount: videoCountByCourse.get(course._id.toString()) ?? 0,
         createdAt: course.createdAt.toISOString(),
+      }))}
+      chapters={chapters.map((chapter) => ({
+        _id: chapter._id.toString(),
+        slug: chapter.slug,
+        title: chapter.title,
+        description: chapter.description,
+        subject: chapter.subject,
+        level: chapter.level,
+        pricingModel: chapter.pricingModel,
+        price: chapter.price ?? null,
+        status: chapter.status,
+        thumbnailUrl: chapter.thumbnailUrl ?? null,
+        totalDurationMinutes: chapter.totalDurationMinutes ?? 0,
+        enrollmentCount: enrollmentCountByChapter.get(chapter._id.toString()) ?? 0,
+        contentCount: contentCountByChapter.get(chapter._id.toString()) ?? 0,
+        createdAt: chapter.createdAt.toISOString(),
       }))}
       userRole={session.user.role}
     />

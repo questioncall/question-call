@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreateCourseModal } from "@/components/course/CreateCourseModal";
+import { CreateChapterModal } from "@/components/chapter/CreateChapterModal";
 import { COURSE_UPDATED_EVENT, COURSE_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 
@@ -39,14 +40,20 @@ type StudioCourse = {
 
 type Props = {
   courses: StudioCourse[];
+  chapters: StudioChapter[];
   userRole: string;
 };
 
-export function CourseStudioClient({ courses, userRole }: Props) {
+type StudioChapter = Omit<StudioCourse, "videoCount"> & {
+  contentCount: number;
+};
+
+export function CourseStudioClient({ courses, chapters, userRole }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
 
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
@@ -58,17 +65,28 @@ export function CourseStudioClient({ courses, userRole }: Props) {
     });
   }, [courses, filterStatus, search]);
 
+  const filteredChapters = useMemo(() => {
+    return chapters.filter((chapter) => {
+      const matchesSearch =
+        !search || chapter.title.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus =
+        filterStatus === "all" || chapter.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [chapters, filterStatus, search]);
+
   const stats = useMemo(
     () => ({
-      totalCourses: courses.length,
+      totalCourses: courses.length + chapters.length,
       activeCourses: courses.filter((course) => course.status === "ACTIVE").length,
       totalStudents: courses.reduce(
         (acc, course) => acc + course.enrollmentCount,
         0,
-      ),
-      totalVideos: courses.reduce((acc, course) => acc + course.videoCount, 0),
+      ) + chapters.reduce((acc, chapter) => acc + chapter.enrollmentCount, 0),
+      totalVideos: courses.reduce((acc, course) => acc + course.videoCount, 0) +
+        chapters.reduce((acc, chapter) => acc + chapter.contentCount, 0),
     }),
-    [courses],
+    [chapters, courses],
   );
 
   useEffect(() => {
@@ -149,6 +167,10 @@ export function CourseStudioClient({ courses, userRole }: Props) {
               <PlusIcon className="size-4 mr-2" />
               New Course
             </Button>
+            <Button variant="outline" onClick={() => setShowCreateChapterModal(true)}>
+              <PlusIcon className="size-4 mr-2" />
+              New Chapter
+            </Button>
           </div>
         </div>
       </header>
@@ -163,7 +185,7 @@ export function CourseStudioClient({ courses, userRole }: Props) {
               </div>
               <div>
                 <div className="text-2xl font-bold">{stats.totalCourses}</div>
-                <div className="text-xs text-muted-foreground">Total Courses</div>
+                <div className="text-xs text-muted-foreground">Studio Items</div>
               </div>
             </div>
           </div>
@@ -196,7 +218,7 @@ export function CourseStudioClient({ courses, userRole }: Props) {
               </div>
               <div>
                 <div className="text-2xl font-bold">{stats.totalVideos}</div>
-                <div className="text-xs text-muted-foreground">Videos</div>
+                <div className="text-xs text-muted-foreground">Content Items</div>
               </div>
             </div>
           </div>
@@ -231,8 +253,65 @@ export function CourseStudioClient({ courses, userRole }: Props) {
                 <PlusIcon className="size-4 mr-2" />
                 Create
               </Button>
+              <Button variant="outline" onClick={() => setShowCreateChapterModal(true)}>
+                <PlusIcon className="size-4 mr-2" />
+                Chapter
+              </Button>
             </div>
           </div>
+
+          {filteredChapters.length > 0 ? (
+            <div className="border-b border-border">
+              <div className="bg-muted/20 px-4 py-3 text-sm font-semibold">
+                Chapters
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <tbody>
+                    {filteredChapters.map((chapter) => (
+                      <tr key={chapter._id} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
+                              <BookOpenIcon className="size-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium line-clamp-1">{chapter.title}</div>
+                              <div className="text-xs text-muted-foreground line-clamp-1">
+                                {chapter.subject} · {chapter.level}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge className={getStatusColor(chapter.status)}>
+                            {chapter.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {getPricingLabel(chapter.pricingModel, chapter.price)}
+                        </td>
+                        <td className="hidden px-4 py-3 text-sm md:table-cell">
+                          {chapter.enrollmentCount}
+                        </td>
+                        <td className="hidden px-4 py-3 text-sm md:table-cell">
+                          {chapter.contentCount}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button size="sm" variant="ghost" asChild>
+                            <Link href={`/studio/chapter/${chapter._id}`}>
+                              Manage
+                              <ChevronRightIcon className="size-3 ml-1" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
 
           {/* Course Table */}
           <div className="overflow-x-auto">
@@ -321,6 +400,10 @@ export function CourseStudioClient({ courses, userRole }: Props) {
 
       {/* Create Course Modal */}
       <CreateCourseModal open={showCreateModal} onOpenChange={setShowCreateModal} />
+      <CreateChapterModal
+        open={showCreateChapterModal}
+        onOpenChange={setShowCreateChapterModal}
+      />
     </div>
   );
 }

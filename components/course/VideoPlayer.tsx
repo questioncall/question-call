@@ -13,6 +13,7 @@ type VideoPlayerProps = {
   courseId: string;
   videoId: string;
   initialWatchedPercent?: number;
+  isPreview?: boolean;
 };
 
 function clamp(value: number) {
@@ -26,6 +27,7 @@ export function VideoPlayer({
   courseId,
   videoId,
   initialWatchedPercent = 0,
+  isPreview = false,
 }: VideoPlayerProps) {
   const [watchedPercent, setWatchedPercent] = useState(
     clamp(initialWatchedPercent),
@@ -40,6 +42,10 @@ export function VideoPlayer({
   );
 
   useEffect(() => {
+    if (isPreview) {
+      return;
+    }
+
     let isCancelled = false;
 
     const persistProgress = async (percent: number, silent = true) => {
@@ -84,9 +90,13 @@ export function VideoPlayer({
       isCancelled = true;
       window.clearInterval(interval);
     };
-  }, [saveEndpoint, watchedPercent, isPlaying, isEnded]);
+  }, [saveEndpoint, watchedPercent, isPlaying, isEnded, isPreview]);
 
   const persistFinalProgress = async () => {
+    if (isPreview) {
+      return;
+    }
+
     try {
       setIsSaving(true);
       await fetch(saveEndpoint, {
@@ -165,7 +175,11 @@ export function VideoPlayer({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           <span className="text-xs text-muted-foreground">
-            {isSaving ? "Saving..." : `${Math.round(watchedPercent)}% watched`}
+            {isPreview
+              ? "Preview mode"
+              : isSaving
+                ? "Saving..."
+                : `${Math.round(watchedPercent)}% watched`}
           </span>
         </div>
         <Progress value={watchedPercent} />

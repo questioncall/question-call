@@ -309,6 +309,22 @@ export async function PATCH(
       course.isFeatured = body.isFeatured;
     }
 
+    if ("freePreviewCount" in body) {
+      const parsedPreview =
+        typeof body.freePreviewCount === "number"
+          ? body.freePreviewCount
+          : Number(body.freePreviewCount);
+
+      if (!Number.isInteger(parsedPreview) || parsedPreview < 0) {
+        return NextResponse.json(
+          { error: "Free preview count must be a non-negative whole number." },
+          { status: 400 },
+        );
+      }
+
+      course.freePreviewCount = parsedPreview;
+    }
+
     if (body.thumbnailUrl === null) {
       course.thumbnailUrl = null;
     } else if (typeof body.thumbnailUrl === "string") {

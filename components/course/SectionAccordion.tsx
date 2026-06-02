@@ -27,6 +27,7 @@ type SectionAccordionProps = {
   completedVideoIds?: string[];
   courseSlug?: string;
   allowLinks?: boolean;
+  previewVideoIds?: string[];
 };
 
 export function SectionAccordion({
@@ -35,11 +36,13 @@ export function SectionAccordion({
   completedVideoIds = [],
   courseSlug,
   allowLinks = false,
+  previewVideoIds = [],
 }: SectionAccordionProps) {
   const completedSet = useMemo(
     () => new Set(completedVideoIds),
     [completedVideoIds],
   );
+  const previewSet = useMemo(() => new Set(previewVideoIds), [previewVideoIds]);
   const [openSectionId, setOpenSectionId] = useState<string | null>(
     sections[0]?._id ?? null,
   );
@@ -100,6 +103,8 @@ export function SectionAccordion({
                       {section.videos.map((video) => {
                         const isActive = currentVideoId === video._id;
                         const isCompleted = completedSet.has(video._id);
+                        const isPreview = previewSet.has(video._id);
+                        const canOpen = allowLinks || isPreview;
                         const href = courseSlug
                           ? `/courses/${courseSlug}/watch/${video._id}`
                           : "#";
@@ -109,24 +114,29 @@ export function SectionAccordion({
                             <div className="flex items-center gap-3">
                               {isCompleted ? (
                                 <CheckCircle2Icon className="size-4 text-emerald-500" />
-                              ) : allowLinks ? (
+                              ) : canOpen ? (
                                 <PlayCircleIcon className="size-4 text-primary" />
                               ) : (
                                 <LockIcon className="size-4 text-muted-foreground" />
                               )}
-                              <div>
+                              <div className="min-w-0">
                                 <div className="text-sm font-medium text-foreground">
                                   {video.order}. {video.title}
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {video.durationMinutes.toFixed(0)} min
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{video.durationMinutes.toFixed(0)} min</span>
+                                  {isPreview ? (
+                                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                                      Free preview
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
                           </>
                         );
 
-                        return allowLinks ? (
+                        return canOpen ? (
                           <Link
                             key={video._id}
                             href={href}

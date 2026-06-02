@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import type { CourseCardData, UserRole } from "@/lib/course-page-data";
+import type { ChapterCardData } from "@/lib/chapter-page-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,10 @@ type CoursesBrowseClientProps = {
   featuredCourses: CourseCardData[];
   enrolledCourses: CourseCardData[];
   managedCourses: CourseCardData[];
+  chapters: ChapterCardData[];
+  featuredChapters: ChapterCardData[];
+  enrolledChapters: ChapterCardData[];
+  managedChapters: ChapterCardData[];
   subjects: string[];
   levels: string[];
   stats: {
@@ -93,6 +98,10 @@ export function CoursesBrowseClient({
   featuredCourses,
   enrolledCourses,
   managedCourses,
+  chapters,
+  featuredChapters,
+  enrolledChapters,
+  managedChapters,
   subjects,
   levels,
   stats,
@@ -130,6 +139,27 @@ export function CoursesBrowseClient({
       return matchesSearch && matchesPricing && matchesSubject && matchesLevel;
     });
   }, [courses, levelFilter, pricingFilter, search, subjectFilter]);
+
+  const filteredChapters = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return chapters.filter((chapter) => {
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        chapter.title.toLowerCase().includes(normalizedSearch) ||
+        chapter.description.toLowerCase().includes(normalizedSearch) ||
+        chapter.subject.toLowerCase().includes(normalizedSearch) ||
+        chapter.instructorName.toLowerCase().includes(normalizedSearch);
+
+      const matchesPricing =
+        pricingFilter.length === 0 || chapter.pricingModel === pricingFilter;
+      const matchesSubject =
+        subjectFilter.length === 0 || chapter.subject === subjectFilter;
+      const matchesLevel = levelFilter.length === 0 || chapter.level === levelFilter;
+
+      return matchesSearch && matchesPricing && matchesSubject && matchesLevel;
+    });
+  }, [chapters, levelFilter, pricingFilter, search, subjectFilter]);
 
   useEffect(() => {
     const client = getPusherClient();
@@ -224,7 +254,7 @@ export function CoursesBrowseClient({
 
               <div className={`mt-14 grid grid-cols-3 gap-6 border-t pt-8 sm:max-w-lg ${isDark ? "border-slate-700/50" : "border-slate-200"}`}>
                 {[
-                  { value: `${stats.totalCourses}+`, label: "Courses" },
+                  { value: `${stats.totalCourses + chapters.length}+`, label: "Courses" },
                   {
                     value: `${stats.totalEnrollments.toLocaleString()}+`,
                     label: "Enrollments",
@@ -353,6 +383,40 @@ export function CoursesBrowseClient({
         </section>
       ) : null}
 
+      {isStudent && enrolledChapters.length > 0 ? (
+        <section className="border-b border-border bg-background/70">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Your Chapters</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Short lessons and document packs you unlocked.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {enrolledChapters.map((chapter) => (
+                <Link
+                  key={chapter._id}
+                  href={`/chapters/${chapter.slug}`}
+                  className="rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-emerald-500/40"
+                >
+                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                    Chapter
+                  </Badge>
+                  <h3 className="mt-3 line-clamp-2 font-semibold text-foreground">
+                    {chapter.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {chapter.contentsCount} items · {Math.round(chapter.overallProgressPercent ?? 0)}%
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {canManageCourses && managedCourses.length > 0 ? (
         <section className="border-b border-border bg-background/70">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -421,6 +485,41 @@ export function CoursesBrowseClient({
         </section>
       ) : null}
 
+      {canManageCourses && managedChapters.length > 0 ? (
+        <section className="border-b border-border bg-background/70">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Your Chapters</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Manage standalone chapter content.
+                </p>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/studio">Studio</Link>
+              </Button>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {managedChapters.map((chapter) => (
+                <Link
+                  key={chapter._id}
+                  href={`/studio/chapter/${chapter._id}`}
+                  className="rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-blue-500/40"
+                >
+                  <Badge variant="outline">Chapter</Badge>
+                  <h3 className="mt-3 line-clamp-2 font-semibold text-foreground">
+                    {chapter.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {chapter.contentsCount} items · {chapter.enrollmentCount} learners
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
 
 
       {featuredCourses.length > 0 ? (
@@ -473,6 +572,47 @@ export function CoursesBrowseClient({
                   </h3>
                   <p className="line-clamp-2 text-sm text-muted-foreground whitespace-pre-wrap">
                     {course.description}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {featuredChapters.length > 0 ? (
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold text-foreground">Featured Chapters</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Focused standalone lessons with videos and documents.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {featuredChapters.slice(0, 3).map((chapter) => (
+              <Link
+                key={chapter._id}
+                href={`/chapters/${chapter.slug}`}
+                className="group overflow-hidden rounded-3xl border border-border bg-background shadow-sm transition-all hover:border-emerald-500/40"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-emerald-950 text-white">
+                  {chapter.thumbnailUrl ? (
+                    <img src={chapter.thumbnailUrl} alt={chapter.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <BookOpenIcon className="size-12" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <Badge className={getPricingColor(chapter.pricingModel)}>
+                    {getPricingLabel(chapter.pricingModel, chapter.price)}
+                  </Badge>
+                  <h3 className="mt-3 line-clamp-2 text-lg font-semibold text-foreground">
+                    {chapter.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                    {chapter.description}
                   </p>
                 </div>
               </Link>
@@ -540,6 +680,54 @@ export function CoursesBrowseClient({
             </span>
           </h2>
         </div>
+
+        {filteredChapters.length > 0 ? (
+          <div className="mb-10">
+            <h2 className="mb-4 text-xl font-bold text-foreground">
+              Chapters
+              <span className="ml-2 inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-blue-100 px-2 text-sm font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                {filteredChapters.length}
+              </span>
+            </h2>
+            <div className="space-y-4">
+              {filteredChapters.map((chapter) => (
+                <Link
+                  key={chapter._id}
+                  href={`/chapters/${chapter.slug}`}
+                  className="group flex flex-col gap-4 rounded-2xl border border-border bg-background p-4 shadow-sm transition-all hover:border-blue-500/40 sm:flex-row sm:items-center sm:p-5"
+                >
+                  <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl bg-blue-950 text-white sm:h-28 sm:w-48">
+                    {chapter.thumbnailUrl ? (
+                      <img src={chapter.thumbnailUrl} alt={chapter.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <BookOpenIcon className="size-10" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Badge variant="secondary" className="mb-2">Chapter</Badge>
+                    <h3 className="line-clamp-1 text-base font-semibold text-foreground">
+                      {chapter.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                      {chapter.description}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">{chapter.subject}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {chapter.contentsCount} items
+                      </span>
+                    </div>
+                  </div>
+                  <Badge className={getPricingColor(chapter.pricingModel)}>
+                    {getPricingLabel(chapter.pricingModel, chapter.price)}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {filteredCourses.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-background p-16 text-center text-sm text-muted-foreground">
