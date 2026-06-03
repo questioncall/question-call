@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import DailyActiveUser from "@/models/DailyActiveUser";
+import User from "@/models/User";
 
 export async function recordDailyActiveUser(
   userId: string,
@@ -13,7 +14,13 @@ export async function recordDailyActiveUser(
       { $setOnInsert: { userId, date, platform } },
       { upsert: true },
     );
+    // Stamp presence: this is the single write that keeps `lastActiveAt` fresh,
+    // which drives the "online" green dot in the feed/channels and the
+    // Ringing-vs-Calling outgoing-call state. The mobile app pings this on cold
+    // start, on every foreground, and on a periodic heartbeat (see app
+    // _layout). The 5-minute online threshold lives with the readers.
+    await User.updateOne({ _id: userId }, { $set: { lastActiveAt: new Date() } });
   } catch {
-    // Non-fatal — DAU tracking must never break the main request
+    // Non-fatal — DAU / presence tracking must never break the main request
   }
 }

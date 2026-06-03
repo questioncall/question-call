@@ -115,6 +115,12 @@ export async function POST(request: Request) {
     });
 
     const callerUserPromise = User.findById(userId).select("userImage name").lean();
+    // Fetch the callee's presence so the caller's outgoing screen can show
+    // "Ringing…" (callee online, their device should be ringing) vs "Calling…"
+    // (callee offline/disconnected — only the push wake-up will reach them).
+    const calleeUserPromise = User.findById(otherUserId)
+      .select("lastActiveAt")
+      .lean();
 
     // Issue LiveKit tokens for BOTH participants up-front. The callee token
     // travels in the Pusher payload so they can pre-warm the room while the
@@ -135,14 +141,20 @@ export async function POST(request: Request) {
       return at.toJwt();
     }
 
-    const [newCall, callerUser, callerToken, calleeToken] = await Promise.all([
-      newCallPromise,
-      callerUserPromise,
-      mintToken(userId, user.name || "Caller"),
-      mintToken(otherUserId, "Callee"),
-    ]);
+    const [newCall, callerUser, calleeUser, callerToken, calleeToken] =
+      await Promise.all([
+        newCallPromise,
+        callerUserPromise,
+        calleeUserPromise,
+        mintToken(userId, user.name || "Caller"),
+        mintToken(otherUserId, "Callee"),
+      ]);
 
     const callerImage = callerUser?.userImage || null;
+    const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+    const calleeIsOnline = calleeUser?.lastActiveAt
+      ? Date.now() - new Date(calleeUser.lastActiveAt).getTime() < ONLINE_THRESHOLD_MS
+      : false;
     const callSessionId = newCall._id.toString();
     const timerDeadlineIso = new Date(channel.timerDeadline).toISOString();
     const timeExtensionCount = channel.timeExtensionCount ?? 0;
@@ -199,6 +211,7 @@ export async function POST(request: Request) {
         callerId: userId,
         teacherId,
         studentId,
+        calleeIsOnline,
         status: "RINGING",
         token: callerToken,
         serverUrl: wsUrl || null,

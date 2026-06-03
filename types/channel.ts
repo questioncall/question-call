@@ -53,6 +53,10 @@ export type ChannelListItem = {
   counterpartId: string;
   counterpartName: string;
   counterpartImage?: string;
+  /** Whether the counterpart pinged within the online window (5 min) */
+  counterpartIsOnline?: boolean;
+  /** ISO timestamp of the counterpart's last activity, for "active Xm ago" */
+  counterpartLastActiveAt?: string;
   status: ChannelStatus;
   lastMessagePreview?: string;
   lastMessageAt?: string;

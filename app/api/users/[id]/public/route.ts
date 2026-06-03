@@ -1,0 +1,146 @@
+import { NextResponse } from "next/server";
+import { Types } from "mongoose";
+
+import { connectToDatabase } from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/unified-auth";
+import { getUserHandle } from "@/lib/user-paths";
+import User from "@/models/User";
+import Question from "@/models/Question";
+import Answer from "@/models/Answer";
+
+export const dynamic = "force-dynamic";
+
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+
+type RouteParams = { params: Promise<{ id: string }> };
+
+// Public profile showcase for the mobile app — tapping a username in the feed
+// lands here. Keyed by userId (the feed always carries askerId) so it works
+// even when a username isn't populated. Returns the user's public details plus
+// the questions they've posted to the feed, in one round-trip.
+export async function GET(request: Request, context: RouteParams) {
+  try {
+    const viewer = await getAuthenticatedUser(request);
+    if (!viewer?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    if (!Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "", 10);
+    const offsetParam = Number.parseInt(searchParams.get("offset") || "", 10);
+    const limit =
+      Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 30
+        ? limitParam
+        : 15;
+    const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0;
+
+    await connectToDatabase();
+
+    // Ensure Answer schema is registered before populate.
+    void Answer;
+
+    const user = await User.findById(id)
+      .select(
+        "name username role userImage bio skills interests points totalAnswered totalAsked questionsAsked overallRatingSum overallRatingCount overallScore teacherModeVerified createdAt lastActiveAt isSuspended",
+      )
+      .lean();
+
+    if (!user || (user as { isSuspended?: boolean }).isSuspended) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const u = user as Record<string, unknown>;
+    const ratingCount = (u.overallRatingCount as number) ?? 0;
+    const ratingSum = (u.overallRatingSum as number) ?? 0;
+    const averageRating =
+      ratingCount > 0
+        ? Number((ratingSum / ratingCount).toFixed(1))
+        : ((u.overallScore as number) ?? 0);
+
+    const lastActiveAt = u.lastActiveAt ? new Date(u.lastActiveAt as Date) : null;
+    const isOnline = lastActiveAt
+      ? Date.now() - lastActiveAt.getTime() < ONLINE_THRESHOLD_MS
+      : false;
+
+    const profile = {
+      id,
+      name: (u.name as string) || "User",
+      username: getUserHandle({
+        id,
+        name: u.name as string,
+        username: u.username as string | undefined,
+      }),
+      role: u.role as string,
+      userImage: (u.userImage as string) || null,
+      bio: (u.bio as string) || null,
+      skills: Array.isArray(u.skills) ? (u.skills as string[]) : [],
+      interests: Array.isArray(u.interests) ? (u.interests as string[]) : [],
+      points: (u.points as number) ?? 0,
+      totalAnswered: (u.totalAnswered as number) ?? 0,
+      totalAsked: Math.max(
+        (u.totalAsked as number) ?? 0,
+        (u.questionsAsked as number) ?? 0,
+      ),
+      averageRating,
+      ratingCount,
+      teacherModeVerified: Boolean(u.teacherModeVerified),
+      joinedAt: u.createdAt ? new Date(u.createdAt as Date).toISOString() : null,
+      lastActiveAt: lastActiveAt ? lastActiveAt.toISOString() : null,
+      isOnline,
+    };
+
+    // The user's feed posts = questions they asked.
+    const questions = await Question.find({ askerId: new Types.ObjectId(id) })
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .populate("answerId")
+      .lean();
+
+    const posts = questions.map((q) => {
+      const linkedAnswer = q.answerId as unknown as {
+        content?: string;
+        mediaUrls?: string[];
+        rating?: number | null;
+      } | null;
+      const isPublicSolved =
+        q.status === "SOLVED" && q.answerVisibility === "PUBLIC" && linkedAnswer;
+      return {
+        id: q._id.toString(),
+        title: q.title,
+        body: q.body,
+        images: Array.isArray(q.images) ? q.images : [],
+        status: q.status,
+        subject: q.subject || undefined,
+        level: q.level || undefined,
+        createdAt: new Date(q.createdAt).toISOString(),
+        answer: isPublicSolved
+          ? {
+              content: linkedAnswer?.content,
+              mediaUrls: Array.isArray(linkedAnswer?.mediaUrls)
+                ? linkedAnswer?.mediaUrls
+                : [],
+              rating: linkedAnswer?.rating ?? null,
+            }
+          : null,
+      };
+    });
+
+    return NextResponse.json({
+      profile,
+      posts,
+      hasMore: questions.length === limit,
+    });
+  } catch (error) {
+    console.error("[GET /api/users/[id]/public]", error);
+    return NextResponse.json(
+      { error: "Failed to load profile" },
+      { status: 500 },
+    );
+  }
+}

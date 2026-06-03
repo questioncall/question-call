@@ -11,6 +11,11 @@ import type { ChannelListItem } from "@/types/channel";
 
 export const dynamic = "force-dynamic";
 
+// Matches the feed's presence window — a user is "online" if they pinged
+// within the last 5 minutes (see lib/daily-active.ts for where lastActiveAt is
+// stamped).
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+
 export async function GET(request: Request) {
   try {
     const user = await getAuthenticatedUser(request);
@@ -34,8 +39,8 @@ export async function GET(request: Request) {
     })
       .sort({ updatedAt: -1 })
       .populate("questionId", "title")
-      .populate("askerId", "name username userImage")
-      .populate("acceptorId", "name username userImage")
+      .populate("askerId", "name username userImage lastActiveAt")
+      .populate("acceptorId", "name username userImage lastActiveAt")
       .lean();
 
     // For each channel, get the last message and unread count
@@ -91,11 +96,13 @@ export async function GET(request: Request) {
           _id?: { toString(): string };
           name?: string;
           userImage?: string;
+          lastActiveAt?: Date;
         } | null;
         const acceptorIdObj = ch.acceptorId as unknown as {
           _id?: { toString(): string };
           name?: string;
           userImage?: string;
+          lastActiveAt?: Date;
         } | null;
         const questionObj = ch.questionId as unknown as {
           title?: string;
@@ -107,12 +114,22 @@ export async function GET(request: Request) {
         const lastMsg = lastMessageMap.get(ch._id.toString());
         const unreadCount = unreadCountMap.get(ch._id.toString()) || 0;
 
+        const counterpartLastActiveAt = counterpart?.lastActiveAt
+          ? new Date(counterpart.lastActiveAt).toISOString()
+          : undefined;
+        const counterpartIsOnline = counterpart?.lastActiveAt
+          ? Date.now() - new Date(counterpart.lastActiveAt).getTime() <
+            ONLINE_THRESHOLD_MS
+          : false;
+
         return {
           id: ch._id.toString(),
           questionTitle: questionObj?.title || "Untitled",
           counterpartId: counterpart?._id?.toString() || "",
           counterpartName: counterpart?.name || "Unknown",
           counterpartImage: counterpart?.userImage || undefined,
+          counterpartIsOnline,
+          counterpartLastActiveAt,
           status: ch.status as ChannelListItem["status"],
           lastMessagePreview: lastMsg?.content?.substring(0, 80) || undefined,
           lastMessageAt: lastMsg?.sentAt
