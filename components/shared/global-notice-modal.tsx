@@ -10,6 +10,8 @@ type Notice = {
   _id: string;
   title: string;
   body: string;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
   type: "ADVERTISEMENT" | "GENERAL" | "SPECIAL";
 };
 
@@ -133,9 +135,33 @@ export function GlobalNoticeModal() {
           <DialogDescription className="sr-only">Notice popup</DialogDescription>
         </DialogHeader>
         
-        <div className="py-2 text-center text-sm text-foreground/90 whitespace-pre-wrap max-h-40 overflow-y-auto px-1 scrollbar-thin">
-          {currentNotice.body}
-        </div>
+        {currentNotice.imageUrl ? (
+          <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={currentNotice.imageUrl}
+              alt={currentNotice.title}
+              className="max-h-64 w-full object-contain"
+            />
+          </div>
+        ) : null}
+
+        {currentNotice.videoUrl ? (
+          <div className="overflow-hidden rounded-lg border border-border bg-black">
+            <video
+              src={currentNotice.videoUrl}
+              controls
+              playsInline
+              className="max-h-64 w-full"
+            />
+          </div>
+        ) : null}
+
+        {currentNotice.body ? (
+          <div className="py-2 text-center text-sm text-foreground/90 whitespace-pre-wrap max-h-40 overflow-y-auto px-1 scrollbar-thin">
+            {currentNotice.body}
+          </div>
+        ) : null}
 
         <DialogFooter className="sm:justify-center pt-2">
           <Button 

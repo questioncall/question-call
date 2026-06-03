@@ -22,9 +22,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
     const limitParam = Number.parseInt(searchParams.get("limit") || "", 10);
-    const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 50
-      ? limitParam
-      : 50;
+    const limit =
+      Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 50
+        ? limitParam
+        : 50;
 
     const filter: Record<string, unknown> = {};
     let sort: Record<string, 1 | -1> = { resetCount: -1, createdAt: -1 };
@@ -66,10 +67,10 @@ export async function GET(request: Request) {
     const commentCounts = questionIds.length
       ? await PeerComment.aggregate([
           { $match: { questionId: { $in: questionIds } } },
-          { $group: { _id: "$questionId", count: { $sum: 1 } } }
+          { $group: { _id: "$questionId", count: { $sum: 1 } } },
         ])
       : [];
-      
+
     const commentCountMap = new Map<string, number>();
     for (const cc of commentCounts) {
       commentCountMap.set(cc._id.toString(), cc.count);
@@ -85,7 +86,8 @@ export async function GET(request: Request) {
           lastActiveAt?: Date;
         } | null;
         const askerIsOnline = asker?.lastActiveAt
-          ? Date.now() - new Date(asker.lastActiveAt).getTime() < ONLINE_THRESHOLD_MS
+          ? Date.now() - new Date(asker.lastActiveAt).getTime() <
+            ONLINE_THRESHOLD_MS
           : false;
 
         const acceptor = q.acceptedById as unknown as {
@@ -108,20 +110,30 @@ export async function GET(request: Request) {
           submittedAt?: Date;
         } | null;
 
-        if (q.status === "SOLVED" && q.answerVisibility === "PUBLIC" && linkedAnswer) {
+        if (
+          q.status === "SOLVED" &&
+          q.answerVisibility === "PUBLIC" &&
+          linkedAnswer
+        ) {
           // Fetch acceptor name for the answer
           let acceptorName = acceptor?.name;
           if (!acceptorName && linkedAnswer.acceptorId) {
             const User = (await import("@/models/User")).default;
-            const answerTeacher = await User.findById(linkedAnswer.acceptorId).select("name").lean();
+            const answerTeacher = await User.findById(linkedAnswer.acceptorId)
+              .select("name")
+              .lean();
             acceptorName = (answerTeacher as { name?: string })?.name;
           }
 
           answerData = {
             content: linkedAnswer.content,
-            mediaUrls: Array.isArray(linkedAnswer.mediaUrls) ? linkedAnswer.mediaUrls : [],
+            mediaUrls: Array.isArray(linkedAnswer.mediaUrls)
+              ? linkedAnswer.mediaUrls
+              : [],
             answerFormat: linkedAnswer.answerFormat,
             rating: linkedAnswer.rating ?? null,
+            acceptorId:
+              linkedAnswer.acceptorId?.toString() || acceptor?._id?.toString(),
             acceptorName: acceptorName || "Teacher",
             submittedAt: linkedAnswer.submittedAt?.toISOString(),
           };
@@ -145,12 +157,16 @@ export async function GET(request: Request) {
           stream: q.stream || undefined,
           level: q.level || undefined,
           resetCount: q.resetCount ?? 0,
-          reactions: reactions.map((r: { userId: { toString(): string }; type: string }) => ({
-            userId: r.userId?.toString() || "",
-            type: r.type as "like" | "insightful" | "same_doubt",
-          })),
+          reactions: reactions.map(
+            (r: { userId: { toString(): string }; type: string }) => ({
+              userId: r.userId?.toString() || "",
+              type: r.type as "like" | "insightful" | "same_doubt",
+            }),
+          ),
           acceptedById: acceptor?._id?.toString() || null,
-          acceptedAt: q.acceptedAt ? new Date(q.acceptedAt).toISOString() : null,
+          acceptedAt: q.acceptedAt
+            ? new Date(q.acceptedAt).toISOString()
+            : null,
           acceptedByName: acceptor?.name || null,
           answerCount: linkedAnswer ? 1 : 0,
           reactionCount: reactions.length,
@@ -159,7 +175,7 @@ export async function GET(request: Request) {
           updatedAt: new Date(q.updatedAt).toISOString(),
           ...(answerData ? { answer: answerData } : {}),
         };
-      })
+      }),
     );
 
     return NextResponse.json(feedQuestions);

@@ -34,6 +34,8 @@ export async function POST(req: Request) {
     const {
       title,
       body,
+      imageUrl,
+      videoUrl,
       type,
       targetAudience,
       targetEmails,
@@ -43,15 +45,29 @@ export async function POST(req: Request) {
       pushMessage,
     } = json;
 
-    if (!title || !body || !type || !targetAudience) {
+    const trimmedBody = typeof body === "string" ? body.trim() : "";
+    const normalizedImageUrl = typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : null;
+    const normalizedVideoUrl = typeof videoUrl === "string" && videoUrl.trim() ? videoUrl.trim() : null;
+
+    // A notice always needs a title, and must carry at least one of:
+    // a text body, an image, or a video.
+    if (!title || !type || !targetAudience) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    if (!trimmedBody && !normalizedImageUrl && !normalizedVideoUrl) {
+      return NextResponse.json(
+        { error: "A notice needs a message, an image, or a video." },
+        { status: 400 },
+      );
     }
 
     await connectToDatabase();
 
     const notice = await Notice.create({
       title,
-      body,
+      body: trimmedBody,
+      imageUrl: normalizedImageUrl,
+      videoUrl: normalizedVideoUrl,
       type,
       targetAudience,
       targetEmails: targetAudience === "SPECIFIC" ? targetEmails : [],
@@ -61,7 +77,7 @@ export async function POST(req: Request) {
 
     // Fire push notifications in the background — don't block the response
     if (sendPush) {
-      const message = (pushMessage as string | undefined)?.trim() || body;
+      const message = (pushMessage as string | undefined)?.trim() || trimmedBody || title;
 
       // Build user query based on target audience
       const userQuery: Record<string, unknown> = { isSuspended: { $ne: true } };

@@ -261,6 +261,20 @@ const userSchema = new Schema(
         ref: "Notice",
       },
     ],
+    // Courses the user has bookmarked as a favourite.
+    favouriteCourses: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Course",
+      },
+    ],
+    // Teachers (User docs with role TEACHER) this user follows.
+    following: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     seenOnboardingRoles: {
       type: [String],
       enum: ["STUDENT", "TEACHER", "ADMIN"],

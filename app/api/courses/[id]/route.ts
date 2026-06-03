@@ -11,6 +11,7 @@ import CourseNotificationLog from "@/models/CourseNotificationLog";
 import CourseSection from "@/models/CourseSection";
 import CourseVideo from "@/models/CourseVideo";
 import LiveSession from "@/models/LiveSession";
+import User from "@/models/User";
 import VideoProgress from "@/models/VideoProgress";
 
 cloudinary.config({
@@ -135,21 +136,39 @@ export async function GET(
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
 
-    const [sections, videos, enrollment] = await Promise.all([
-      CourseSection.find({ courseId: course._id }).sort({ order: 1 }).lean(),
-      CourseVideo.find({ courseId: course._id })
-        .select("_id sectionId title durationMinutes order thumbnailUrl")
-        .sort({ order: 1, uploadedAt: 1 })
-        .lean(),
-      authenticatedUser?.role === "STUDENT" && authenticatedUserId
-        ? CourseEnrollment.findOne({
-            courseId: course._id,
-            studentId: authenticatedUserId,
-          })
-            .select("overallProgressPercent")
-            .lean()
-        : Promise.resolve(null),
-    ]);
+    const [sections, videos, enrollment, viewer, instructorFollowerCount] =
+      await Promise.all([
+        CourseSection.find({ courseId: course._id }).sort({ order: 1 }).lean(),
+        CourseVideo.find({ courseId: course._id })
+          .select("_id sectionId title durationMinutes order thumbnailUrl")
+          .sort({ order: 1, uploadedAt: 1 })
+          .lean(),
+        authenticatedUser?.role === "STUDENT" && authenticatedUserId
+          ? CourseEnrollment.findOne({
+              courseId: course._id,
+              studentId: authenticatedUserId,
+            })
+              .select("overallProgressPercent")
+              .lean()
+          : Promise.resolve(null),
+        authenticatedUserId
+          ? User.findById(authenticatedUserId)
+              .select("favouriteCourses following")
+              .lean<{ favouriteCourses?: unknown[]; following?: unknown[] }>()
+          : Promise.resolve(null),
+        User.countDocuments({ following: course.instructorId }),
+      ]);
+
+    const isFavourite = Boolean(
+      viewer?.favouriteCourses?.some(
+        (favId) => favId?.toString() === course._id.toString(),
+      ),
+    );
+    const isFollowingInstructor = Boolean(
+      viewer?.following?.some(
+        (teacherId) => teacherId?.toString() === course.instructorId.toString(),
+      ),
+    );
 
     const videosBySectionId = new Map<
       string,
@@ -181,6 +200,9 @@ export async function GET(
         ...section,
         videos: videosBySectionId.get(section._id.toString()) ?? [],
       })),
+      isFavourite,
+      isFollowingInstructor,
+      instructorFollowerCount,
       ...(authenticatedUser?.role === "STUDENT" && enrollment
         ? { overallProgressPercent: enrollment.overallProgressPercent ?? 0 }
         : {}),

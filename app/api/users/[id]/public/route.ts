@@ -7,10 +7,17 @@ import { getUserHandle } from "@/lib/user-paths";
 import User from "@/models/User";
 import Question from "@/models/Question";
 import Answer from "@/models/Answer";
+import Course from "@/models/Course";
 
 export const dynamic = "force-dynamic";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+
+function isVideoUrl(url: string) {
+  return (
+    /\.(mp4|webm|ogg|mov|m3u8)(\?|$)/i.test(url) || url.includes("video/upload")
+  );
+}
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -37,16 +44,18 @@ export async function GET(request: Request, context: RouteParams) {
       Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 30
         ? limitParam
         : 15;
-    const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0;
+    const offset =
+      Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0;
 
     await connectToDatabase();
 
     // Ensure Answer schema is registered before populate.
     void Answer;
+    void Course;
 
     const user = await User.findById(id)
       .select(
-        "name username role userImage bio skills interests points totalAnswered totalAsked questionsAsked overallRatingSum overallRatingCount overallScore teacherModeVerified createdAt lastActiveAt isSuspended",
+        "name username role userImage bio skills interests points totalAnswered totalAsked questionsAsked overallRatingSum overallRatingCount overallScore teacherModeVerified createdAt lastActiveAt isSuspended favouriteCourses following",
       )
       .lean();
 
@@ -62,7 +71,9 @@ export async function GET(request: Request, context: RouteParams) {
         ? Number((ratingSum / ratingCount).toFixed(1))
         : ((u.overallScore as number) ?? 0);
 
-    const lastActiveAt = u.lastActiveAt ? new Date(u.lastActiveAt as Date) : null;
+    const lastActiveAt = u.lastActiveAt
+      ? new Date(u.lastActiveAt as Date)
+      : null;
     const isOnline = lastActiveAt
       ? Date.now() - lastActiveAt.getTime() < ONLINE_THRESHOLD_MS
       : false;
@@ -89,13 +100,69 @@ export async function GET(request: Request, context: RouteParams) {
       averageRating,
       ratingCount,
       teacherModeVerified: Boolean(u.teacherModeVerified),
-      joinedAt: u.createdAt ? new Date(u.createdAt as Date).toISOString() : null,
+      joinedAt: u.createdAt
+        ? new Date(u.createdAt as Date).toISOString()
+        : null,
       lastActiveAt: lastActiveAt ? lastActiveAt.toISOString() : null,
       isOnline,
     };
 
-    // The user's feed posts = questions they asked.
-    const questions = await Question.find({ askerId: new Types.ObjectId(id) })
+    const userObjectId = new Types.ObjectId(id);
+    const isTeacher = profile.role === "TEACHER";
+    const followerCount = await User.countDocuments({
+      following: userObjectId,
+    });
+    const followingCount = Array.isArray(u.following) ? u.following.length : 0;
+
+    const favouriteCourseIds = Array.isArray(u.favouriteCourses)
+      ? (u.favouriteCourses as Types.ObjectId[])
+      : [];
+    const favouriteCourses =
+      profile.role === "STUDENT" && favouriteCourseIds.length > 0
+        ? await Course.find({
+            _id: { $in: favouriteCourseIds },
+            status: "ACTIVE",
+          })
+            .select(
+              "title slug description subject level pricingModel thumbnailUrl instructorName totalDurationMinutes enrollmentCount",
+            )
+            .limit(12)
+            .lean()
+        : [];
+
+    const mediaAnswers = isTeacher
+      ? await Answer.find({
+          acceptorId: userObjectId,
+          mediaUrls: { $exists: true, $not: { $size: 0 } },
+          isPublic: true,
+        })
+          .populate("questionId", "title")
+          .sort({ createdAt: -1 })
+          .limit(24)
+          .lean()
+      : [];
+
+    const mediaAssets = mediaAnswers.flatMap((answer) => {
+      const question = answer.questionId as unknown as
+        | { _id?: Types.ObjectId; title?: string }
+        | undefined;
+
+      return (
+        Array.isArray(answer.mediaUrls) ? (answer.mediaUrls as string[]) : []
+      ).map((url) => ({
+        url,
+        type: isVideoUrl(url) ? "video" : "image",
+        questionId:
+          question?._id?.toString() ?? String(answer.questionId ?? ""),
+        questionTitle: question?.title ?? "Answered question",
+      }));
+    });
+
+    // Match the web profile: students show asked questions, teachers show solved
+    // questions they answered.
+    const questions = await Question.find({
+      [isTeacher ? "acceptedById" : "askerId"]: userObjectId,
+    })
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
@@ -109,7 +176,9 @@ export async function GET(request: Request, context: RouteParams) {
         rating?: number | null;
       } | null;
       const isPublicSolved =
-        q.status === "SOLVED" && q.answerVisibility === "PUBLIC" && linkedAnswer;
+        q.status === "SOLVED" &&
+        q.answerVisibility === "PUBLIC" &&
+        linkedAnswer;
       return {
         id: q._id.toString(),
         title: q.title,
@@ -132,7 +201,27 @@ export async function GET(request: Request, context: RouteParams) {
     });
 
     return NextResponse.json({
-      profile,
+      profile: {
+        ...profile,
+        followerCount,
+        followingCount,
+        favouriteCount: favouriteCourseIds.length,
+        uploadedAssetCount: mediaAssets.length,
+      },
+      favouriteCourses: favouriteCourses.map((course) => ({
+        id: course._id.toString(),
+        title: course.title,
+        slug: course.slug,
+        description: course.description,
+        subject: course.subject,
+        level: course.level,
+        pricingModel: course.pricingModel,
+        thumbnailUrl: course.thumbnailUrl ?? null,
+        instructorName: course.instructorName,
+        totalDurationMinutes: course.totalDurationMinutes ?? null,
+        enrollmentCount: course.enrollmentCount ?? 0,
+      })),
+      mediaAssets,
       posts,
       hasMore: questions.length === limit,
     });

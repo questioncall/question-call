@@ -7,11 +7,15 @@ import {
   ChevronDownIcon,
   EyeIcon,
   EyeOffIcon,
+  ImageIcon,
   Loader2Icon,
   MailIcon,
   PlusIcon,
   Trash2Icon,
+  UploadIcon,
   UsersIcon,
+  VideoIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +47,8 @@ type Notice = {
   _id: string;
   title: string;
   body: string;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
   type: "ADVERTISEMENT" | "GENERAL" | "SPECIAL";
   targetAudience: "ALL" | "TEACHER" | "STUDENT" | "SPECIFIC";
   targetEmails: string[];
@@ -113,6 +119,65 @@ export function NoticeClient() {
   const [targetEmails, setTargetEmails] = useState("");
   const [sendPush, setSendPush] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so picking the same file again re-triggers onChange.
+    e.target.value = "";
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      toast.error("Please choose an image or a video file.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Upload failed");
+      }
+
+      const url: string | undefined = data?.secure_url;
+      if (!url) {
+        throw new Error("Upload did not return a URL");
+      }
+
+      // Cloudinary reports the true kind via resource_type; fall back to the
+      // browser-reported mime type.
+      if (data.resource_type === "video" || isVideo) {
+        setVideoUrl(url);
+      } else {
+        setImageUrl(url);
+      }
+      toast.success("Media attached");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload media");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setBody("");
+    setType("GENERAL");
+    setTargetAudience("ALL");
+    setTargetEmails("");
+    setSendPush(false);
+    setPushMessage("");
+    setImageUrl(null);
+    setVideoUrl(null);
+  }, []);
 
   const fetchNotices = useCallback(async () => {
     try {
@@ -136,6 +201,12 @@ export function NoticeClient() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!body.trim() && !imageUrl && !videoUrl) {
+      toast.error("Add a message, an image, or a video.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -150,11 +221,15 @@ export function NoticeClient() {
         body: JSON.stringify({
           title,
           body,
+          imageUrl,
+          videoUrl,
           type,
           targetAudience,
           targetEmails: emailsArray,
           sendPush,
-          pushMessage: sendPush ? pushMessage.trim() || body.substring(0, 120) : undefined,
+          pushMessage: sendPush
+            ? pushMessage.trim() || body.substring(0, 120) || title
+            : undefined,
         }),
       });
 
@@ -165,13 +240,7 @@ export function NoticeClient() {
       toast.success(sendPush ? "Notice saved & push sent" : "Notice saved");
       fetchNotices();
       setIsCreateOpen(false);
-      setTitle("");
-      setBody("");
-      setType("GENERAL");
-      setTargetAudience("ALL");
-      setTargetEmails("");
-      setSendPush(false);
-      setPushMessage("");
+      resetForm();
     } catch {
       toast.error("An error occurred");
     } finally {
@@ -275,14 +344,92 @@ export function NoticeClient() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Body Message</Label>
+                    <Label>
+                      Body Message{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (optional if you attach media)
+                      </span>
+                    </Label>
                     <Textarea
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       placeholder="Type the message here..."
-                      required
                       rows={4}
                     />
+                  </div>
+
+                  {/* Media attachment (image or video) */}
+                  <div className="space-y-2">
+                    <Label>Media (optional)</Label>
+                    {imageUrl ? (
+                      <div className="relative overflow-hidden rounded-xl border border-border/70">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imageUrl}
+                          alt="Notice image preview"
+                          className="max-h-64 w-full object-contain bg-muted/30"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="absolute right-2 top-2 h-8 w-8"
+                          onClick={() => setImageUrl(null)}
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                    {videoUrl ? (
+                      <div className="relative overflow-hidden rounded-xl border border-border/70 bg-black">
+                        <video
+                          src={videoUrl}
+                          controls
+                          className="max-h-64 w-full"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="absolute right-2 top-2 h-8 w-8"
+                          onClick={() => setVideoUrl(null)}
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isUploading}
+                        asChild
+                      >
+                        <label className="cursor-pointer">
+                          {isUploading ? (
+                            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <UploadIcon className="mr-2 h-4 w-4" />
+                          )}
+                          {isUploading ? "Uploading…" : "Upload image or video"}
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            onChange={handleMediaUpload}
+                            disabled={isUploading}
+                          />
+                        </label>
+                      </Button>
+                      {!imageUrl && !videoUrl ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <ImageIcon className="h-3.5 w-3.5" />
+                          <VideoIcon className="h-3.5 w-3.5" />
+                          Attach a banner image or a short video.
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -369,7 +516,7 @@ export function NoticeClient() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isSubmitting || isUploading}>
                     {isSubmitting ? (
                       <>
                         <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
@@ -455,9 +602,28 @@ export function NoticeClient() {
                       ) : null}
                     </div>
 
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                      {notice.body}
-                    </p>
+                    {notice.body ? (
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                        {notice.body}
+                      </p>
+                    ) : null}
+
+                    {notice.imageUrl ? (
+                      <div className="overflow-hidden rounded-xl border border-border/70">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={notice.imageUrl}
+                          alt={notice.title}
+                          className="max-h-72 w-full bg-muted/30 object-contain"
+                        />
+                      </div>
+                    ) : null}
+
+                    {notice.videoUrl ? (
+                      <div className="overflow-hidden rounded-xl border border-border/70 bg-black">
+                        <video src={notice.videoUrl} controls className="max-h-72 w-full" />
+                      </div>
+                    ) : null}
 
                     {notice.targetAudience === "SPECIFIC" && notice.targetEmails.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

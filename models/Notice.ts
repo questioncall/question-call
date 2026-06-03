@@ -13,9 +13,21 @@ const noticeSchema = new Schema(
     },
     body: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      default: "",
       maxlength: 2000, // Can contain basic HTML
+    },
+    // Optional media. A notice may carry an image, a video, or both alongside
+    // (or instead of) the text body. URLs are Cloudinary secure_url values
+    // returned by POST /api/upload.
+    imageUrl: {
+      type: String,
+      default: null,
+    },
+    videoUrl: {
+      type: String,
+      default: null,
     },
     type: {
       type: String,
