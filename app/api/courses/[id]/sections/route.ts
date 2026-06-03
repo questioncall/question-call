@@ -16,6 +16,10 @@ function toSectionVideoStub(video: {
   order: number;
   thumbnailUrl?: string | null;
   isLiveRecording?: boolean;
+  muxPlaybackId?: string | null;
+  videoUrl?: string | null;
+  status?: string;
+  viewCount?: number;
 }) {
   return {
     _id: video._id,
@@ -25,6 +29,10 @@ function toSectionVideoStub(video: {
     order: video.order,
     thumbnailUrl: video.thumbnailUrl ?? null,
     isLiveRecording: video.isLiveRecording ?? false,
+    muxPlaybackId: video.muxPlaybackId ?? null,
+    videoUrl: video.videoUrl ?? null,
+    status: video.status ?? "READY",
+    viewCount: video.viewCount ?? 0,
   };
 }
 
@@ -69,7 +77,7 @@ export async function GET(
       CourseSection.find({ courseId: id }).sort({ order: 1 }).lean(),
       CourseVideo.find({ courseId: id })
         .select(
-          "_id sectionId title description durationMinutes order thumbnailUrl isLiveRecording",
+          "_id sectionId title description durationMinutes order thumbnailUrl isLiveRecording muxPlaybackId videoUrl status viewCount",
         )
         .sort({ sectionId: 1, order: 1 })
         .lean(),

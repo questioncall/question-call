@@ -147,6 +147,8 @@ export type ManageCourseData = {
       order: number;
       viewCount: number;
       status: string;
+      muxPlaybackId: string | null;
+      videoUrl: string | null;
     }>;
   }>;
   liveSessions: DetailLiveSessionData[];
@@ -728,14 +730,18 @@ export async function getManageCoursePageData(input: {
     description: section.description,
     order: section.order,
     videos: section.videos.map((video) => {
-      const rawVideo = videosRaw.find((v) => v._id.toString() === video._id);
+      const rawVideo = videosRaw.find((v) => v._id.toString() === video._id) as
+        | { status?: string; muxPlaybackId?: string | null; videoUrl?: string | null }
+        | undefined;
       return {
         _id: video._id,
         title: video.title,
         durationMinutes: video.durationMinutes,
         order: video.order,
         viewCount: video.viewCount,
-        status: (rawVideo as { status?: string })?.status ?? "READY",
+        status: rawVideo?.status ?? "READY",
+        muxPlaybackId: rawVideo?.muxPlaybackId ?? null,
+        videoUrl: rawVideo?.videoUrl ?? null,
       };
     }),
   }));

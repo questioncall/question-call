@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import MuxPlayer from "@mux/mux-player-react";
 import {
   ArrowLeftIcon,
   BarChart3Icon,
@@ -117,6 +118,13 @@ export function ManageCourseClient({
   const [loadingEnrolledUsers, setLoadingEnrolledUsers] = useState(false);
   const [enrolledUsersLoaded, setEnrolledUsersLoaded] = useState(false);
   const [enrollmentSearch, setEnrollmentSearch] = useState("");
+
+  // ── Video player modal ──
+  const [playingVideo, setPlayingVideo] = useState<{
+    title: string;
+    muxPlaybackId: string | null;
+    videoUrl: string | null;
+  } | null>(null);
 
   const toggleSection = (sectionId: string) => {
     setCollapsedSections((prev) => {
@@ -593,10 +601,34 @@ export function ManageCourseClient({
                                 <div className="divide-y divide-border">
                                   {section.videos?.map((video, vIdx) => {
                                     const isProcessing = video.status === "PROCESSING";
+                                    const canPlay =
+                                      !isProcessing &&
+                                      Boolean(video.muxPlaybackId || video.videoUrl);
+                                    const openPlayer = () =>
+                                      setPlayingVideo({
+                                        title: video.title,
+                                        muxPlaybackId: video.muxPlaybackId,
+                                        videoUrl: video.videoUrl,
+                                      });
                                     return (
                                       <div
                                         key={video._id}
-                                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
+                                        role={canPlay ? "button" : undefined}
+                                        tabIndex={canPlay ? 0 : undefined}
+                                        onClick={canPlay ? openPlayer : undefined}
+                                        onKeyDown={
+                                          canPlay
+                                            ? (e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                  e.preventDefault();
+                                                  openPlayer();
+                                                }
+                                              }
+                                            : undefined
+                                        }
+                                        className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group ${
+                                          canPlay ? "cursor-pointer" : ""
+                                        }`}
                                       >
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground">
                                           {vIdx + 1}
@@ -625,7 +657,10 @@ export function ManageCourseClient({
                                           variant="ghost"
                                           size="icon"
                                           className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600"
-                                          onClick={() => handleDeleteVideo(video._id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void handleDeleteVideo(video._id);
+                                          }}
                                         >
                                           <Trash2Icon className="size-3.5" />
                                         </Button>
@@ -1059,6 +1094,48 @@ export function ManageCourseClient({
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video player modal */}
+      <Dialog
+        open={Boolean(playingVideo)}
+        onOpenChange={(open) => !open && setPlayingVideo(null)}
+      >
+        <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl overflow-hidden p-0">
+          <DialogHeader className="border-b border-border px-6 py-4">
+            <DialogTitle className="truncate pr-6">
+              {playingVideo?.title}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Video preview
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-black">
+            {playingVideo?.muxPlaybackId ? (
+              <MuxPlayer
+                playbackId={playingVideo.muxPlaybackId}
+                metadata={{ video_title: playingVideo.title }}
+                autoPlay
+                className="aspect-video w-full"
+                style={{ width: "100%", aspectRatio: "16/9" }}
+              />
+            ) : playingVideo?.videoUrl ? (
+              <video
+                key={playingVideo.videoUrl}
+                controls
+                autoPlay
+                preload="metadata"
+                className="aspect-video w-full"
+                src={playingVideo.videoUrl}
+              />
+            ) : (
+              <div className="flex aspect-video w-full items-center justify-center text-sm text-muted-foreground">
+                Video is currently processing…
               </div>
             )}
           </div>
