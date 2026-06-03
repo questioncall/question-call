@@ -15,7 +15,15 @@ import { postMultipartWithProgress } from "@/lib/client-upload";
 import { toast } from "sonner"; // Assuming sonner is used for toasts based on typical shadcn setup
 import { useRouter } from "next/navigation";
 
-export function TransactionModal({ planSlug }: { planSlug: string }) {
+export function TransactionModal({
+  planSlug,
+  triggerClassName,
+  triggerLabel = "I have paid",
+}: {
+  planSlug: string;
+  triggerClassName?: string;
+  triggerLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -24,7 +32,7 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const formElement = e.currentTarget;
       const formData = new FormData(formElement);
@@ -52,10 +60,12 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
         description: "Your transaction is pending manual verification.",
       });
       router.push("/subscription/payment/success");
-
     } catch (error: unknown) {
       toast.error("Submission Failed", {
-        description: error instanceof Error ? error.message : "Failed to submit transaction.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit transaction.",
       });
     } finally {
       setLoading(false);
@@ -66,23 +76,31 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          className="w-full h-14 rounded-full font-semibold text-base bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 shadow-md transition-all mt-8"
-        >
-          I have paid
-        </Button>
+        {triggerClassName ? (
+          <button type="button" className={triggerClassName}>
+            {triggerLabel}
+          </button>
+        ) : (
+          <Button className="w-full h-14 rounded-full font-semibold text-base bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 shadow-md transition-all mt-8">
+            {triggerLabel}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 rounded-3xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Submit Transaction</DialogTitle>
           <DialogDescription>
-            Please provide your transaction details so we can verify your payment manually.
+            Please provide your transaction details so we can verify your
+            payment manually.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
           <div className="space-y-2">
-            <label htmlFor="txId" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="txId"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Transaction ID <span className="text-red-500">*</span>
             </label>
             <input
@@ -95,7 +113,10 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="fullName" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="fullName"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Transactor Full Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -108,7 +129,10 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="screenshot" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="screenshot"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Screenshot (Optional)
             </label>
             <input
@@ -127,7 +151,11 @@ export function TransactionModal({ planSlug }: { planSlug: string }) {
             />
           ) : null}
 
-          <Button type="submit" disabled={loading} className="w-full h-12 rounded-full font-semibold">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 rounded-full font-semibold"
+          >
             {loading ? "Submitting..." : "Confirm Payment"}
           </Button>
         </form>

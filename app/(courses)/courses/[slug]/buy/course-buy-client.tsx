@@ -3,13 +3,11 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, TicketPercent } from "lucide-react";
+import { Check, CheckCircle2, CreditCard, TicketPercent } from "lucide-react";
 import { toast } from "sonner";
 
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { CheckoutShell } from "@/components/checkout/checkout-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { postMultipartWithProgress } from "@/lib/client-upload";
 import { consumeMobileReturn } from "@/components/payment/mobile-return-redirect";
 import type { CourseDetailData } from "@/lib/course-page-data";
@@ -39,17 +37,21 @@ export function CourseBuyClient({
 
   if (!course) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] flex items-center justify-center p-6">
-        <div className="rounded-3xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#2A2A2A] p-16 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            Course not found
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            This course may have been removed or is not available.
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/courses">Browse courses</Link>
-          </Button>
+      <div className="qc-checkout">
+        <div className="qc-shell">
+          <div className="qc-state">
+            <h1 className="qc-state-title">Course not found</h1>
+            <p className="qc-state-sub">
+              This course may have been removed or is not available.
+            </p>
+            <Link
+              href="/courses"
+              className="qc-submit"
+              style={{ marginTop: 22 }}
+            >
+              Browse courses
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -159,18 +161,26 @@ export function CourseBuyClient({
   // If already has access
   if (course.hasAccess) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-lg text-center max-w-md">
-          <CheckCircle2 className="mx-auto w-12 h-12 text-[#1B7258] dark:text-[#27A883] mb-4" />
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            You already have access!
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            This course is already unlocked for your account.
-          </p>
-          <Button asChild className="mt-6 w-full">
-            <Link href={continueHref}>Continue course</Link>
-          </Button>
+      <div className="qc-checkout">
+        <div className="qc-shell">
+          <div className="qc-state">
+            <CheckCircle2
+              className="mx-auto mb-4"
+              style={{ color: "var(--accent)" }}
+              size={44}
+            />
+            <h1 className="qc-state-title">You already have access!</h1>
+            <p className="qc-state-sub">
+              This course is already unlocked for your account.
+            </p>
+            <Link
+              href={continueHref}
+              className="qc-submit"
+              style={{ marginTop: 22 }}
+            >
+              Continue course
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -179,21 +189,20 @@ export function CourseBuyClient({
   // If not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#1C1C1C] flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-lg text-center max-w-md">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            Sign in to purchase
-          </h1>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            You need an account to buy this course.
-          </p>
-          <div className="mt-6 flex flex-col gap-3">
-            <Button asChild>
-              <Link href="/auth/signin">Sign in</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/auth/signup/student">Create account</Link>
-            </Button>
+      <div className="qc-checkout">
+        <div className="qc-shell">
+          <div className="qc-state">
+            <h1 className="qc-state-title">Sign in to purchase</h1>
+            <p className="qc-state-sub">
+              You need an account to buy this course.
+            </p>
+            <Link
+              href="/auth/signin"
+              className="qc-submit"
+              style={{ marginTop: 22 }}
+            >
+              Sign in
+            </Link>
           </div>
         </div>
       </div>
@@ -206,106 +215,103 @@ export function CourseBuyClient({
       backHref={`/courses/${course.slug}`}
       backLabel="Back to course"
       manualPayment={course.manualPayment}
-      instruction="Scan the QR code or manually transfer the amount to the eSewa number above. Save your transaction screenshot and ID to submit on the right."
-      confirmation="We will notify you via email as soon as your access is activated."
     >
-      {/* ── Right: Course Summary + Payment Form ── */}
-      <section className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-8 border border-neutral-200 dark:border-neutral-800 shadow-lg relative overflow-hidden">
-        {/* Accent glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#1B7258] opacity-[0.03] dark:opacity-10 rounded-full blur-3xl -mr-20 -mt-20" />
-
-        <h1 className="text-2xl font-bold mb-1 text-neutral-900 dark:text-white">
-          {course.title}
-        </h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
-          {course.subject} · {course.level}
-        </p>
-
-        {/* Price summary */}
-        <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-700/50 pt-6 mb-6 text-[14px]">
-          <div className="flex justify-between items-center text-neutral-600 dark:text-neutral-400">
-            <span>Course price</span>
-            <span>NPR {basePrice.toFixed(2)}</span>
-          </div>
-          {appliedCoupon && (
-            <div className="flex justify-between items-center text-[#1B7258] dark:text-[#27A883] font-medium">
-              <span>
-                Coupon discount ({appliedCoupon.discountPercentage}% off)
-              </span>
-              <span>- NPR {(basePrice - discountedPrice).toFixed(2)}</span>
+      {/* Order summary */}
+      <div className="qc-sec-label">Order summary</div>
+      <div className="qc-card qc-summary">
+        <div className="qc-course">
+          <div>
+            <div className="qc-course-title">{course.title}</div>
+            <div className="qc-course-sub">
+              {course.subject} · {course.level}
             </div>
-          )}
-          <div className="border-t border-neutral-100 dark:border-neutral-700/50 pt-4 mt-2 flex justify-between items-center font-bold text-lg text-neutral-900 dark:text-white">
-            <span>Due today</span>
-            <span>NPR {discountedPrice.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Pending purchase notice */}
-        {course.pendingPurchase && (
-          <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-800 dark:text-amber-300">
-            A payment proof for this course is already pending admin review.
+        <div className="qc-line">
+          <span>Course price</span>
+          <span>NPR {basePrice.toFixed(2)}</span>
+        </div>
+        {appliedCoupon ? (
+          <div className="qc-line qc-line-disc">
+            <span>Coupon ({appliedCoupon.discountPercentage}% off)</span>
+            <span>- NPR {(basePrice - discountedPrice).toFixed(2)}</span>
           </div>
-        )}
+        ) : null}
+        <div className="qc-due">
+          <span>Due today</span>
+          <strong>NPR {discountedPrice.toFixed(2)}</strong>
+        </div>
 
-        {/* Coupon section */}
-        <div className="mb-6 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/40 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">
-            <TicketPercent className="w-4 h-4 text-[#1B7258] dark:text-[#27A883]" />
+        {/* Coupon */}
+        <div className="qc-coupon">
+          <div className="qc-coupon-head">
+            <span className="qc-coupon-ic">
+              <TicketPercent size={18} />
+            </span>
             Have a coupon?
           </div>
           {!appliedCoupon ? (
-            <div className="flex gap-2">
-              <Input
+            <div className="qc-coupon-entry">
+              <input
+                className="qc-input qc-coupon-input"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                placeholder="Enter coupon code"
-                className="flex-1"
+                placeholder="Enter code"
                 disabled={isValidatingCoupon || isSubmitting}
               />
-              <Button
-                variant="outline"
+              <button
+                type="button"
+                className="qc-btn-ghost"
                 onClick={() => void handleCouponApply()}
                 disabled={isValidatingCoupon || isSubmitting}
               >
                 {isValidatingCoupon ? "Checking…" : "Apply"}
-              </Button>
+              </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-950/20 p-3 text-sm">
-              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-                <CheckCircle2 className="w-4 h-4" />
-                <span className="font-semibold">{appliedCoupon.code}</span>
-                <span>— {appliedCoupon.discountPercentage}% off applied</span>
+            <div className="qc-coupon-applied">
+              <span className="qc-coupon-badge">
+                <Check size={17} />
+              </span>
+              <div className="qc-coupon-info">
+                <span className="qc-coupon-code">{appliedCoupon.code}</span>
+                <span className="qc-coupon-desc">
+                  {appliedCoupon.discountPercentage}% off applied
+                </span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-emerald-700 dark:text-emerald-400"
+              <button
+                type="button"
+                className="qc-btn-ghost"
                 onClick={() => {
                   setAppliedCoupon(null);
                   setCouponCode("");
                 }}
               >
                 Remove
-              </Button>
+              </button>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Payment submission form */}
-        <form
-          onSubmit={(e) => void handlePaymentSubmit(e)}
-          className="space-y-4"
-        >
-          <div className="space-y-1">
-            <label
-              htmlFor="course-transaction-id"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
+      {/* Pending notice */}
+      {course.pendingPurchase ? (
+        <div className="qc-pending">
+          A payment proof for this course is already pending admin review.
+        </div>
+      ) : null}
+
+      {/* Payment details */}
+      <div className="qc-sec-label">Your payment details</div>
+      <div className="qc-card">
+        <form onSubmit={(e) => void handlePaymentSubmit(e)} className="qc-form">
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="course-transaction-id">
               eSewa Transaction ID
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="course-transaction-id"
               name="transactionId"
               required
@@ -314,14 +320,12 @@ export function CourseBuyClient({
             />
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="course-transactor-name"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
-              Transactor Full Name
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="course-transactor-name">
+              Transactor full name
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="course-transactor-name"
               name="transactorName"
               required
@@ -330,17 +334,13 @@ export function CourseBuyClient({
             />
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="course-screenshot"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
-              Payment screenshot{" "}
-              <span className="font-normal text-neutral-400">
-                (optional but recommended)
-              </span>
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="course-screenshot">
+              Payment screenshot
+              <span className="qc-field-hint">(optional but recommended)</span>
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="course-screenshot"
               name="screenshot"
               type="file"
@@ -356,17 +356,16 @@ export function CourseBuyClient({
             />
           )}
 
-          <Button
+          <button
             type="submit"
-            size="lg"
-            className="w-full bg-[#1B7258] hover:bg-[#155f48] dark:bg-[#27A883] dark:hover:bg-[#1B7258] text-white font-semibold shadow-md"
+            className="qc-submit"
             disabled={isSubmitting || course.pendingPurchase}
           >
-            <CreditCard className="w-4 h-4 mr-2" />
+            <CreditCard size={18} />
             {isSubmitting ? "Submitting…" : "Submit payment proof"}
-          </Button>
+          </button>
         </form>
-      </section>
+      </div>
     </CheckoutShell>
   );
 }

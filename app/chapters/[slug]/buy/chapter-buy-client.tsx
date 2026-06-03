@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,8 +9,7 @@ import { consumeMobileReturn } from "@/components/payment/mobile-return-redirect
 import { CheckoutShell } from "@/components/checkout/checkout-shell";
 import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
 import { postMultipartWithProgress } from "@/lib/client-upload";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 type Props = {
   chapter: ChapterDetailData;
@@ -67,52 +65,46 @@ export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
       backHref={`/chapters/${chapter.slug}`}
       backLabel="Back to chapter"
       manualPayment={chapter.manualPayment}
-      instruction="Scan the QR code or manually transfer the amount to the eSewa number above. Save your transaction screenshot and ID to submit on the right."
-      confirmation="We will notify you via email as soon as your access is activated."
     >
-      {/* ── Right: Chapter Summary + Payment Form ── */}
-      <section className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-8 border border-neutral-200 dark:border-neutral-800 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#1B7258] opacity-[0.03] dark:opacity-10 rounded-full blur-3xl -mr-20 -mt-20" />
-
-        <h1 className="text-2xl font-bold mb-1 text-neutral-900 dark:text-white">
-          {chapter.title}
-        </h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
-          {chapter.subject} · {chapter.level}
-        </p>
-
-        {/* Price summary */}
-        <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-700/50 pt-6 mb-6 text-[14px]">
-          <div className="flex justify-between items-center text-neutral-600 dark:text-neutral-400">
-            <span>Chapter price</span>
-            <span>NPR {price.toFixed(2)}</span>
-          </div>
-          <div className="border-t border-neutral-100 dark:border-neutral-700/50 pt-4 mt-2 flex justify-between items-center font-bold text-lg text-neutral-900 dark:text-white">
-            <span>Due today</span>
-            <span>NPR {price.toFixed(2)}</span>
+      {/* Order summary */}
+      <div className="qc-sec-label">Order summary</div>
+      <div className="qc-card qc-summary">
+        <div className="qc-course">
+          <div>
+            <div className="qc-course-title">{chapter.title}</div>
+            <div className="qc-course-sub">
+              {chapter.subject} · {chapter.level}
+            </div>
           </div>
         </div>
 
-        {/* Pending purchase notice */}
-        {chapter.pendingPurchase && (
-          <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-800 dark:text-amber-300">
-            A payment proof for this chapter is already pending admin review.
-          </div>
-        )}
+        <div className="qc-line">
+          <span>Chapter price</span>
+          <span>NPR {price.toFixed(2)}</span>
+        </div>
+        <div className="qc-due">
+          <span>Due today</span>
+          <strong>NPR {price.toFixed(2)}</strong>
+        </div>
+      </div>
 
-        {/* Payment submission form */}
-        <form
-          onSubmit={(e) => void handlePaymentSubmit(e)}
-          className="space-y-4"
-        >
-          <div className="space-y-1">
-            <label
-              htmlFor="chapter-transaction-id"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
+      {/* Pending notice */}
+      {chapter.pendingPurchase ? (
+        <div className="qc-pending">
+          A payment proof for this chapter is already pending admin review.
+        </div>
+      ) : null}
+
+      {/* Payment details */}
+      <div className="qc-sec-label">Your payment details</div>
+      <div className="qc-card">
+        <form onSubmit={(e) => void handlePaymentSubmit(e)} className="qc-form">
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="chapter-transaction-id">
               eSewa Transaction ID
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="chapter-transaction-id"
               name="transactionId"
               required
@@ -121,14 +113,12 @@ export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
             />
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="chapter-transactor-name"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
-              Transactor Full Name
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="chapter-transactor-name">
+              Transactor full name
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="chapter-transactor-name"
               name="transactorName"
               required
@@ -137,17 +127,13 @@ export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
             />
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="chapter-screenshot"
-              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
-            >
-              Payment screenshot{" "}
-              <span className="font-normal text-neutral-400">
-                (optional but recommended)
-              </span>
+          <div className="qc-field">
+            <label className="qc-field-label" htmlFor="chapter-screenshot">
+              Payment screenshot
+              <span className="qc-field-hint">(optional but recommended)</span>
             </label>
-            <Input
+            <input
+              className="qc-input"
               id="chapter-screenshot"
               name="screenshot"
               type="file"
@@ -163,17 +149,16 @@ export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
             />
           )}
 
-          <Button
+          <button
             type="submit"
-            size="lg"
-            className="w-full bg-[#1B7258] hover:bg-[#155f48] dark:bg-[#27A883] dark:hover:bg-[#1B7258] text-white font-semibold shadow-md"
+            className="qc-submit"
             disabled={isSubmitting || chapter.pendingPurchase}
           >
-            <CreditCard className="w-4 h-4 mr-2" />
+            <CreditCard size={18} />
             {isSubmitting ? "Submitting…" : "Submit payment proof"}
-          </Button>
+          </button>
         </form>
-      </section>
+      </div>
     </CheckoutShell>
   );
 }

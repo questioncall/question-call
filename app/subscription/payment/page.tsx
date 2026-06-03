@@ -40,92 +40,124 @@ export default async function PaymentPage({
   const plan =
     hydratedPlans.find((p) => p.slug === planSlug) || hydratedPlans[1];
 
+  const subscriptionValue =
+    plan.originalPrice && plan.price < plan.originalPrice
+      ? plan.originalPrice
+      : plan.price;
+  const hasDiscount = Boolean(
+    plan.originalPrice && plan.price < plan.originalPrice,
+  );
+
   return (
     <CheckoutShell
       checkoutMode={isCheckout}
       backHref="/subscription"
       backLabel="Configure your plan"
       manualPayment={manualPayment}
-      instruction="Please scan the QR code above or manually transfer the total due amount to the eSewa number provided. Save your transaction screenshot and ID to submit on the right."
-      confirmation="Check your inbox! We will notify you via email as soon as your plan is activated."
+      instruction="Scan the QR code or transfer the total due amount to the eSewa number above, then confirm your transaction below."
+      confirmation="We'll email you the moment your plan is activated."
     >
-      {/* Right Side: Plan Summary */}
-      <section className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-8 border border-neutral-200 dark:border-neutral-800 shadow-lg relative overflow-hidden">
-        {/* subtle accent glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#1B7258] opacity-[0.03] dark:opacity-10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+      {/* Plan summary */}
+      <div className="qc-sec-label">Plan summary</div>
+      <div className="qc-card qc-summary">
+        <div className="qc-course">
+          <div>
+            <div className="qc-course-title">{plan.name}</div>
+            <div className="qc-course-sub">Question Call membership</div>
+          </div>
+        </div>
 
-        <h1 className="text-2xl font-bold mb-6 text-neutral-900 dark:text-white">
-          {plan.name}
-        </h1>
-
-        <h4 className="text-sm font-semibold text-neutral-500 mb-4 uppercase tracking-wider">
-          Top features
-        </h4>
-        <ul className="space-y-4 mb-10">
+        <ul
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 11,
+            margin: "15px 0 4px",
+          }}
+        >
           {plan.features.map((feature, i) => (
             <li
               key={i}
-              className="flex gap-3 text-[14px] text-neutral-700 dark:text-neutral-300"
+              style={{
+                display: "flex",
+                gap: 10,
+                fontSize: 13.5,
+                color: "var(--text-2)",
+                lineHeight: 1.4,
+              }}
             >
-              <CheckCircle2 className="w-5 h-5 text-[#1B7258] dark:text-[#27A883] shrink-0" />
+              <CheckCircle2
+                size={17}
+                style={{
+                  color: "var(--accent)",
+                  flex: "0 0 auto",
+                  marginTop: 1,
+                }}
+              />
               <span>{feature}</span>
             </li>
           ))}
         </ul>
 
-        <div className="flex flex-col gap-4 border-t border-neutral-100 dark:border-neutral-700/50 pt-6 mb-8 text-[14px]">
-          <div className="flex justify-between items-center text-neutral-600 dark:text-neutral-400">
-            <span>Subscription value</span>
-            <span>
-              NPR{" "}
-              {(plan.originalPrice && plan.price < plan.originalPrice
-                ? plan.originalPrice
-                : plan.price
-              ).toFixed(2)}
-            </span>
+        <div className="qc-line" style={{ marginTop: 8 }}>
+          <span>Subscription value</span>
+          <span>NPR {subscriptionValue.toFixed(2)}</span>
+        </div>
+        {hasDiscount ? (
+          <div className="qc-line qc-line-disc">
+            <span>Discount applied</span>
+            <span>- NPR {(plan.originalPrice! - plan.price).toFixed(2)}</span>
           </div>
-          {plan.originalPrice && plan.price < plan.originalPrice && (
-            <div className="flex justify-between items-center text-[#1B7258] dark:text-[#27A883] font-medium">
-              <span>Discount applied</span>
-              <span>- NPR {(plan.originalPrice - plan.price).toFixed(2)}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center text-neutral-600 dark:text-neutral-400">
-            <span>Estimated tax</span>
-            <span>NPR {plan.tax.toFixed(2)}</span>
-          </div>
-          <div className="border-t border-neutral-100 dark:border-neutral-700/50 pt-4 mt-2 flex justify-between items-center font-bold text-lg text-neutral-900 dark:text-white">
-            <span>Due today</span>
-            <span>NPR {(plan.price + plan.tax).toFixed(2)}</span>
-          </div>
+        ) : null}
+        <div className="qc-line">
+          <span>Estimated tax</span>
+          <span>NPR {plan.tax.toFixed(2)}</span>
+        </div>
+        <div className="qc-due">
+          <span>Due today</span>
+          <strong>NPR {(plan.price + plan.tax).toFixed(2)}</strong>
+        </div>
+      </div>
+
+      {/* Confirm payment */}
+      <div className="qc-sec-label">Confirm your payment</div>
+      <div className="qc-card">
+        <TransactionModal
+          planSlug={plan.slug}
+          triggerClassName="qc-submit"
+          triggerLabel="I have paid — submit details"
+        />
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            margin: "16px 0",
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--text-3)",
+          }}
+        >
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          or auto payment
+          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
-        <div className="flex flex-col gap-4 mt-6">
-          <TransactionModal planSlug={plan.slug} />
-
-          <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700"></div>
-            <span className="flex-shrink-0 mx-4 text-neutral-400 dark:text-neutral-500 text-xs font-medium uppercase tracking-wider">
-              or auto payment
-            </span>
-            <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700"></div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <EsewaPayButton
-              planSlug={plan.slug}
-              amount={plan.price + plan.tax}
-            />
-            <p className="text-[11px] text-center text-neutral-500 font-medium">
-              Note: eSewa is currently in{" "}
-              <span className="text-[#1B7258] dark:text-[#27A883]">
-                sandbox mode
-              </span>
-              . Not for real use right now.
-            </p>
-          </div>
-        </div>
-      </section>
+        <EsewaPayButton planSlug={plan.slug} amount={plan.price + plan.tax} />
+        <p
+          style={{
+            fontSize: 11,
+            textAlign: "center",
+            color: "var(--text-3)",
+            marginTop: 8,
+          }}
+        >
+          eSewa auto-pay is currently in sandbox mode — not for real use yet.
+        </p>
+      </div>
     </CheckoutShell>
   );
 }
