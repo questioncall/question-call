@@ -9,6 +9,7 @@ import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { pusherServer } from "@/lib/pusher/pusherServer";
 import { ADMIN_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getMasterAdminEmails } from "@/lib/user-directory";
+import { notifyUser } from "@/lib/notifications/notify-user";
 
 cloudinary.config({
   secure: true,
@@ -31,7 +32,10 @@ export async function POST(req: NextRequest) {
     const isCourseMode = !!courseId;
 
     if (!transactionId || !transactorName || (!planSlug && !courseId)) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     await connectToDatabase();
@@ -39,17 +43,30 @@ export async function POST(req: NextRequest) {
     let totalAmount: number;
     let transactionType: "SUBSCRIPTION_MANUAL" | "COURSE_PURCHASE";
     let courseMeta: Record<string, unknown> | undefined;
+    // For the user-facing "payment submitted" notification + push.
+    let notifyLabel = "";
+    let notifyHref = "/subscription";
 
     if (isCourseMode) {
-      const course = await Course.findById(courseId).select("_id title price pricingModel instructorId status").lean();
+      const course = await Course.findById(courseId)
+        .select("_id title price pricingModel instructorId status")
+        .lean();
       if (!course || course.status !== "ACTIVE") {
-        return NextResponse.json({ error: "Course not found." }, { status: 404 });
+        return NextResponse.json(
+          { error: "Course not found." },
+          { status: 404 },
+        );
       }
       if (course.pricingModel !== "PAID") {
-        return NextResponse.json({ error: "This course does not require payment." }, { status: 400 });
+        return NextResponse.json(
+          { error: "This course does not require payment." },
+          { status: 400 },
+        );
       }
       totalAmount = typeof course.price === "number" ? course.price : 0;
       transactionType = "COURSE_PURCHASE";
+      notifyLabel = `"${course.title}"`;
+      notifyHref = "/courses/my";
       courseMeta = {
         courseId: course._id.toString(),
         courseName: course.title,
@@ -64,43 +81,62 @@ export async function POST(req: NextRequest) {
       const hydratedPlans = getHydratedPlans(config);
       const plan = hydratedPlans.find((p) => p.slug === planSlug);
       if (!plan) {
-        return NextResponse.json({ error: "Invalid subscription plan" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid subscription plan" },
+          { status: 400 },
+        );
       }
       totalAmount = plan.price + plan.tax;
       transactionType = "SUBSCRIPTION_MANUAL";
+      notifyLabel = `the ${plan.name} plan`;
+      notifyHref = "/subscription";
     }
 
     // 1. Rule -> Completed Check
-    const existingCompleted = await Transaction.findOne({ transactionId, status: "COMPLETED" });
+    const existingCompleted = await Transaction.findOne({
+      transactionId,
+      status: "COMPLETED",
+    });
     if (existingCompleted) {
       return NextResponse.json(
-        { error: "This transaction ID has already been verified and processed." },
-        { status: 409 } // Conflict
+        {
+          error: "This transaction ID has already been verified and processed.",
+        },
+        { status: 409 }, // Conflict
       );
     }
 
     // Process file upload if provided
     let screenshotUrl = undefined;
-    // Check both if file exists and if it has actual data 
+    // Check both if file exists and if it has actual data
     // (formData sometimes passes empty files of 0 bytes if input is left blank)
     if (file && file.size > 0) {
-      if (!process.env.CLOUDINARY_URL && (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET)) {
-        return NextResponse.json({ error: "Server missing Cloudinary credentials." }, { status: 500 });
+      if (
+        !process.env.CLOUDINARY_URL &&
+        (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET)
+      ) {
+        return NextResponse.json(
+          { error: "Server missing Cloudinary credentials." },
+          { status: 500 },
+        );
       }
 
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      const uploadResult: any = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: "eduask_payments", resource_type: "auto" },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(buffer);
-      });
+      const uploadResult = await new Promise<{ secure_url: string }>(
+        (resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "eduask_payments", resource_type: "auto" },
+            (error, result) => {
+              if (error || !result?.secure_url)
+                reject(error || new Error("Upload failed."));
+              else resolve(result as { secure_url: string });
+            },
+          );
+          uploadStream.end(buffer);
+        },
+      );
       screenshotUrl = uploadResult.secure_url;
     }
 
@@ -108,7 +144,7 @@ export async function POST(req: NextRequest) {
     const existingPendingAccount = await Transaction.findOne({
       transactionId,
       userId: authenticatedUser.id,
-      status: "PENDING"
+      status: "PENDING",
     });
 
     if (existingPendingAccount) {
@@ -120,7 +156,9 @@ export async function POST(req: NextRequest) {
 
       const masterEmails = await getMasterAdminEmails();
       if (masterEmails.length > 0) {
-        const updateSubject = isCourseMode ? "Manual Course Payment Updated" : "Manual Subscription Updated";
+        const updateSubject = isCourseMode
+          ? "Manual Course Payment Updated"
+          : "Manual Subscription Updated";
         const updateBody = isCourseMode
           ? `A user has submitted an update for a pending manual course payment for "${courseMeta?.courseName ?? courseId}".`
           : `A user has submitted an update for an existing pending manual subscription for plan "${planSlug}".`;
@@ -130,13 +168,23 @@ export async function POST(req: NextRequest) {
           updateBody,
           existingPendingAccount._id.toString(),
           `NPR ${totalAmount}`,
-          authenticatedUser.email ?? "Unknown"
+          authenticatedUser.email ?? "Unknown",
         ).catch(console.error);
       }
 
+      await notifyUser({
+        userId: authenticatedUser.id,
+        type: "PAYMENT",
+        message: `Your updated payment for ${notifyLabel} was received and is pending review. We'll notify you once it's approved.`,
+        href: notifyHref,
+      });
+
       return NextResponse.json(
-        { message: "Transaction updated successfully. We will verify it shortly." },
-        { status: 200 }
+        {
+          message:
+            "Transaction updated successfully. We will verify it shortly.",
+        },
+        { status: 200 },
       );
     }
 
@@ -155,17 +203,23 @@ export async function POST(req: NextRequest) {
 
     // Notify admins via Pusher for real-time count update
     if (pusherServer) {
-      await pusherServer.trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
-        transactionId,
-        ...(isCourseMode ? { courseId, courseName: courseMeta?.courseName } : { planName: planSlug }),
-        amount: totalAmount,
-        userId: authenticatedUser.id,
-      }).catch(console.error);
+      await pusherServer
+        .trigger(ADMIN_UPDATES_CHANNEL, "admin:manual-payment-submitted", {
+          transactionId,
+          ...(isCourseMode
+            ? { courseId, courseName: courseMeta?.courseName }
+            : { planName: planSlug }),
+          amount: totalAmount,
+          userId: authenticatedUser.id,
+        })
+        .catch(console.error);
     }
 
     const masterEmailsNew = await getMasterAdminEmails();
     if (masterEmailsNew.length > 0) {
-      const newSubject = isCourseMode ? "New Manual Course Payment Initiated" : "New Manual Subscription Initiated";
+      const newSubject = isCourseMode
+        ? "New Manual Course Payment Initiated"
+        : "New Manual Subscription Initiated";
       const newBody = isCourseMode
         ? `A user has initiated a manual payment for course "${courseMeta?.courseName ?? courseId}".`
         : `A user has initiated a manual payment for subscription plan "${planSlug}".`;
@@ -175,20 +229,31 @@ export async function POST(req: NextRequest) {
         newBody,
         transactionId,
         `NPR ${totalAmount}`,
-        authenticatedUser.email ?? "Unknown"
+        authenticatedUser.email ?? "Unknown",
       ).catch(console.error);
     }
 
-    return NextResponse.json(
-      { message: "Transaction submitted successfully. We will verify it shortly." },
-      { status: 201 }
-    );
+    await notifyUser({
+      userId: authenticatedUser.id,
+      type: "PAYMENT",
+      message: `Your payment for ${notifyLabel} was submitted and is pending review. We'll notify you once it's approved.`,
+      href: notifyHref,
+    });
 
-  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message:
+          "Transaction submitted successfully. We will verify it shortly.",
+      },
+      { status: 201 },
+    );
+  } catch (error) {
     console.error("Manual payment error:", error);
     return NextResponse.json(
-      { error: error?.message || "Internal Server Error" },
-      { status: 500 }
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      },
+      { status: 500 },
     );
   }
 }

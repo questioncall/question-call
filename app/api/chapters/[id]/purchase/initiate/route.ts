@@ -13,6 +13,7 @@ import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { getMasterAdminEmails } from "@/lib/user-directory";
+import { notifyUser } from "@/lib/notifications/notify-user";
 
 cloudinary.config({ secure: true });
 
@@ -66,7 +67,10 @@ export async function POST(
 
     const { id } = await params;
     if (!Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid chapter id." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid chapter id." },
+        { status: 400 },
+      );
     }
 
     const formData = await request.formData();
@@ -94,10 +98,17 @@ export async function POST(
       .lean();
 
     if (!chapter || chapter.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Chapter not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Chapter not found." },
+        { status: 404 },
+      );
     }
 
-    if (chapter.pricingModel !== "PAID" || !chapter.price || chapter.price <= 0) {
+    if (
+      chapter.pricingModel !== "PAID" ||
+      !chapter.price ||
+      chapter.price <= 0
+    ) {
       return NextResponse.json(
         { error: "Only paid chapters can be purchased through this route." },
         { status: 400 },
@@ -105,7 +116,9 @@ export async function POST(
     }
 
     const instructorIdString = String(chapter.instructorId);
-    const instructor = await User.findById(instructorIdString).select("role").lean();
+    const instructor = await User.findById(instructorIdString)
+      .select("role")
+      .lean();
     const isAdminChapter = instructor?.role === "ADMIN";
 
     const existingEnrollment = await ChapterEnrollment.findOne({
@@ -117,7 +130,10 @@ export async function POST(
 
     if (existingEnrollment) {
       return NextResponse.json(
-        { error: "CHAPTER_ALREADY_UNLOCKED", accessType: existingEnrollment.accessType },
+        {
+          error: "CHAPTER_ALREADY_UNLOCKED",
+          accessType: existingEnrollment.accessType,
+        },
         { status: 400 },
       );
     }
@@ -131,7 +147,9 @@ export async function POST(
 
     if (existingCompleted) {
       return NextResponse.json(
-        { error: "This transaction ID has already been verified and processed." },
+        {
+          error: "This transaction ID has already been verified and processed.",
+        },
         { status: 409 },
       );
     }
@@ -146,7 +164,9 @@ export async function POST(
     const commissionPercent = isAdminChapter
       ? 0
       : roundCurrency(config.coursePurchaseCommissionPercent ?? 0);
-    const netAmount = roundCurrency(grossAmount * (1 - commissionPercent / 100));
+    const netAmount = roundCurrency(
+      grossAmount * (1 - commissionPercent / 100),
+    );
 
     const baseMetadata = {
       chapterId: chapter._id.toString(),
@@ -160,15 +180,15 @@ export async function POST(
 
     const existingPending = await Transaction.findOne({
       transactionId,
-        userId: authenticatedUser.id,
+      userId: authenticatedUser.id,
       type: "CHAPTER_PURCHASE",
       status: "PENDING",
     });
 
     if (existingPending) {
       const existingChapterId = String(
-        (existingPending.metadata as Record<string, unknown> | undefined)?.chapterId ??
-          "",
+        (existingPending.metadata as Record<string, unknown> | undefined)
+          ?.chapterId ?? "",
       );
 
       if (existingChapterId && existingChapterId !== id) {
@@ -208,9 +228,17 @@ export async function POST(
           .catch(console.error);
       }
 
+      await notifyUser({
+        userId: authenticatedUser.id,
+        type: "PAYMENT",
+        message: `Your updated payment for "${chapter.title}" was received and is pending review. We'll notify you once it's approved.`,
+        href: "/chapters/my",
+      });
+
       return NextResponse.json(
         {
-          message: "Chapter payment updated successfully. We will verify it shortly.",
+          message:
+            "Chapter payment updated successfully. We will verify it shortly.",
           transactionId: existingPending._id.toString(),
         },
         { status: 200 },
@@ -254,9 +282,17 @@ export async function POST(
         .catch(console.error);
     }
 
+    await notifyUser({
+      userId: authenticatedUser.id,
+      type: "PAYMENT",
+      message: `Your payment for "${chapter.title}" was submitted and is pending review. We'll notify you once it's approved.`,
+      href: "/chapters/my",
+    });
+
     return NextResponse.json(
       {
-        message: "Chapter payment submitted successfully. We will verify it shortly.",
+        message:
+          "Chapter payment submitted successfully. We will verify it shortly.",
         transactionId: createdTransaction._id.toString(),
       },
       { status: 201 },
@@ -266,7 +302,9 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to initiate chapter purchase.",
+          error instanceof Error
+            ? error.message
+            : "Failed to initiate chapter purchase.",
       },
       { status: 500 },
     );

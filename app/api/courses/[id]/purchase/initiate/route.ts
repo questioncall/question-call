@@ -13,6 +13,7 @@ import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { getMasterAdminEmails } from "@/lib/user-directory";
+import { notifyUser } from "@/lib/notifications/notify-user";
 
 cloudinary.config({
   secure: true,
@@ -73,7 +74,10 @@ export async function POST(
 
     const { id } = await params;
     if (!Types.ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid course id." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid course id." },
+        { status: 400 },
+      );
     }
 
     const formData = await request.formData();
@@ -104,12 +108,20 @@ export async function POST(
       .select("_id title instructorId pricingModel price status")
       .lean();
 
-    const originalInstructorId = (course as unknown as { instructorId: { _id?: unknown } | unknown }).instructorId;
-    const instructorIdString = typeof originalInstructorId === 'object' && originalInstructorId !== null
-      ? String((originalInstructorId as { _id?: unknown })._id || originalInstructorId)
-      : String(originalInstructorId);
+    const originalInstructorId = (
+      course as unknown as { instructorId: { _id?: unknown } | unknown }
+    ).instructorId;
+    const instructorIdString =
+      typeof originalInstructorId === "object" && originalInstructorId !== null
+        ? String(
+            (originalInstructorId as { _id?: unknown })._id ||
+              originalInstructorId,
+          )
+        : String(originalInstructorId);
 
-    const instructor = await User.findById(instructorIdString).select("role").lean();
+    const instructor = await User.findById(instructorIdString)
+      .select("role")
+      .lean();
     const isAdminCourse = instructor?.role === "ADMIN";
 
     if (!course || course.status !== "ACTIVE") {
@@ -199,9 +211,11 @@ export async function POST(
           { status: 409 },
         );
       }
-      
+
       const CourseCouponModel = (await import("@/models/CourseCoupon")).default;
-      const couponDoc = await CourseCouponModel.findById(validation.couponId).lean();
+      const couponDoc = await CourseCouponModel.findById(
+        validation.couponId,
+      ).lean();
 
       // Also count pending transactions using this coupon towards the usage limit
       if (couponDoc?.usageLimit) {
@@ -214,20 +228,25 @@ export async function POST(
         const totalUsed = (couponDoc.usedCount ?? 0) + pendingCouponUsageCount;
         if (totalUsed >= couponDoc.usageLimit) {
           return NextResponse.json(
-            { error: "This coupon has reached its usage limit (including pending payments)." },
+            {
+              error:
+                "This coupon has reached its usage limit (including pending payments).",
+            },
             { status: 400 },
           );
         }
       }
 
       appliedDiscountPercentage = couponDoc?.discountPercentage || 0;
-      grossAmount = roundCurrency(grossAmount * (1 - appliedDiscountPercentage / 100));
+      grossAmount = roundCurrency(
+        grossAmount * (1 - appliedDiscountPercentage / 100),
+      );
     }
 
     const config = await getPlatformConfig();
 
-    const commissionPercent = isAdminCourse 
-      ? 0 
+    const commissionPercent = isAdminCourse
+      ? 0
       : roundCurrency(config.coursePurchaseCommissionPercent ?? 0);
     const netAmount = roundCurrency(
       grossAmount * (1 - commissionPercent / 100),
@@ -242,8 +261,8 @@ export async function POST(
 
     if (existingPending) {
       const existingCourseId = String(
-        (existingPending.metadata as Record<string, unknown> | undefined)?.courseId ??
-          "",
+        (existingPending.metadata as Record<string, unknown> | undefined)
+          ?.courseId ?? "",
       );
 
       if (existingCourseId && existingCourseId !== id) {
@@ -292,7 +311,7 @@ export async function POST(
           `A student has submitted an update (new screenshot/reference) for an existing pending manual payment for the course "${course.title}".${screenshotUrl ? ` Receipt: ${screenshotUrl}` : ""}`,
           existingPending.transactionId || transactionId,
           `NPR ${grossAmount}`,
-          session.user.email ?? "Unknown"
+          session.user.email ?? "Unknown",
         ).catch(console.error);
       }
 
@@ -306,6 +325,13 @@ export async function POST(
           })
           .catch(console.error);
       }
+
+      await notifyUser({
+        userId: session.user.id,
+        type: "PAYMENT",
+        message: `Your updated payment for "${course.title}" was received and is pending review. We'll notify you once it's approved.`,
+        href: "/courses/my",
+      });
 
       return NextResponse.json(
         {
@@ -351,7 +377,7 @@ export async function POST(
         `A student has initiated a manual payment for the course "${course.title}".${screenshotUrl ? ` Receipt: ${screenshotUrl}` : ""}`,
         createdTransaction.transactionId || transactionId,
         `NPR ${grossAmount}`,
-        session.user.email ?? "Unknown"
+        session.user.email ?? "Unknown",
       ).catch(console.error);
     }
 
@@ -366,13 +392,20 @@ export async function POST(
         .catch(console.error);
     }
 
+    await notifyUser({
+      userId: session.user.id,
+      type: "PAYMENT",
+      message: `Your payment for "${course.title}" was submitted and is pending review. We'll notify you once it's approved.`,
+      href: "/courses/my",
+    });
+
     return NextResponse.json(
       {
         message:
           "Course payment submitted successfully. We will verify it shortly.",
         transactionId: createdTransaction._id.toString(),
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("[POST /api/courses/:id/purchase/initiate]", error);
