@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import * as UpChunk from "@mux/upchunk";
 import { format } from "date-fns";
 import {
   BellIcon,
@@ -40,7 +41,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { NoticeVideo } from "@/components/shared/notice-video";
 import { cn } from "@/lib/utils";
 
 type Notice = {
@@ -100,6 +103,147 @@ function getViewerInitials(viewer: Pick<NoticeViewer, "name" | "email">) {
     .join("");
 }
 
+// Upload an image to Cloudinary via /api/upload using XHR so we can report
+// real upload progress. Parses the response defensively — on a too-large
+// payload an upstream proxy may return a non-JSON body, and we must never
+// surface a raw "Unexpected token … is not valid JSON" error to the admin.
+async function uploadImageToCloudinary(
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const { status, body } = await new Promise<{ status: number; body: string }>(
+    (resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/upload");
+      xhr.withCredentials = true;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.onabort = () => reject(new Error("Upload was cancelled"));
+
+      xhr.send(formData);
+    },
+  );
+
+  let data: { secure_url?: string; error?: string } | null = null;
+  try {
+    data = body ? JSON.parse(body) : null;
+  } catch {
+    data = null;
+  }
+
+  if (status < 200 || status >= 300) {
+    if (status === 413 || !data) {
+      throw new Error(
+        "Upload failed — the image may be too large. Try a smaller file.",
+      );
+    }
+    throw new Error(data.error || "Upload failed");
+  }
+
+  const url = data?.secure_url;
+  if (!url) {
+    throw new Error("Upload did not return a URL");
+  }
+  return url;
+}
+
+// Upload a video to Mux: ask our admin endpoint for a direct-upload URL, push
+// the file straight to Mux with UpChunk (resumable + progress), then poll
+// until the asset is ready and return its HLS playback URL.
+async function uploadVideoToMux(
+  file: File,
+  callbacks: {
+    onProgress: (pct: number) => void;
+    onProcessing: () => void;
+  },
+): Promise<string> {
+  const signRes = await fetch("/api/admin/notices/upload-video", {
+    method: "POST",
+  });
+
+  if (!signRes.ok) {
+    const data = (await signRes.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || "Failed to prepare video upload.");
+  }
+
+  const { uploadUrl, uploadId } = (await signRes.json()) as {
+    uploadUrl: string;
+    uploadId: string;
+  };
+
+  await new Promise<void>((resolve, reject) => {
+    const upload = UpChunk.createUpload({
+      endpoint: uploadUrl,
+      file,
+      // 30 MB chunks — resilient for large (multi-GB) uploads.
+      chunkSize: 30720,
+    });
+
+    upload.on("progress", (event) => {
+      onProgressClamp(callbacks.onProgress, event.detail as number);
+    });
+    upload.on("success", () => resolve());
+    upload.on("error", (event) => {
+      const detail = event.detail as { message?: string } | undefined;
+      reject(new Error(detail?.message || "Video upload failed."));
+    });
+  });
+
+  callbacks.onProcessing();
+  return pollMuxPlaybackUrl(uploadId);
+}
+
+function onProgressClamp(onProgress: (pct: number) => void, value: number) {
+  onProgress(Math.max(0, Math.min(100, Math.round(value))));
+}
+
+async function pollMuxPlaybackUrl(
+  uploadId: string,
+  maxAttempts = 180,
+): Promise<string> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise((r) => setTimeout(r, attempt < 5 ? 2000 : 5000));
+
+    try {
+      const res = await fetch(
+        `/api/admin/notices/upload-video/${uploadId}/status`,
+      );
+      const data = (await res.json()) as {
+        status?: string;
+        playbackUrl?: string | null;
+      };
+
+      if (data.status === "ready" && data.playbackUrl) {
+        return data.playbackUrl;
+      }
+
+      if (data.status === "errored") {
+        throw new Error("Video processing failed on the server.");
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message === "Video processing failed on the server."
+      ) {
+        throw err;
+      }
+      // Transient network error — keep polling.
+    }
+  }
+
+  throw new Error("Video processing timed out. Please try again.");
+}
+
 export function NoticeClient() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,6 +266,10 @@ export function NoticeClient() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  // "uploading" = bytes leaving the browser; "processing" = Mux is encoding the
+  // asset (we're polling for the playback URL).
+  const [uploadPhase, setUploadPhase] = useState<"uploading" | "processing">("uploading");
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,33 +285,32 @@ export function NoticeClient() {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
+    setUploadPhase("uploading");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Upload failed");
-      }
-
-      const url: string | undefined = data?.secure_url;
-      if (!url) {
-        throw new Error("Upload did not return a URL");
-      }
-
-      // Cloudinary reports the true kind via resource_type; fall back to the
-      // browser-reported mime type.
-      if (data.resource_type === "video" || isVideo) {
+      if (isVideo) {
+        // Videos → Mux direct upload. The file streams straight from the
+        // browser to Mux (resumable, chunked via UpChunk), so there's no
+        // serverless body-size limit — multi-GB notice videos work fine.
+        const url = await uploadVideoToMux(file, {
+          onProgress: setUploadProgress,
+          onProcessing: () => setUploadPhase("processing"),
+        });
         setVideoUrl(url);
+        // A fresh video replaces any previously attached image and vice versa
+        // is handled below; keep both possible since a notice may carry both.
+        toast.success("Video attached");
       } else {
+        const url = await uploadImageToCloudinary(file, setUploadProgress);
         setImageUrl(url);
+        toast.success("Image attached");
       }
-      toast.success("Media attached");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload media");
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
+      setUploadPhase("uploading");
     }
   };
 
@@ -325,7 +472,7 @@ export function NoticeClient() {
                 Create Notice
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[95vh] max-w-3xl overflow-y-auto">
+            <DialogContent className="max-h-[95vh] w-[95vw] max-w-5xl overflow-y-auto">
               <form onSubmit={handleCreate}>
                 <DialogHeader>
                   <DialogTitle>Create New Notice</DialogTitle>
@@ -382,16 +529,12 @@ export function NoticeClient() {
                     ) : null}
                     {videoUrl ? (
                       <div className="relative overflow-hidden rounded-xl border border-border/70 bg-black">
-                        <video
-                          src={videoUrl}
-                          controls
-                          className="max-h-64 w-full"
-                        />
+                        <NoticeVideo src={videoUrl} className="max-h-64 w-full" />
                         <Button
                           type="button"
                           variant="secondary"
                           size="icon"
-                          className="absolute right-2 top-2 h-8 w-8"
+                          className="absolute right-2 top-2 h-8 w-8 z-10"
                           onClick={() => setVideoUrl(null)}
                         >
                           <XIcon className="h-4 w-4" />
@@ -422,7 +565,7 @@ export function NoticeClient() {
                           />
                         </label>
                       </Button>
-                      {!imageUrl && !videoUrl ? (
+                      {!imageUrl && !videoUrl && !isUploading ? (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <ImageIcon className="h-3.5 w-3.5" />
                           <VideoIcon className="h-3.5 w-3.5" />
@@ -430,6 +573,19 @@ export function NoticeClient() {
                         </span>
                       ) : null}
                     </div>
+                    {isUploading ? (
+                      <div className="space-y-1.5">
+                        <Progress
+                          value={uploadPhase === "processing" ? 100 : uploadProgress}
+                          className="h-2"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {uploadPhase === "processing"
+                            ? "Processing video on Mux… this can take a moment for large files."
+                            : `Uploading… ${uploadProgress}%`}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -621,7 +777,7 @@ export function NoticeClient() {
 
                     {notice.videoUrl ? (
                       <div className="overflow-hidden rounded-xl border border-border/70 bg-black">
-                        <video src={notice.videoUrl} controls className="max-h-72 w-full" />
+                        <NoticeVideo src={notice.videoUrl} className="max-h-72 w-full" />
                       </div>
                     ) : null}
 

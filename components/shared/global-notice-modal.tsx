@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { MegaphoneIcon, PartyPopperIcon, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { NoticeVideo } from "@/components/shared/notice-video";
+
 type Notice = {
   _id: string;
   title: string;
@@ -148,10 +150,8 @@ export function GlobalNoticeModal() {
 
         {currentNotice.videoUrl ? (
           <div className="overflow-hidden rounded-lg border border-border bg-black">
-            <video
+            <NoticeVideo
               src={currentNotice.videoUrl}
-              controls
-              playsInline
               className="max-h-64 w-full"
             />
           </div>
