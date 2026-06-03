@@ -30,3 +30,18 @@ export function isCheckoutHostClient(): boolean {
   if (typeof window === "undefined") return false;
   return isCheckoutHostname(window.location.hostname);
 }
+
+export type CheckoutTheme = "light" | "dark";
+
+/**
+ * Normalize a `?theme=` value (passed by the app so the checkout matches the
+ * app's theme, not the device/browser). Anything unrecognized → undefined,
+ * which lets the page fall back to its default (light on the checkout subdomain,
+ * next-themes on the main website).
+ */
+export function parseCheckoutTheme(
+  value: string | string[] | null | undefined,
+): CheckoutTheme | undefined {
+  const raw = (Array.isArray(value) ? value[0] : value)?.toLowerCase();
+  return raw === "dark" ? "dark" : raw === "light" ? "light" : undefined;
+}

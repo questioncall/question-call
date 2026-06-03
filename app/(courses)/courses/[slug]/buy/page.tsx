@@ -2,6 +2,7 @@ import { getSafeServerSession } from "@/lib/auth";
 import { getCourseDetailPageData } from "@/lib/course-page-data";
 import { createNoIndexMetadata } from "@/lib/seo";
 import { isCheckoutRequest } from "@/lib/checkout-host.server";
+import { parseCheckoutTheme } from "@/lib/checkout-host";
 import { CourseBuyClient } from "./course-buy-client";
 
 export const metadata = createNoIndexMetadata({
@@ -11,13 +12,16 @@ export const metadata = createNoIndexMetadata({
 
 export default async function CourseBuyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ theme?: string }>;
 }) {
   const { slug } = await params;
-  const [session, isCheckout] = await Promise.all([
+  const [session, isCheckout, { theme }] = await Promise.all([
     getSafeServerSession(),
     isCheckoutRequest(),
+    searchParams,
   ]);
   const course = await getCourseDetailPageData({
     slug,
@@ -30,6 +34,7 @@ export default async function CourseBuyPage({
       course={course}
       isAuthenticated={!!session?.user?.id}
       checkoutMode={isCheckout}
+      forcedTheme={parseCheckoutTheme(theme)}
     />
   );
 }

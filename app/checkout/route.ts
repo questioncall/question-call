@@ -79,12 +79,13 @@ export async function GET(req: NextRequest) {
   // 4. Resolve the destination on the existing web checkout surface.
   let target: string;
   if (payload.intent === "subscription") {
-    // Always land on the clean payment surface (defaults to the 1-month plan
-    // when no ref is given) rather than the workspace "configure plan" screen,
-    // so the checkout subdomain never drops into the full app shell.
+    // Dedicated, inlined-form membership checkout for the app hand-off (no
+    // modal, no sandbox auto-pay). The main-website `/subscription/payment`
+    // flow is intentionally left as-is. Defaults to the 1-month plan when no
+    // ref is given so it never drops into the workspace "configure" screen.
     target = payload.ref
-      ? `/subscription/payment?plan=${encodeURIComponent(payload.ref)}`
-      : "/subscription/payment";
+      ? `/subscription/checkout?plan=${encodeURIComponent(payload.ref)}`
+      : "/subscription/checkout";
   } else if (payload.intent === "course") {
     const slug = await resolveSlug(Course as unknown as SlugModel, payload.ref);
     if (!slug) return redirectTo(req, "/courses?checkout=notfound");
@@ -96,6 +97,13 @@ export async function GET(req: NextRequest) {
     );
     if (!slug) return redirectTo(req, "/courses?checkout=notfound");
     target = `/chapters/${slug}/buy`;
+  }
+
+  // Forward the app's theme so the checkout matches the app (light/dark) rather
+  // than the device/browser. Unknown values are ignored (page defaults apply).
+  const themeParam = req.nextUrl.searchParams.get("theme");
+  if (themeParam === "light" || themeParam === "dark") {
+    target += `${target.includes("?") ? "&" : "?"}theme=${themeParam}`;
   }
 
   // 5. Mint a NextAuth-compatible session token (JWT strategy). Using NextAuth's

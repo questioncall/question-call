@@ -15,9 +15,15 @@ type Props = {
   chapter: ChapterDetailData;
   /** True when served from the checkout subdomain (mobile hand-off). */
   checkoutMode?: boolean;
+  /** Force the palette to match the app's theme (from `?theme=`). */
+  forcedTheme?: "light" | "dark";
 };
 
-export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
+export function ChapterBuyClient({
+  chapter,
+  checkoutMode = false,
+  forcedTheme,
+}: Props) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -65,6 +71,7 @@ export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
       backHref={`/chapters/${chapter.slug}`}
       backLabel="Back to chapter"
       manualPayment={chapter.manualPayment}
+      forcedTheme={forcedTheme}
     >
       {/* Order summary */}
       <div className="qc-sec-label">Order summary</div>

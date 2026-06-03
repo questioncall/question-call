@@ -39,7 +39,13 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.dark .qc-checkout {
+/* Dark palette. Applied either by next-themes (`.dark` ancestor, used on the
+   main website) OR by an explicit `qc-dark` class forced from the `?theme=`
+   param on the checkout subdomain. `:not(.qc-light)` lets a forced light theme
+   win even when the surrounding page/browser is dark — so the checkout matches
+   the app's theme instead of the device's. */
+.dark .qc-checkout:not(.qc-light),
+.qc-checkout.qc-dark {
   /* Dark palette */
   --bg: #0b0e0d;
   --surface: #15191a;
@@ -502,7 +508,8 @@
   line-height: 1.5;
   color: #b45309;
 }
-.dark .qc-pending {
+.dark .qc-checkout:not(.qc-light) .qc-pending,
+.qc-checkout.qc-dark .qc-pending {
   color: #fbbf24;
 }
 

@@ -17,12 +17,15 @@ type Props = {
   isAuthenticated: boolean;
   /** True when served from the checkout subdomain (mobile hand-off). */
   checkoutMode?: boolean;
+  /** Force the palette to match the app's theme (from `?theme=`). */
+  forcedTheme?: "light" | "dark";
 };
 
 export function CourseBuyClient({
   course,
   isAuthenticated,
   checkoutMode = false,
+  forcedTheme,
 }: Props) {
   const router = useRouter();
 
@@ -215,6 +218,7 @@ export function CourseBuyClient({
       backHref={`/courses/${course.slug}`}
       backLabel="Back to course"
       manualPayment={course.manualPayment}
+      forcedTheme={forcedTheme}
     >
       {/* Order summary */}
       <div className="qc-sec-label">Order summary</div>

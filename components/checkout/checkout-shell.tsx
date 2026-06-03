@@ -1,17 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  BellRing,
-  Info,
-  Lock,
-  ShieldCheck,
-  Video,
-} from "lucide-react";
+import { ArrowLeft, BellRing, Info, Lock, ShieldCheck } from "lucide-react";
 
 import { LegalDialog } from "@/components/shared/legal-dialog";
+import { LogoMark } from "@/components/shared/logo";
 import { APP_NAME } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 import "./checkout-theme.css";
 
@@ -32,6 +27,10 @@ type CheckoutShellProps = {
   instruction?: string;
   /** Sub-line in the footer "manual verification" note. */
   confirmation?: string;
+  /** Force the checkout palette regardless of the browser/page theme. Passed
+   *  from the app's `?theme=` so the checkout matches the app, not the device.
+   *  Undefined → follow next-themes (`.dark` ancestor) on the main website. */
+  forcedTheme?: "light" | "dark";
   /** The dynamic product/payment content (summary + form). */
   children: ReactNode;
 };
@@ -55,12 +54,19 @@ export function CheckoutShell({
   manualPayment,
   instruction = DEFAULT_INSTRUCTION,
   confirmation = DEFAULT_CONFIRMATION,
+  forcedTheme,
   children,
 }: CheckoutShellProps) {
   const showBack = !checkoutMode && Boolean(backHref) && Boolean(backLabel);
 
   return (
-    <div className="qc-checkout">
+    <div
+      className={cn(
+        "qc-checkout",
+        forcedTheme === "dark" && "qc-dark",
+        forcedTheme === "light" && "qc-light",
+      )}
+    >
       <div className="qc-shell">
         {showBack ? (
           <div className="qc-topbar">
@@ -71,9 +77,7 @@ export function CheckoutShell({
         ) : null}
 
         <div className="qc-brand">
-          <span className="qc-brand-ic">
-            <Video size={21} />
-          </span>
+          <LogoMark size={24} className="qc-brand-logo rounded-lg" priority />
           {APP_NAME}
         </div>
 
