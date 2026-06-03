@@ -1,6 +1,7 @@
 import { getSafeServerSession } from "@/lib/auth";
 import { getCourseDetailPageData } from "@/lib/course-page-data";
 import { createNoIndexMetadata } from "@/lib/seo";
+import { isCheckoutRequest } from "@/lib/checkout-host.server";
 import { CourseBuyClient } from "./course-buy-client";
 
 export const metadata = createNoIndexMetadata({
@@ -14,7 +15,10 @@ export default async function CourseBuyPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await getSafeServerSession();
+  const [session, isCheckout] = await Promise.all([
+    getSafeServerSession(),
+    isCheckoutRequest(),
+  ]);
   const course = await getCourseDetailPageData({
     slug,
     userId: session?.user?.id ?? null,
@@ -25,6 +29,7 @@ export default async function CourseBuyPage({
     <CourseBuyClient
       course={course}
       isAuthenticated={!!session?.user?.id}
+      checkoutMode={isCheckout}
     />
   );
 }

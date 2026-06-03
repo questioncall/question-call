@@ -1,116 +1,179 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, UploadIcon } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 import type { ChapterDetailData } from "@/lib/chapter-page-data";
 import { consumeMobileReturn } from "@/components/payment/mobile-return-redirect";
+import { CheckoutShell } from "@/components/checkout/checkout-shell";
+import { UploadProgressBar } from "@/components/shared/upload-progress-bar";
+import { postMultipartWithProgress } from "@/lib/client-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
-export function ChapterBuyClient({ chapter }: { chapter: ChapterDetailData }) {
+type Props = {
+  chapter: ChapterDetailData;
+  /** True when served from the checkout subdomain (mobile hand-off). */
+  checkoutMode?: boolean;
+};
+
+export function ChapterBuyClient({ chapter, checkoutMode = false }: Props) {
   const router = useRouter();
-  const [transactionId, setTransactionId] = useState("");
-  const [transactorName, setTransactorName] = useState("");
-  const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
-  const submit = async () => {
-    if (!transactionId.trim() || !transactorName.trim()) {
-      toast.error("Transaction ID and payer name are required.");
-      return;
-    }
+  const price = chapter.price ?? 0;
+
+  async function handlePaymentSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("transactionId", transactionId.trim());
-      formData.append("transactorName", transactorName.trim());
-      if (screenshot) formData.append("screenshot", screenshot);
 
-      const response = await fetch(`/api/chapters/${chapter._id}/purchase/initiate`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to submit payment.");
-      }
-      toast.success("Payment submitted for review.");
+    try {
+      const formData = new FormData(e.currentTarget);
+      const screenshot = formData.get("screenshot");
+      const hasScreenshot = screenshot instanceof File && screenshot.size > 0;
+      setUploadProgress(hasScreenshot ? 0 : null);
+
+      const data = await postMultipartWithProgress<{ message?: string }>(
+        `/api/chapters/${chapter._id}/purchase/initiate`,
+        formData,
+        hasScreenshot
+          ? { onProgress: ({ percent }) => setUploadProgress(percent) }
+          : {},
+      );
+
+      toast.success(data.message || "Payment proof submitted for review.");
       // Manual proof awaits admin review → return as "submitted", not "success".
       if (consumeMobileReturn("submitted", "manual")) return;
       router.push(`/chapters/${chapter.slug}`);
       router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit payment.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Payment proof could not be submitted.",
+      );
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
-  };
+  }
 
   return (
-    <div className="min-h-svh bg-[#f6f8fb] dark:bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <Button asChild variant="ghost" className="mb-4">
-          <Link href={`/chapters/${chapter.slug}`}>
-            <ArrowLeftIcon className="mr-2 size-4" />
-            Back to chapter
-          </Link>
-        </Button>
+    <CheckoutShell
+      checkoutMode={checkoutMode}
+      backHref={`/chapters/${chapter.slug}`}
+      backLabel="Back to chapter"
+      manualPayment={chapter.manualPayment}
+      instruction="Scan the QR code or manually transfer the amount to the eSewa number above. Save your transaction screenshot and ID to submit on the right."
+      confirmation="We will notify you via email as soon as your access is activated."
+    >
+      {/* ── Right: Chapter Summary + Payment Form ── */}
+      <section className="bg-white dark:bg-[#2A2A2A] rounded-3xl p-8 border border-neutral-200 dark:border-neutral-800 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#1B7258] opacity-[0.03] dark:opacity-10 rounded-full blur-3xl -mr-20 -mt-20" />
 
-        <div className="rounded-3xl border border-border bg-background p-6 shadow-sm">
-          <h1 className="text-2xl font-bold">Buy Chapter</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{chapter.title}</p>
+        <h1 className="text-2xl font-bold mb-1 text-neutral-900 dark:text-white">
+          {chapter.title}
+        </h1>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+          {chapter.subject} · {chapter.level}
+        </p>
 
-          <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-50 p-4 dark:bg-emerald-950/20">
-            <div className="text-sm text-muted-foreground">Amount</div>
-            <div className="text-3xl font-bold text-foreground">
-              NPR {(chapter.price ?? 0).toLocaleString()}
-            </div>
-            {chapter.manualPayment.esewaNumber ? (
-              <div className="mt-3 text-sm">
-                Send to eSewa:{" "}
-                <span className="font-semibold">{chapter.manualPayment.esewaNumber}</span>
-              </div>
-            ) : null}
-            {chapter.manualPayment.qrCodeUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={chapter.manualPayment.qrCodeUrl}
-                alt="Payment QR"
-                className="mt-4 h-48 w-48 rounded-xl object-contain"
-              />
-            ) : null}
+        {/* Price summary */}
+        <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-700/50 pt-6 mb-6 text-[14px]">
+          <div className="flex justify-between items-center text-neutral-600 dark:text-neutral-400">
+            <span>Chapter price</span>
+            <span>NPR {price.toFixed(2)}</span>
+          </div>
+          <div className="border-t border-neutral-100 dark:border-neutral-700/50 pt-4 mt-2 flex justify-between items-center font-bold text-lg text-neutral-900 dark:text-white">
+            <span>Due today</span>
+            <span>NPR {price.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Pending purchase notice */}
+        {chapter.pendingPurchase && (
+          <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-amber-800 dark:text-amber-300">
+            A payment proof for this chapter is already pending admin review.
+          </div>
+        )}
+
+        {/* Payment submission form */}
+        <form
+          onSubmit={(e) => void handlePaymentSubmit(e)}
+          className="space-y-4"
+        >
+          <div className="space-y-1">
+            <label
+              htmlFor="chapter-transaction-id"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
+            >
+              eSewa Transaction ID
+            </label>
+            <Input
+              id="chapter-transaction-id"
+              name="transactionId"
+              required
+              placeholder="e.g. 1AK39BXX"
+              disabled={isSubmitting}
+            />
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="space-y-2">
-              <Label>Transaction ID</Label>
-              <Input value={transactionId} onChange={(event) => setTransactionId(event.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Name on eSewa</Label>
-              <Input value={transactorName} onChange={(event) => setTransactorName(event.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Payment screenshot</Label>
-              <Input type="file" accept="image/*" onChange={(event) => setScreenshot(event.target.files?.[0] ?? null)} />
-            </div>
+          <div className="space-y-1">
+            <label
+              htmlFor="chapter-transactor-name"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
+            >
+              Transactor Full Name
+            </label>
+            <Input
+              id="chapter-transactor-name"
+              name="transactorName"
+              required
+              placeholder="Full name used in eSewa"
+              disabled={isSubmitting}
+            />
           </div>
+
+          <div className="space-y-1">
+            <label
+              htmlFor="chapter-screenshot"
+              className="text-sm font-medium text-neutral-700 dark:text-neutral-200"
+            >
+              Payment screenshot{" "}
+              <span className="font-normal text-neutral-400">
+                (optional but recommended)
+              </span>
+            </label>
+            <Input
+              id="chapter-screenshot"
+              name="screenshot"
+              type="file"
+              accept="image/*"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {isSubmitting && uploadProgress !== null && (
+            <UploadProgressBar
+              label="Uploading screenshot…"
+              value={uploadProgress}
+            />
+          )}
 
           <Button
-            onClick={submit}
-            disabled={isSubmitting}
-            className="mt-6 h-12 w-full bg-emerald-600 hover:bg-emerald-700"
+            type="submit"
+            size="lg"
+            className="w-full bg-[#1B7258] hover:bg-[#155f48] dark:bg-[#27A883] dark:hover:bg-[#1B7258] text-white font-semibold shadow-md"
+            disabled={isSubmitting || chapter.pendingPurchase}
           >
-            <UploadIcon className="mr-2 size-4" />
-            {isSubmitting ? "Submitting..." : "Submit Payment"}
+            <CreditCard className="w-4 h-4 mr-2" />
+            {isSubmitting ? "Submitting…" : "Submit payment proof"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </form>
+      </section>
+    </CheckoutShell>
   );
 }

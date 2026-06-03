@@ -79,15 +79,21 @@ export async function GET(req: NextRequest) {
   // 4. Resolve the destination on the existing web checkout surface.
   let target: string;
   if (payload.intent === "subscription") {
+    // Always land on the clean payment surface (defaults to the 1-month plan
+    // when no ref is given) rather than the workspace "configure plan" screen,
+    // so the checkout subdomain never drops into the full app shell.
     target = payload.ref
       ? `/subscription/payment?plan=${encodeURIComponent(payload.ref)}`
-      : "/subscription";
+      : "/subscription/payment";
   } else if (payload.intent === "course") {
     const slug = await resolveSlug(Course as unknown as SlugModel, payload.ref);
     if (!slug) return redirectTo(req, "/courses?checkout=notfound");
     target = `/courses/${slug}/buy`;
   } else {
-    const slug = await resolveSlug(Chapter as unknown as SlugModel, payload.ref);
+    const slug = await resolveSlug(
+      Chapter as unknown as SlugModel,
+      payload.ref,
+    );
     if (!slug) return redirectTo(req, "/courses?checkout=notfound");
     target = `/chapters/${slug}/buy`;
   }
@@ -132,14 +138,19 @@ export async function GET(req: NextRequest) {
   return res;
 }
 
-type SlugQuery = { select(field: string): { lean(): Promise<{ slug?: string } | null> } };
+type SlugQuery = {
+  select(field: string): { lean(): Promise<{ slug?: string } | null> };
+};
 type SlugModel = {
   findById(id: string): SlugQuery;
   findOne(filter: Record<string, unknown>): SlugQuery;
 };
 
 /** Accept either a Mongo _id or a slug as `ref` and return the canonical slug. */
-async function resolveSlug(model: SlugModel, ref?: string): Promise<string | null> {
+async function resolveSlug(
+  model: SlugModel,
+  ref?: string,
+): Promise<string | null> {
   if (!ref) return null;
   const doc = isValidObjectId(ref)
     ? await model.findById(ref).select("slug").lean()

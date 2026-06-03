@@ -7,6 +7,7 @@ import { DownloadIcon, Share2Icon, SmartphoneIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SHOULD_ENABLE_PWA } from "@/lib/pwa";
+import { isCheckoutHostClient } from "@/lib/checkout-host";
 
 type DeferredInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -172,6 +173,13 @@ export function PWAInstallPrompt() {
 
   useEffect(() => {
     if (!SHOULD_ENABLE_PWA || isInstalled || isSuppressedRoute || !isEligibleViewport) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Never prompt to install on the checkout subdomain — the user already has
+    // the app and is only here to pay.
+    if (isCheckoutHostClient()) {
       setIsVisible(false);
       return;
     }

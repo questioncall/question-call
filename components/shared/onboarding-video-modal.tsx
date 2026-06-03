@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2Icon, PlayCircleIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,30 +21,6 @@ type OnboardingVideo = {
   thumbnailUrl: string;
   isActive: boolean;
 };
-
-function getYouTubeEmbedUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.hostname.includes("youtu.be")) {
-      const id = parsed.pathname.replace(/^\/+/, "").split("/")[0];
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-
-    if (parsed.hostname.includes("youtube.com")) {
-      const videoId =
-        parsed.searchParams.get("v") ||
-        parsed.pathname.split("/shorts/")[1]?.split("/")[0] ||
-        parsed.pathname.split("/embed/")[1]?.split("/")[0];
-
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
 
 export function OnboardingVideoModal() {
   const [loading, setLoading] = useState(true);
@@ -104,10 +80,6 @@ export function OnboardingVideoModal() {
   }, [isOpen, secondsRemaining]);
 
   const canClose = secondsRemaining <= 0;
-  const youtubeEmbedUrl = useMemo(
-    () => (video ? getYouTubeEmbedUrl(video.videoUrl) : null),
-    [video],
-  );
 
   const handleClose = async () => {
     if (!canClose || saving) {
@@ -165,23 +137,14 @@ export function OnboardingVideoModal() {
           </DialogHeader>
 
           <div className="overflow-hidden rounded-2xl border border-border bg-black">
-            {youtubeEmbedUrl ? (
-              <iframe
-                src={youtubeEmbedUrl}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="aspect-video w-full"
-              />
-            ) : (
-              <video
-                controls
-                playsInline
-                poster={video.thumbnailUrl || undefined}
-                className="aspect-video w-full bg-black"
-                src={video.videoUrl}
-              />
-            )}
+            <video
+              controls
+              autoPlay
+              playsInline
+              poster={video.thumbnailUrl || undefined}
+              className="aspect-video w-full bg-black"
+              src={video.videoUrl}
+            />
           </div>
 
           {!canClose ? (

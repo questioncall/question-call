@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSafeServerSession } from "@/lib/auth";
 import { getChapterDetailData } from "@/lib/chapter-page-data";
 import { createNoIndexMetadata } from "@/lib/seo";
+import { isCheckoutRequest } from "@/lib/checkout-host.server";
 import { ChapterBuyClient } from "./chapter-buy-client";
 
 export const metadata = createNoIndexMetadata({
@@ -24,11 +25,14 @@ export default async function BuyChapterPage({
   }
 
   const { slug } = await params;
-  const chapter = await getChapterDetailData({
-    slug,
-    userId: session.user.id,
-    role: session.user.role,
-  });
+  const [chapter, isCheckout] = await Promise.all([
+    getChapterDetailData({
+      slug,
+      userId: session.user.id,
+      role: session.user.role,
+    }),
+    isCheckoutRequest(),
+  ]);
 
   if (!chapter) {
     notFound();
@@ -37,5 +41,5 @@ export default async function BuyChapterPage({
     redirect(`/chapters/${chapter.slug}`);
   }
 
-  return <ChapterBuyClient chapter={chapter} />;
+  return <ChapterBuyClient chapter={chapter} checkoutMode={isCheckout} />;
 }

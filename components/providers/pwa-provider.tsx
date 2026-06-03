@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { PWAInstallPrompt } from "@/components/providers/pwa-install-prompt";
 import { SHOULD_ENABLE_PWA } from "@/lib/pwa";
+import { isCheckoutHostClient } from "@/lib/checkout-host";
 
 export function PWAProvider() {
   const hasShownUpdateToastRef = useRef(false);
@@ -15,6 +16,13 @@ export function PWAProvider() {
     }
 
     if (!SHOULD_ENABLE_PWA) {
+      return;
+    }
+
+    // The checkout subdomain is a payment hand-off for users who already have
+    // the app — never register the SW there so the browser cannot promote
+    // "install this app".
+    if (isCheckoutHostClient()) {
       return;
     }
 
