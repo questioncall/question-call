@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       "subscriptionEnd planSlug questionsAsked bonusQuestions " +
       "isSuspended isMonetized teacherModeVerified " +
       "dailyAnswersCount dailyTargetsAchieved esewaNumber " +
-      "referralCode seenNotices seenOnboardingRoles callSettings createdAt"
+      "referralCode seenNotices seenOnboardingRoles callSettings createdAt +passwordHash"
     ).lean();
 
     if (!user) {
@@ -94,6 +94,11 @@ export async function GET(request: Request) {
       isSuspended: false,
       isMonetized: user.isMonetized ?? false,
       teacherModeVerified: user.teacherModeVerified ?? false,
+
+      // True when the account has a password (email sign-up). Google-only
+      // accounts have no password, so the app can skip the password prompt
+      // when deleting. The hash itself is never sent to the client.
+      hasPassword: Boolean(user.passwordHash),
 
       // Daily target (teacher)
       dailyAnswersCount: user.dailyAnswersCount ?? 0,
