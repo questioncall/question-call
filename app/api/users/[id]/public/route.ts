@@ -109,9 +109,14 @@ export async function GET(request: Request, context: RouteParams) {
 
     const userObjectId = new Types.ObjectId(id);
     const isTeacher = profile.role === "TEACHER";
-    const followerCount = await User.countDocuments({
-      following: userObjectId,
-    });
+    const [followerCount, viewerFollowRecord] = await Promise.all([
+      User.countDocuments({
+        following: userObjectId,
+      }),
+      isTeacher && viewer.id !== id
+        ? User.exists({ _id: viewer.id, following: userObjectId })
+        : Promise.resolve(null),
+    ]);
     const followingCount = Array.isArray(u.following) ? u.following.length : 0;
 
     const favouriteCourseIds = Array.isArray(u.favouriteCourses)
@@ -205,6 +210,7 @@ export async function GET(request: Request, context: RouteParams) {
         ...profile,
         followerCount,
         followingCount,
+        isFollowing: Boolean(viewerFollowRecord),
         favouriteCount: favouriteCourseIds.length,
         uploadedAssetCount: mediaAssets.length,
       },

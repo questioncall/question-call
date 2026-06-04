@@ -99,14 +99,7 @@ const SUBJECTS = [
   "Others",
 ];
 
-const LEVELS = [
-  "Beginner",
-  "Intermediate",
-  "Advanced",
-  "Undergraduate",
-  "Graduate",
-  "Professional",
-];
+const LEVELS = ["Below 10", "11/12", "Bachelor"];
 
 function buildInitialForm(
   initialData: CreateCourseModalProps["initialData"],

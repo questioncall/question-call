@@ -56,8 +56,8 @@ const SUBJECT_OPTIONS = [
   "IT", "Biology", "Chemistry", "Physics", "Mathematics", "English", "Accountancy",
 ] as const;
 
-const STREAM_OPTIONS = ["Science", "Management"] as const;
-const LEVEL_OPTIONS = ["School level", "Plus 2", "Bachelor"] as const;
+const STREAM_OPTIONS = ["Science", "Management", "Law", "Humanities", "Education", "Others"] as const;
+const LEVEL_OPTIONS = ["Below 10", "11/12", "Bachelor"] as const;
 
 const visibilityLabelMap: Record<AnswerVisibility, string> = {
   PUBLIC: "Public",
