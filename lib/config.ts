@@ -378,7 +378,13 @@ Questions, answers, quizzes, and courses are provided to support learning. Stude
 Subscriptions, discounts, teacher earnings, withdrawals, and other wallet-related actions follow the active rules stored by the platform. Platform misuse, fraudulent payment activity, or policy abuse may lead to restrictions or account suspension.
 
 5. Platform decisions and updates
-We may update features, rules, moderation standards, or access requirements when needed to protect users and improve the service. Continued use of the platform means you accept the latest active version of these terms.`,
+We may update features, rules, moderation standards, or access requirements when needed to protect users and improve the service. Continued use of the platform means you accept the latest active version of these terms.
+
+6. Deleting and recovering your account
+You can delete your account at any time from Menu → Delete Account in the app. Deletion takes effect immediately: you are signed out and your account stops being accessible. For 30 days after deletion we keep your account in a recoverable state so you can change your mind. To recover it within those 30 days, open "Forgot Password" on the sign-in screen, enter the email address on the account, and use the one-time code (OTP) we send to that email to set a new password — this restores your access. After 30 days the account is permanently anonymized and can no longer be recovered. Some records may be retained longer where required for legal, security, or financial-record purposes.
+
+7. Reporting intellectual property infringement
+We respect intellectual property rights and expect every user to do the same. If you believe that content uploaded to the platform copies or infringes your work, contact us at the support email listed in the app and include details of the material, where it appears, and proof of your ownership or rights. We review valid reports and may remove the reported content or restrict the responsible account.`,
 
   PRIVACY_POLICY: `1. Information we collect
 We may collect basic account information such as your name, email address, role, profile details, subscription records, and learning activity inside the platform.
@@ -393,5 +399,8 @@ Questions may appear in shared feeds depending on the feature flow, while privat
 Payment-related data may be processed through supported third-party providers such as eSewa, Khalti, or other services connected to the platform. We only use the information necessary to complete those flows and support the account experience.
 
 5. Retention and policy changes
-We keep information for as long as it is reasonably needed to provide the platform, maintain records, resolve disputes, and meet legal obligations. This policy may be updated over time, and the latest version available in the app will apply.`,
+We keep information for as long as it is reasonably needed to provide the platform, maintain records, resolve disputes, and meet legal obligations. This policy may be updated over time, and the latest version available in the app will apply.
+
+6. Third-party services we use
+To run core features we rely on trusted third-party services that may process limited technical or account data on our behalf: Sentry (app crash and diagnostics reporting), Firebase Cloud Messaging (push notification delivery), Pusher and LiveKit (real-time chat and audio or video calls), Cloudinary and Mux (image and video upload and playback), and eSewa or Khalti (payment processing). These providers only receive the information needed to perform their function, and their handling of that data is also governed by their own privacy policies.`,
 } as const;

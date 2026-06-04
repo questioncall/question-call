@@ -247,6 +247,18 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    // Set when the user deletes their own account. The record is anonymized
+    // (PII stripped) and kept only to preserve referential integrity for the
+    // content they authored. Deleted accounts are also marked isSuspended so
+    // every auth gate rejects them. See app/api/account DELETE.
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     skills: {
       type: [String],
       default: [],

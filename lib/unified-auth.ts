@@ -37,10 +37,10 @@ export async function getAuthenticatedUser(request?: Request): Promise<{
         // Verify user still exists and is not suspended
         await connectToDatabase();
         const user = await User.findById(tokenPayload.userId).select(
-          "isSuspended",
+          "isSuspended isDeleted",
         );
 
-        if (user && !user.isSuspended) {
+        if (user && !user.isSuspended && !user.isDeleted) {
           touchPresence(tokenPayload.userId);
           return {
             id: tokenPayload.userId,
@@ -60,9 +60,11 @@ export async function getAuthenticatedUser(request?: Request): Promise<{
   if (session?.user?.id) {
     // Verify user is not suspended
     await connectToDatabase();
-    const user = await User.findById(session.user.id).select("isSuspended");
+    const user = await User.findById(session.user.id).select(
+      "isSuspended isDeleted",
+    );
 
-    if (user && !user.isSuspended) {
+    if (user && !user.isSuspended && !user.isDeleted) {
       touchPresence(session.user.id);
       return {
         id: session.user.id,

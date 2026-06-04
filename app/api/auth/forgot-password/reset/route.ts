@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectToDatabase } from "@/lib/mongodb";
+import { isWithinDeletionGrace } from "@/lib/account-deletion";
 import VerificationToken from "@/models/VerificationToken";
 import User from "@/models/User";
+import AccountDeletion from "@/models/AccountDeletion";
 
 export async function POST(req: Request) {
   try {
@@ -32,6 +34,31 @@ export async function POST(req: Request) {
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+
+    // If the account was deleted, a successful reset recovers it — but only
+    // inside the 30-day grace window. Past that, the record has been (or will be)
+    // anonymized and can no longer be restored.
+    if (user.isDeleted) {
+      if (!isWithinDeletionGrace(user.deletedAt)) {
+        return NextResponse.json(
+          {
+            error:
+              "This account has been permanently deleted and can no longer be recovered.",
+          },
+          { status: 410 },
+        );
+      }
+
+      user.isDeleted = false;
+      user.deletedAt = null;
+      user.isSuspended = false;
+
+      // Reflect the recovery in the admin deletion log.
+      await AccountDeletion.updateMany(
+        { userId: user._id, status: "pending" },
+        { $set: { status: "recovered", recoveredAt: new Date() } },
+      );
     }
 
     // Hash the new password

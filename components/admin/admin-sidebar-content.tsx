@@ -26,6 +26,7 @@ import {
   HelpCircle,
   NotebookTextIcon,
   Layers3Icon,
+  UserXIcon,
 } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Settings": SettingsIcon,
   "Social Media": Share2Icon,
   "Users": UsersIcon,
+  "Account Deletions": UserXIcon,
   "Subscription": TagIcon,
   "Payment config": CreditCardIcon,
   "Format config": LayoutDashboardIcon,
@@ -62,7 +64,7 @@ const iconMap: Record<string, React.ElementType> = {
 const groupedItems = [
   {
     category: "OPERATIONS",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Transactions", "Withdrawals", "Receipts", "Users"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Transactions", "Withdrawals", "Receipts", "Users", "Account Deletions"].includes(item.label))
   },
   {
     category: "COMMUNICATION",

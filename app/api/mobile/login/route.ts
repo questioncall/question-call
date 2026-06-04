@@ -113,6 +113,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
+    // ─── Check Soft-Deletion ───
+    // A deleted account can only be recovered via the Forgot Password OTP flow,
+    // not by logging straight back in.
+    if (user.isDeleted) {
+      return NextResponse.json(
+        {
+          error:
+            "This account is scheduled for deletion. To recover it, reset your password using 'Forgot Password'.",
+        },
+        { status: 403 },
+      );
+    }
+
     // ─── Check Suspension ───
     if (user.isSuspended) {
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });

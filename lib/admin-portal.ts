@@ -123,6 +123,23 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["withdrawals", "payout", "teacher wallet", "pending", "complete", "reject"],
   },
   {
+    id: "account-deletions",
+    label: "Account Deletions",
+    href: "/admin/account-deletions",
+    description:
+      "Audit who deleted their account, when, and why, plus whether they recovered it or were permanently purged.",
+    group: "People & Operations",
+    keywords: [
+      "account deletion",
+      "deleted account",
+      "delete reason",
+      "why deleted",
+      "churn",
+      "recovered account",
+      "purged",
+    ],
+  },
+  {
     id: "transactions",
     label: "Transactions",
     href: "/admin/transactions",
@@ -286,6 +303,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/social", label: "Social Media" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/account-deletions", label: "Account Deletions" },
   { href: "/admin/pricing", label: "Subscription" },
   { href: "/admin/payment-config", label: "Payment config" },
   { href: "/admin/format-config", label: "Format config" },
