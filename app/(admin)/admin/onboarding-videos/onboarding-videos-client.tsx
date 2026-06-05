@@ -191,13 +191,12 @@ export function OnboardingVideosClient() {
 
           return (
             <Card key={role} className="overflow-hidden border-border/70 shadow-sm">
-              <div className="aspect-video bg-muted/40">
-                {video?.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={video.thumbnailUrl}
-                    alt={video.title}
-                    className="h-full w-full object-cover"
+              <div className="aspect-video bg-black">
+                {video ? (
+                  <VideoPreview
+                    url={video.videoUrl}
+                    title={video.title}
+                    poster={video.thumbnailUrl}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white/70">
@@ -266,7 +265,7 @@ export function OnboardingVideosClient() {
       </div>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Post Onboarding Video</DialogTitle>
             <DialogDescription>
