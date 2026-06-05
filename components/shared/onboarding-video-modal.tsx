@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2Icon, PlayCircleIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { parseVideoSource } from "@/lib/video-source";
 import {
   Dialog,
   DialogContent,
@@ -137,14 +138,27 @@ export function OnboardingVideoModal() {
           </DialogHeader>
 
           <div className="overflow-hidden rounded-2xl border border-border bg-black">
-            <video
-              controls
-              autoPlay
-              playsInline
-              poster={video.thumbnailUrl || undefined}
-              className="aspect-video w-full bg-black"
-              src={video.videoUrl}
-            />
+            {(() => {
+              const parsed = parseVideoSource(video.videoUrl);
+              return parsed.kind === "file" ? (
+                <video
+                  controls
+                  autoPlay
+                  playsInline
+                  poster={video.thumbnailUrl || undefined}
+                  className="aspect-video w-full bg-black"
+                  src={parsed.url}
+                />
+              ) : (
+                <iframe
+                  src={parsed.url}
+                  title={video.title}
+                  className="aspect-video w-full bg-black"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              );
+            })()}
           </div>
 
           {!canClose ? (

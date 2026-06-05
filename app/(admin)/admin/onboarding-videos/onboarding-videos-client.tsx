@@ -308,8 +308,12 @@ export function OnboardingVideosClient() {
                 onChange={(event) =>
                   setEditor((prev) => ({ ...prev, videoUrl: event.target.value }))
                 }
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder="YouTube/Vimeo link or direct .mp4/.m3u8 URL"
               />
+              <p className="text-xs text-muted-foreground">
+                Accepts a YouTube or Vimeo link (played via embed) or a direct
+                video file URL (mp4/webm/HLS from Mux, Cloudinary, or R2).
+              </p>
             </div>
 
             <div className="space-y-2">
