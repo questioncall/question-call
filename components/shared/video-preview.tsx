@@ -1,7 +1,14 @@
 "use client";
 
+import MuxPlayer from "@mux/mux-player-react";
+
+import { isMuxUrl } from "@/components/shared/chat-mux-player";
 import { cn } from "@/lib/utils";
 import { parseVideoSource, type VideoSourceKind } from "@/lib/video-source";
+
+function muxPlaybackId(url: string): string | null {
+  return url.match(/stream\.mux\.com\/([a-zA-Z0-9]+)/)?.[1] ?? null;
+}
 
 const ALLOW =
   "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
@@ -104,6 +111,30 @@ export function VideoPreview({
   }
 
   if (parsed.kind === "file") {
+    // Mux HLS (stream.mux.com/*.m3u8) can't play in a plain <video> on
+    // Chrome/Firefox — use the Mux player. Plain mp4/webm fall through.
+    const playbackId = isMuxUrl(parsed.url) ? muxPlaybackId(parsed.url) : null;
+    if (playbackId) {
+      return (
+        <MuxPlayer
+          playbackId={playbackId}
+          streamType="on-demand"
+          autoPlay={autoPlay}
+          poster={poster || undefined}
+          className={base}
+          style={
+            {
+              width: "100%",
+              aspectRatio: "16/9",
+              "--media-object-fit": "contain",
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any
+          }
+          metadata={{ video_title: title || "Onboarding video" }}
+        />
+      );
+    }
+
     return (
       <video
         controls

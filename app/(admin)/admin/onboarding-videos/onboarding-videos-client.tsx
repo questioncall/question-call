@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import * as UpChunk from "@mux/upchunk";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -9,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
   Trash2Icon,
+  UploadCloudIcon,
   XCircleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -53,12 +55,101 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
+// Upload a video file straight to Mux: ask our admin endpoint for a direct-
+// upload URL, push the file with UpChunk (resumable + progress), then poll
+// until the asset is ready and return its HLS playback + thumbnail URLs.
+async function uploadOnboardingVideoToMux(
+  file: File,
+  onProgress: (pct: number) => void,
+  onProcessing: () => void,
+): Promise<{ playbackUrl: string; thumbnailUrl: string }> {
+  const signRes = await fetch("/api/admin/onboarding-videos/upload-video", {
+    method: "POST",
+  });
+
+  if (!signRes.ok) {
+    const data = (await signRes.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || "Failed to prepare video upload.");
+  }
+
+  const { uploadUrl, uploadId } = (await signRes.json()) as {
+    uploadUrl: string;
+    uploadId: string;
+  };
+
+  await new Promise<void>((resolve, reject) => {
+    const upload = UpChunk.createUpload({
+      endpoint: uploadUrl,
+      file,
+      chunkSize: 30720, // 30 MB chunks — resilient for large uploads.
+    });
+
+    upload.on("progress", (event) => {
+      const pct = (event.detail as number) ?? 0;
+      onProgress(Math.max(0, Math.min(100, Math.round(pct))));
+    });
+    upload.on("success", () => resolve());
+    upload.on("error", (event) => {
+      const detail = event.detail as { message?: string } | undefined;
+      reject(new Error(detail?.message || "Video upload failed."));
+    });
+  });
+
+  onProcessing();
+  return pollOnboardingMux(uploadId);
+}
+
+async function pollOnboardingMux(
+  uploadId: string,
+  maxAttempts = 180,
+): Promise<{ playbackUrl: string; thumbnailUrl: string }> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise((r) => setTimeout(r, attempt < 5 ? 2000 : 5000));
+
+    try {
+      const res = await fetch(
+        `/api/admin/onboarding-videos/upload-video/${uploadId}/status`,
+      );
+      const data = (await res.json()) as {
+        status?: string;
+        playbackUrl?: string | null;
+        thumbnailUrl?: string | null;
+      };
+
+      if (data.status === "ready" && data.playbackUrl) {
+        return {
+          playbackUrl: data.playbackUrl,
+          thumbnailUrl: data.thumbnailUrl ?? "",
+        };
+      }
+
+      if (data.status === "errored") {
+        throw new Error("Video processing failed on the server.");
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message === "Video processing failed on the server."
+      ) {
+        throw err;
+      }
+      // Transient network error — keep polling.
+    }
+  }
+
+  throw new Error("Video processing timed out. Please try again.");
+}
+
 export function OnboardingVideosClient() {
   const [videos, setVideos] = useState<OnboardingVideoConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>(createEmptyEditor());
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isUploading = uploadPct !== null || processing;
 
   const fetchVideos = async () => {
     try {
@@ -114,7 +205,43 @@ export function OnboardingVideosClient() {
     const targetRole = role || "STUDENT";
     const existing = videos.find((video) => video.role === targetRole);
     setEditor(existing ? { ...existing } : createEmptyEditor(targetRole));
+    setUploadPct(null);
+    setProcessing(false);
     setEditorOpen(true);
+  };
+
+  const handleFileSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      toast.error("Please choose a video file (mp4, mov, webm, …).");
+      return;
+    }
+
+    try {
+      setUploadPct(0);
+      setProcessing(false);
+      const { playbackUrl, thumbnailUrl } = await uploadOnboardingVideoToMux(
+        file,
+        (pct) => setUploadPct(pct),
+        () => setProcessing(true),
+      );
+      setEditor((prev) => ({
+        ...prev,
+        videoUrl: playbackUrl,
+        thumbnailUrl: prev.thumbnailUrl?.trim() ? prev.thumbnailUrl : thumbnailUrl,
+      }));
+      toast.success("Video uploaded and ready.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setUploadPct(null);
+      setProcessing(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -165,7 +292,10 @@ export function OnboardingVideosClient() {
 
   const videoStatus = getVideoSourceStatus(editor.videoUrl);
   const canSave =
-    Boolean(editor.title.trim()) && Boolean(editor.videoUrl.trim()) && videoStatus.ok;
+    Boolean(editor.title.trim()) &&
+    Boolean(editor.videoUrl.trim()) &&
+    videoStatus.ok &&
+    !isUploading;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -264,13 +394,20 @@ export function OnboardingVideosClient() {
         })}
       </div>
 
-      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+      <Dialog
+        open={editorOpen}
+        onOpenChange={(open) => {
+          if (!open && isUploading) return; // don't close mid-upload
+          setEditorOpen(open);
+        }}
+      >
         <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Post Onboarding Video</DialogTitle>
             <DialogDescription>
-              Paste a link and preview it live before saving. Plays YouTube,
-              Vimeo, Loom, Google Drive, or a direct mp4/HLS file.
+              Upload a video file (hosted on Mux) or paste a link, then preview
+              it live before saving. Uploaded files always play reliably in the
+              app — no embedding restrictions.
             </DialogDescription>
           </DialogHeader>
 
@@ -324,13 +461,58 @@ export function OnboardingVideosClient() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Video URL</label>
+                <label className="text-sm font-medium">Video</label>
+
+                {/* Upload a file straight to Mux */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(event) => void handleFileSelected(event)}
+                />
+                {isUploading ? (
+                  <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                      <Loader2Icon className="size-4 animate-spin" />
+                      {processing
+                        ? "Processing on Mux… (this can take a moment)"
+                        : `Uploading… ${uploadPct ?? 0}%`}
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${processing ? 100 : (uploadPct ?? 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <UploadCloudIcon className="mr-2 size-4" />
+                    Upload video file (to Mux)
+                  </Button>
+                )}
+
+                <div className="flex items-center gap-3 py-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] uppercase text-muted-foreground">
+                    or paste a link
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
                 <Input
                   value={editor.videoUrl}
                   onChange={(event) =>
                     setEditor((prev) => ({ ...prev, videoUrl: event.target.value }))
                   }
                   placeholder="https://youtu.be/… or https://…/intro.mp4"
+                  disabled={isUploading}
                 />
                 {/* Live link status */}
                 <div
@@ -413,7 +595,7 @@ export function OnboardingVideosClient() {
             <Button
               variant="outline"
               onClick={() => setEditorOpen(false)}
-              disabled={saving}
+              disabled={saving || isUploading}
             >
               Cancel
             </Button>
