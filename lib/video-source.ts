@@ -13,7 +13,10 @@ export type VideoSourceKind =
   | "loom"
   | "drive"
   | "file"
-  | "webpage";
+  | "webpage"
+  // A link we recognise but cannot turn into a single video player (e.g. a
+  // YouTube channel/@handle/playlist URL instead of a video URL).
+  | "unsupported";
 
 export interface ParsedVideoSource {
   kind: VideoSourceKind;
@@ -124,6 +127,12 @@ export function parseVideoSource(
       original,
       isEmbed: true,
     };
+  }
+
+  // A YouTube link that didn't yield a video id is a channel/@handle/playlist/
+  // search URL — flag it as unsupported rather than embedding the whole site.
+  if (/(?:^|\/\/|\.)(youtube\.com|youtu\.be)\b/i.test(original)) {
+    return { kind: "unsupported", url: original, original, isEmbed: false };
   }
 
   const dropbox = toDropboxDirect(original);

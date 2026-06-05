@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { OnboardingVideoConfig, OnboardingVideoRole } from "@/lib/onboarding-videos";
+import { parseVideoSource } from "@/lib/video-source";
 
 const ROLE_OPTIONS: OnboardingVideoRole[] = ["STUDENT", "TEACHER", "ADMIN"];
 
@@ -111,6 +112,13 @@ export function OnboardingVideosClient() {
   const handleSubmit = async () => {
     if (!editor.title.trim() || !editor.videoUrl.trim()) {
       toast.error("Title and video URL are required.");
+      return;
+    }
+
+    if (parseVideoSource(editor.videoUrl).kind === "unsupported") {
+      toast.error(
+        "That's a YouTube channel/handle link, not a video. Paste a single video URL (youtu.be/… or youtube.com/watch?v=…).",
+      );
       return;
     }
 
@@ -311,8 +319,9 @@ export function OnboardingVideosClient() {
                 placeholder="YouTube/Vimeo link or direct .mp4/.m3u8 URL"
               />
               <p className="text-xs text-muted-foreground">
-                Accepts a YouTube or Vimeo link (played via embed) or a direct
-                video file URL (mp4/webm/HLS from Mux, Cloudinary, or R2).
+                Paste a single video link — YouTube (youtu.be/… or
+                youtube.com/watch?v=…), Vimeo, Loom, or a direct mp4/HLS URL.
+                A channel/@handle link won&apos;t play.
               </p>
             </div>
 
