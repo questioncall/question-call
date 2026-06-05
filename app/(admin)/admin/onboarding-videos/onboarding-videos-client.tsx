@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
+  AlertTriangleIcon,
+  CheckCircle2Icon,
   ClapperboardIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
+  XCircleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,8 +26,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { OnboardingVideoConfig, OnboardingVideoRole } from "@/lib/onboarding-videos";
 import { parseVideoSource } from "@/lib/video-source";
+import {
+  VideoPreview,
+  getVideoSourceStatus,
+} from "@/components/shared/video-preview";
 
 const ROLE_OPTIONS: OnboardingVideoRole[] = ["STUDENT", "TEACHER", "ADMIN"];
 
@@ -155,6 +163,10 @@ export function OnboardingVideosClient() {
     );
   }
 
+  const videoStatus = getVideoSourceStatus(editor.videoUrl);
+  const canSave =
+    Boolean(editor.title.trim()) && Boolean(editor.videoUrl.trim()) && videoStatus.ok;
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -254,104 +266,148 @@ export function OnboardingVideosClient() {
       </div>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Post Onboarding Video</DialogTitle>
             <DialogDescription>
-              Choose who the video is for, then save the video URL and thumbnail.
+              Paste a link and preview it live before saving. Plays YouTube,
+              Vimeo, Loom, Google Drive, or a direct mp4/HLS file.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Role</label>
-              <select
-                value={editor.role}
-                onChange={(event) =>
-                  setEditor((prev) => ({
-                    ...prev,
-                    role: event.target.value as OnboardingVideoRole,
-                  }))
-                }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Left: form fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Role</label>
+                <select
+                  value={editor.role}
+                  onChange={(event) =>
+                    setEditor((prev) => ({
+                      ...prev,
+                      role: event.target.value as OnboardingVideoRole,
+                    }))
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Title</label>
+                <Input
+                  value={editor.title}
+                  onChange={(event) =>
+                    setEditor((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="Getting started on Question Call"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  rows={3}
+                  value={editor.description}
+                  onChange={(event) =>
+                    setEditor((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  placeholder="Explain what this intro helps the user understand."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Video URL</label>
+                <Input
+                  value={editor.videoUrl}
+                  onChange={(event) =>
+                    setEditor((prev) => ({ ...prev, videoUrl: event.target.value }))
+                  }
+                  placeholder="https://youtu.be/… or https://…/intro.mp4"
+                />
+                {/* Live link status */}
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium",
+                    videoStatus.ok && !videoStatus.warn
+                      ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                      : videoStatus.warn
+                        ? "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400"
+                        : "border-rose-500/30 bg-rose-500/5 text-rose-700 dark:text-rose-400",
+                  )}
+                >
+                  {videoStatus.ok && !videoStatus.warn ? (
+                    <CheckCircle2Icon className="size-4 shrink-0" />
+                  ) : videoStatus.warn ? (
+                    <AlertTriangleIcon className="size-4 shrink-0" />
+                  ) : (
+                    <XCircleIcon className="size-4 shrink-0" />
+                  )}
+                  <span>{videoStatus.label}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Thumbnail URL (optional)
+                </label>
+                <Input
+                  value={editor.thumbnailUrl}
+                  onChange={(event) =>
+                    setEditor((prev) => ({
+                      ...prev,
+                      thumbnailUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://… (poster image)"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={editor.isActive}
+                  onChange={(event) =>
+                    setEditor((prev) => ({
+                      ...prev,
+                      isActive: event.target.checked,
+                    }))
+                  }
+                />
+                Active and eligible to show on first login
+              </label>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Title</label>
-              <Input
-                value={editor.title}
-                onChange={(event) =>
-                  setEditor((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="Getting started on Question Call"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                rows={4}
-                value={editor.description}
-                onChange={(event) =>
-                  setEditor((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-                placeholder="Explain what this intro helps the user understand."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Video URL</label>
-              <Input
-                value={editor.videoUrl}
-                onChange={(event) =>
-                  setEditor((prev) => ({ ...prev, videoUrl: event.target.value }))
-                }
-                placeholder="YouTube/Vimeo link or direct .mp4/.m3u8 URL"
-              />
+            {/* Right: live preview */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Live preview</label>
+                <Badge variant="outline" className="text-[10px] uppercase">
+                  {editor.role}
+                </Badge>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-border bg-black">
+                <VideoPreview
+                  url={editor.videoUrl}
+                  title={editor.title}
+                  poster={editor.thumbnailUrl}
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
-                Paste a single video link — YouTube (youtu.be/… or
-                youtube.com/watch?v=…), Vimeo, Loom, or a direct mp4/HLS URL.
-                A channel/@handle link won&apos;t play.
+                {editor.title?.trim() || "Untitled video"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This is exactly what users see in the onboarding modal.
               </p>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Thumbnail URL (optional)</label>
-              <Input
-                value={editor.thumbnailUrl}
-                onChange={(event) =>
-                  setEditor((prev) => ({
-                    ...prev,
-                    thumbnailUrl: event.target.value,
-                  }))
-                }
-                placeholder="https://..."
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={editor.isActive}
-                onChange={(event) =>
-                  setEditor((prev) => ({
-                    ...prev,
-                    isActive: event.target.checked,
-                  }))
-                }
-              />
-              Active and eligible to show on first login
-            </label>
           </div>
 
           <DialogFooter>
@@ -362,7 +418,10 @@ export function OnboardingVideosClient() {
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleSubmit()} disabled={saving}>
+            <Button
+              onClick={() => void handleSubmit()}
+              disabled={saving || !canSave}
+            >
               {saving ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : null}
               Save Video
             </Button>

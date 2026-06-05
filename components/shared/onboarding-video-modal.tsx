@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2Icon, PlayCircleIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { parseVideoSource } from "@/lib/video-source";
+import { VideoPreview } from "@/components/shared/video-preview";
 import {
   Dialog,
   DialogContent,
@@ -138,48 +138,12 @@ export function OnboardingVideoModal() {
           </DialogHeader>
 
           <div className="overflow-hidden rounded-2xl border border-border bg-black">
-            {(() => {
-              const parsed = parseVideoSource(video.videoUrl);
-              if (parsed.kind === "unsupported") {
-                return (
-                  <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 bg-black px-6 text-center">
-                    <p className="text-sm font-semibold text-white">
-                      This link points to a YouTube channel, not a video.
-                    </p>
-                    <p className="text-xs text-white/60">
-                      Set the onboarding video to a single video link
-                      (youtu.be/… or youtube.com/watch?v=…).
-                    </p>
-                    <a
-                      href={parsed.original}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 rounded-full bg-white/15 px-5 py-2 text-sm font-semibold text-white hover:bg-white/25"
-                    >
-                      Open link
-                    </a>
-                  </div>
-                );
-              }
-              return parsed.kind === "file" ? (
-                <video
-                  controls
-                  autoPlay
-                  playsInline
-                  poster={video.thumbnailUrl || undefined}
-                  className="aspect-video w-full bg-black"
-                  src={parsed.url}
-                />
-              ) : (
-                <iframe
-                  src={parsed.url}
-                  title={video.title}
-                  className="aspect-video w-full bg-black"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              );
-            })()}
+            <VideoPreview
+              url={video.videoUrl}
+              title={video.title}
+              poster={video.thumbnailUrl}
+              autoPlay
+            />
           </div>
 
           {!canClose ? (
