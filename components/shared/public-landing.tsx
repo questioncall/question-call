@@ -107,38 +107,146 @@ function LandingStyles() {
         position: relative;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        max-width: min(100%, 520px);
-        margin: 0 auto 1.4rem;
-        padding: 0.55rem 1.15rem;
+        gap: 10px;
+        max-width: min(100%, 560px);
+        margin: 0 auto 1.55rem;
+        padding: 0.52rem 0.75rem 0.52rem 0.58rem;
         border-radius: 999px;
-        border: 1px solid rgba(31,118,110,0.35);
-        background: rgba(31,118,110,0.11);
-        box-shadow: 0 18px 36px rgba(31,118,110,0.12);
+        border: 1px solid rgba(42,181,171,0.32);
+        background:
+          linear-gradient(135deg, rgba(31,118,110,0.18), rgba(8,20,18,0.72)),
+          rgba(8,20,18,0.68);
+        box-shadow:
+          0 18px 42px rgba(0,0,0,0.18),
+          0 0 34px rgba(42,181,171,0.12),
+          inset 0 1px 0 rgba(255,255,255,0.08);
         backdrop-filter: blur(16px);
+      }
+      .lpb-hero-notch-shine {
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        border-radius: inherit;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .lpb-hero-notch-shine::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -75%;
+        width: 45%;
+        height: 100%;
+        background: linear-gradient(
+          120deg,
+          transparent,
+          rgba(255,255,255,0.65),
+          transparent
+        );
+        transform: skewX(-20deg);
+        animation: shine 2.8s linear infinite;
+        pointer-events: none;
       }
       .lpb-hero-notch::after {
         content: "";
         position: absolute;
+        z-index: 0;
         left: 50%;
         bottom: -7px;
         width: 14px;
         height: 14px;
         transform: translateX(-50%) rotate(45deg);
-        border-right: 1px solid rgba(31,118,110,0.28);
-        border-bottom: 1px solid rgba(31,118,110,0.28);
-        background: inherit;
+        border-right: 1px solid rgba(42,181,171,0.2);
+        border-bottom: 1px solid rgba(42,181,171,0.2);
+        background: rgba(13,46,42,0.9);
+      }
+      .lpb-hero-notch-icon {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        width: 28px;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 999px;
+        background: rgba(126,229,220,0.12);
+        box-shadow: inset 0 0 0 1px rgba(126,229,220,0.24);
       }
       .lpb-hero-notch-text {
         position: relative;
         z-index: 1;
-        color: #143f3b;
-        font-size: 13px;
+        display: inline-flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 5px;
+        color: #d2f2ed;
+        font-size: 13.5px;
         font-weight: 800;
         line-height: 1.35;
       }
-      html.dark .lpb-hero-notch-text {
-        color: #d2f2ed;
+      .lpb-hero-notch-kicker {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        color: #7ee5dc;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 11px;
+      }
+      .lpb-hero-notch-count {
+        color: #ffffff;
+        font-weight: 900;
+      }
+      .lpb-hero-notch-divider {
+        position: relative;
+        z-index: 1;
+        width: 1px;
+        height: 18px;
+        flex-shrink: 0;
+        background: rgba(255,255,255,0.2);
+      }
+      html:not(.dark) .lpb-hero-notch {
+        border-color: rgba(17,24,39,0.08);
+        background: rgba(255,255,255,0.94);
+        box-shadow:
+          0 18px 36px rgba(17,24,39,0.14),
+          0 0 26px rgba(255,255,255,0.95),
+          inset 0 1px 0 rgba(255,255,255,1);
+      }
+      html:not(.dark) .lpb-hero-notch::after {
+        background: rgba(255,255,255,0.94);
+        border-color: rgba(17,24,39,0.08);
+      }
+      html:not(.dark) .lpb-hero-notch-icon {
+        background: rgba(0,0,0,0.03);
+        box-shadow: inset 0 0 0 1px rgba(17,24,39,0.12);
+      }
+      html:not(.dark) .lpb-hero-notch-text {
+        color: #111827;
+      }
+      html:not(.dark) .lpb-hero-notch-kicker {
+        color: #111827;
+      }
+      html:not(.dark) .lpb-hero-notch-count {
+        color: #030712;
+      }
+      html:not(.dark) .lpb-hero-notch-divider {
+        background: rgba(17,24,39,0.14);
+      }
+      @media (max-width: 520px) {
+        .lpb-hero-notch {
+          align-items: flex-start;
+          border-radius: 18px;
+          padding: 0.65rem 0.8rem;
+        }
+        .lpb-hero-notch-text {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1px;
+          text-align: left;
+        }
       }
       
       html.dark .shiny-text {
@@ -941,13 +1049,20 @@ function Hero({
             transition: "all 0.5s",
           }}
         >
-          <SparklesIcon
-            size={15}
-            color={isDark ? "#7ee5dc" : "#1f766e"}
-            style={{ position: "relative", zIndex: 1, flexShrink: 0 }}
-          />
+          <span className="lpb-hero-notch-shine" aria-hidden="true" />
+          <span className="lpb-hero-notch-icon">
+            <SparklesIcon size={15} color={isDark ? "#7ee5dc" : "#111827"} />
+          </span>
           <span className="lpb-hero-notch-text">
-            Emerging platform - already {formatUserCount(landingDisplayUserCount)} users on our platform
+            <span className="lpb-hero-notch-kicker">Emerging platform</span>
+            <span className="lpb-hero-notch-divider" aria-hidden="true" />
+            <span>
+              Already{" "}
+              <span className="lpb-hero-notch-count">
+                {formatUserCount(landingDisplayUserCount)}
+              </span>{" "}
+              users on our platform
+            </span>
           </span>
         </div>
 
