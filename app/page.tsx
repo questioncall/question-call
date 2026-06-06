@@ -11,9 +11,11 @@ import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/au
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
 import {
   getCustomerServiceDetails,
+  getLandingUserCountOffset,
   getPlatformConfig,
   getPlatformSocialLinks,
 } from "@/models/PlatformConfig";
+import User from "@/models/User";
 import { APP_NAME } from "@/lib/constants";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -61,11 +63,18 @@ export default async function HomePage() {
   if (!session?.user) {
     const config = await getPlatformConfig();
     const socialLinks = getPlatformSocialLinks(config);
+    const realUserCount = await User.countDocuments({
+      role: { $in: ["STUDENT", "TEACHER"] },
+    });
+    const landingDisplayUserCount =
+      realUserCount + getLandingUserCountOffset(config);
+
     return (
       <PublicLanding
         trialDays={config.trialDays}
         customerService={getCustomerServiceDetails(config)}
         socialLinks={socialLinks}
+        landingDisplayUserCount={landingDisplayUserCount}
       />
     );
   }
@@ -80,7 +89,7 @@ export default async function HomePage() {
   const config = await getPlatformConfig();
   const socialLinks = getPlatformSocialLinks(config);
   const dailyTargets: { target: number; bonus: number }[] = JSON.parse(
-    JSON.stringify((config as any).dailyTargets ?? []),
+    JSON.stringify(config.dailyTargets ?? []),
   );
   const coursePageData = await getCourseBrowsePageData({
     userId: workspaceUser.id,

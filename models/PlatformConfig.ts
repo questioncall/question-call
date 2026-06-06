@@ -38,6 +38,7 @@ import {
 } from "@/lib/constants";
 
 const DEFAULT_CUSTOMER_SERVICE_EMAILS = [CONTACT_SERVICE_EMAIL];
+export const DEFAULT_LANDING_USER_COUNT_OFFSET = 300;
 
 function getFallbackCustomerServicePhoneNumbers(
   config: Partial<PlatformConfigRecord> | null | undefined,
@@ -231,6 +232,11 @@ const platformConfigSchema = new Schema(
     trialMaxQuestions: {
       type: Number,
       default: TRIAL.MAX_QUESTIONS,
+      min: 0,
+    },
+    landingUserCountOffset: {
+      type: Number,
+      default: DEFAULT_LANDING_USER_COUNT_OFFSET,
       min: 0,
     },
     socialFacebookHandle: {
@@ -712,6 +718,14 @@ export async function getPlatformConfig(): Promise<PlatformConfigDocument> {
       shouldSave = true;
     }
 
+    if (
+      typeof config.landingUserCountOffset !== "number" ||
+      config.landingUserCountOffset < 0
+    ) {
+      config.landingUserCountOffset = DEFAULT_LANDING_USER_COUNT_OFFSET;
+      shouldSave = true;
+    }
+
     const normalizedCustomerServicePhoneNumbers = normalizeCustomerServiceEntries(
       config.customerServicePhoneNumbers,
       {
@@ -954,6 +968,15 @@ export function getLegalContent(config: Partial<PlatformConfigRecord> | null | u
       config?.privacyPolicyContent?.trim() || LEGAL.PRIVACY_POLICY,
     updatedAt: config && "updatedAt" in config ? config.updatedAt ?? null : null,
   };
+}
+
+export function getLandingUserCountOffset(
+  config: Partial<PlatformConfigRecord> | null | undefined,
+) {
+  const offset = Number(config?.landingUserCountOffset);
+  return Number.isFinite(offset) && offset >= 0
+    ? Math.round(offset)
+    : DEFAULT_LANDING_USER_COUNT_OFFSET;
 }
 
 export type PlatformSocialHandles = Record<SocialHandleKey, string>;

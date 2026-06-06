@@ -103,6 +103,43 @@ function LandingStyles() {
         color: #1f2937;
         letter-spacing: 0.06em;
       }
+      .lpb-hero-notch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: min(100%, 520px);
+        margin: 0 auto 1.4rem;
+        padding: 0.55rem 1.15rem;
+        border-radius: 999px;
+        border: 1px solid rgba(31,118,110,0.35);
+        background: rgba(31,118,110,0.11);
+        box-shadow: 0 18px 36px rgba(31,118,110,0.12);
+        backdrop-filter: blur(16px);
+      }
+      .lpb-hero-notch::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -7px;
+        width: 14px;
+        height: 14px;
+        transform: translateX(-50%) rotate(45deg);
+        border-right: 1px solid rgba(31,118,110,0.28);
+        border-bottom: 1px solid rgba(31,118,110,0.28);
+        background: inherit;
+      }
+      .lpb-hero-notch-text {
+        position: relative;
+        z-index: 1;
+        color: #143f3b;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+      html.dark .lpb-hero-notch-text {
+        color: #d2f2ed;
+      }
       
       html.dark .shiny-text {
         color: #f9fafb;
@@ -793,7 +830,17 @@ function Nav() {
 }
 
 /* ─────────────────────── HERO ─────────────────────── */
-function Hero({ isDark }: { isDark: boolean }) {
+function formatUserCount(count: number) {
+  return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(count)));
+}
+
+function Hero({
+  isDark,
+  landingDisplayUserCount,
+}: {
+  isDark: boolean;
+  landingDisplayUserCount: number;
+}) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     const t = setTimeout(() => setCount(1), 100);
@@ -886,6 +933,24 @@ function Hero({ isDark }: { isDark: boolean }) {
           textAlign: "center",
         }}
       >
+        <div
+          className="lpb-hero-notch"
+          style={{
+            opacity: count ? 1 : 0,
+            transform: count ? "translateY(0)" : "translateY(16px)",
+            transition: "all 0.5s",
+          }}
+        >
+          <SparklesIcon
+            size={15}
+            color={isDark ? "#7ee5dc" : "#1f766e"}
+            style={{ position: "relative", zIndex: 1, flexShrink: 0 }}
+          />
+          <span className="lpb-hero-notch-text">
+            Emerging platform - already {formatUserCount(landingDisplayUserCount)} users on our platform
+          </span>
+        </div>
+
         <h1
           style={{
             fontSize: "clamp(2.6rem,6vw,4.5rem)",
@@ -4261,10 +4326,12 @@ export function PublicLanding({
   trialDays = PLATFORM.trialDays,
   customerService = DEFAULT_CUSTOMER_SERVICE_DETAILS,
   socialLinks,
+  landingDisplayUserCount = 0,
 }: {
   trialDays?: number;
   customerService?: CustomerServiceDetails;
   socialLinks?: PlatformSocialLinks;
+  landingDisplayUserCount?: number;
 }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -4281,7 +4348,10 @@ export function PublicLanding({
       <LandingStyles />
       <Nav />
       <main>
-        <Hero isDark={isDark} />
+        <Hero
+          isDark={isDark}
+          landingDisplayUserCount={landingDisplayUserCount}
+        />
         <StatsBar isDark={isDark} />
         <HowItWorks isDark={isDark} />
         <ForStudents isDark={isDark} trialDays={trialDays} />

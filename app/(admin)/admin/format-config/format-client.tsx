@@ -31,6 +31,7 @@ type FormatConfig = {
   bonusPointsFor4Star: number;
   bonusPointsFor5Star: number;
   penaltyPointsForLowRating: number;
+  landingUserCountOffset: number;
   dailyTargets: { target: number; bonus: number }[];
 };
 
@@ -150,6 +151,27 @@ export function FormatClient() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_1.35fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Landing Social Proof</CardTitle>
+            <CardDescription>
+              Add this offset to the real student and teacher count shown on the landing page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <label className="text-sm font-medium">Landing user offset</label>
+            <Input
+              type="number"
+              min={0}
+              value={config.landingUserCountOffset ?? 300}
+              onChange={(e) => handleChange("landingUserCountOffset", e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Example: if there are 20 real users and this is 300, visitors see 320 users.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Answer Durations */}
         <Card>
           <CardHeader>
