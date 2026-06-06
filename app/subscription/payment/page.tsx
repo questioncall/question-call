@@ -8,7 +8,6 @@ import {
   getManualPaymentDetails,
   getPlatformConfig,
 } from "@/models/PlatformConfig";
-import EsewaPayButton from "@/components/payment/esewa-pay-button";
 import { isCheckoutRequest } from "@/lib/checkout-host.server";
 
 export const dynamic = "force-dynamic";
@@ -122,41 +121,16 @@ export default async function PaymentPage({
       {/* Confirm payment */}
       <div className="qc-sec-label">Confirm your payment</div>
       <div className="qc-card">
+        {/* eSewa auto-pay (gateway redirect) is intentionally hidden from the UI
+            until real merchant credentials are live. The flow is kept intact —
+            `EsewaPayButton` + `/api/payments/esewa/initiate` — so it can be
+            re-enabled by rendering the button here again. Manual transfer +
+            screenshot review (TransactionModal) is the only active path. */}
         <TransactionModal
           planSlug={plan.slug}
           triggerClassName="qc-submit"
           triggerLabel="I have paid — submit details"
         />
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            margin: "16px 0",
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "var(--text-3)",
-          }}
-        >
-          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          or auto payment
-          <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
-        </div>
-
-        <EsewaPayButton planSlug={plan.slug} amount={plan.price + plan.tax} />
-        <p
-          style={{
-            fontSize: 11,
-            textAlign: "center",
-            color: "var(--text-3)",
-            marginTop: 8,
-          }}
-        >
-          eSewa auto-pay is currently in sandbox mode — not for real use yet.
-        </p>
       </div>
     </CheckoutShell>
   );
