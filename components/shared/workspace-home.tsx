@@ -18,6 +18,7 @@ import {
   LightbulbIcon,
   MessageSquareIcon,
   PresentationIcon,
+  SearchIcon,
   StarIcon,
   ThumbsUpIcon,
   HelpCircleIcon,
@@ -30,6 +31,7 @@ import {
   ImageIcon,
   RefreshCwIcon,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -71,7 +73,14 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useWorkspaceFilters } from "@/components/shared/workspace-filter-context";
 
 type WorkspaceRole = "STUDENT" | "TEACHER";
-type FeedView = "all" | "waiting" | "solved" | "media" | "discussion";
+type FeedView =
+  | "all"
+  | "waiting"
+  | "solved"
+  | "media"
+  | "discussion"
+  | "physics"
+  | "maths";
 type FeedSort = "hot" | "new" | "discussed";
 type CoursePricingModel = "FREE" | "SUBSCRIPTION_INCLUDED" | "PAID";
 
@@ -164,10 +173,12 @@ const REACTION_CONFIG: {
   { type: "same_doubt", icon: HelpCircleIcon, label: "Same doubt" },
 ];
 
-const FEED_VIEW_OPTIONS: { value: FeedView; label: string; icon: any }[] = [
+const FEED_VIEW_OPTIONS: { value: FeedView; label: string; icon: LucideIcon }[] = [
   { value: "all", label: "All", icon: BookOpenIcon },
-  { value: "waiting", label: "Waiting", icon: Clock3Icon },
+  { value: "waiting", label: "Unanswered", icon: Clock3Icon },
   { value: "solved", label: "Solved", icon: CheckCircle2Icon },
+  { value: "physics", label: "Physics", icon: BookOpenIcon },
+  { value: "maths", label: "Maths", icon: BookOpenIcon },
   { value: "media", label: "Media", icon: ImageIcon },
   { value: "discussion", label: "Discussion", icon: MessageSquareIcon },
 ];
@@ -279,6 +290,8 @@ export function WorkspaceHome({
   const [activeSort, setActiveSort] = useState<FeedSort>(
     role === "STUDENT" ? "hot" : "new",
   );
+  const [feedSearch, setFeedSearch] = useState("");
+  const [mobileFeedOptionsOpen, setMobileFeedOptionsOpen] = useState(false);
   const [activeCourseIndex, setActiveCourseIndex] = useState(0);
   const [topTeachers, setTopTeachers] = useState<TopTeacherItem[]>([]);
   const [isTopTeachersLoading, setIsTopTeachersLoading] = useState(false);
@@ -485,6 +498,7 @@ export function WorkspaceHome({
     fetchCommunityNotes();
 
     return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -626,6 +640,30 @@ export function WorkspaceHome({
 
   const visibleFeedItems = [...feedItems]
     .filter((item) => {
+      const normalizedSearch = feedSearch.trim().toLowerCase();
+      if (normalizedSearch.length > 0) {
+        const haystack = [
+          item.title,
+          item.body,
+          item.subject,
+          item.stream,
+          item.level,
+          item.askerName,
+          item.askerUsername,
+          item.acceptedByName,
+          item.previewAuthor,
+          item.previewText,
+          item.answer?.content,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(normalizedSearch)) {
+          return false;
+        }
+      }
+
       if (activeHeaderFilters.length > 0) {
         const matchesSubject =
           searchSubjects.length === 0 ||
@@ -655,6 +693,14 @@ export function WorkspaceHome({
           );
         case "discussion":
           return item.commentCount > 0;
+        case "physics":
+          return item.subject?.toLowerCase().includes("physics") ?? false;
+        case "maths":
+          return (
+            item.subject?.toLowerCase().includes("math") ||
+            item.subject?.toLowerCase().includes("maths") ||
+            item.title.toLowerCase().includes("math")
+          );
         default:
           return true;
       }
@@ -1161,7 +1207,111 @@ export function WorkspaceHome({
     <div className="space-y-6">
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 flex flex-col gap-6">
-          <Card className="order-1 overflow-hidden border border-border/70 bg-background shadow-sm">
+          <section className="order-1 -mx-4 border-b-8 border-[#f4f6f8] bg-background px-[18px] pb-2 pt-1 md:hidden dark:border-muted">
+            <div className="mt-2 flex items-center gap-2">
+              <div
+                className={cn(
+                  "flex h-[42px] flex-1 items-center gap-2 rounded-[13px] border-[1.5px] px-3.5",
+                  feedSearch
+                    ? "border-emerald-200 bg-[#f4f6f8]"
+                    : "border-transparent bg-[#f4f6f8] dark:bg-muted",
+                )}
+              >
+                <SearchIcon className="size-[19px] shrink-0 text-[#9AA3AA]" />
+                <input
+                  value={feedSearch}
+                  onChange={(event) => setFeedSearch(event.target.value)}
+                  placeholder="Search questions & courses..."
+                  className="min-w-0 flex-1 bg-transparent text-[14.5px] font-medium text-foreground outline-none placeholder:text-[#9AA3AA]"
+                  type="search"
+                />
+                {feedSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setFeedSearch("")}
+                    className="flex size-[19px] items-center justify-center rounded-full bg-[#D7DCE1] text-[11px] font-bold text-white"
+                    aria-label="Clear search"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFeedOptionsOpen((open) => !open)}
+                className="relative flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-[#0F1F17] text-white active:scale-95"
+                aria-label="Filters"
+              >
+                <SlidersHorizontalIcon className="size-[18px]" />
+                {activeHeaderFilters.length > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-extrabold text-white">
+                    {activeHeaderFilters.length}
+                  </span>
+                ) : null}
+              </button>
+            </div>
+
+            {mobileFeedOptionsOpen ? (
+              <div className="mt-2 rounded-2xl border border-border bg-background p-3 shadow-sm">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Sort
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {FEED_SORT_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setActiveSort(value)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                        activeSort === value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  {activeHeaderFilters.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearWorkspaceFilters}
+                      className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-600"
+                    >
+                      Clear filters
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {FEED_VIEW_OPTIONS.filter((option) =>
+                ["all", "waiting", "solved", "physics", "maths"].includes(
+                  option.value,
+                ),
+              ).map((option) => {
+                const active = activeView === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setActiveView(option.value)}
+                    className={cn(
+                      "shrink-0 rounded-full border px-[13px] py-1.5 text-[13px] font-semibold",
+                      active
+                        ? "border-[#0F1F17] bg-[#0F1F17] text-white"
+                        : "border-[#E6EAEE] bg-background text-muted-foreground",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <Card className="order-1 hidden overflow-hidden border border-border/70 bg-background shadow-sm md:block">
             <CardContent className="overflow-x-auto px-3 py-2 sm:px-6 sm:py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex min-w-max items-center gap-2">
                 {FEED_VIEW_OPTIONS.map((option) => (
@@ -1255,7 +1405,15 @@ export function WorkspaceHome({
 
           <div className="order-2">{mobileCourseRail}</div>
 
-          <div className="order-3 space-y-6">
+          <div className="order-3 -mx-4 border-t-8 border-[#f4f6f8] bg-background px-[18px] pb-1 pt-2 md:hidden dark:border-muted">
+            <div className="flex items-center justify-between">
+              <p className="text-[12.5px] font-extrabold uppercase tracking-[1.1px] text-[#9AA3AA]">
+                Questions
+              </p>
+            </div>
+          </div>
+
+          <div className="order-4 space-y-0 md:space-y-6">
             {/* Loading skeleton */}
             {isLoading && !isHydrated && (
               <div className="space-y-4">
@@ -1340,7 +1498,7 @@ export function WorkspaceHome({
               return (
                 <article
                   key={item.id}
-                  className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm transition-all hover:border-border hover:shadow-md"
+                  className="min-w-0 overflow-hidden border-y border-border/60 bg-background shadow-none transition-all hover:border-border md:rounded-2xl md:border md:shadow-sm md:hover:shadow-md"
                 >
                   <div className="min-w-0 grid md:grid-cols-[64px_minmax(0,1fr)]">
                     <div className="hidden md:flex items-center justify-between gap-2 border-b border-border/60 bg-muted/25 px-4 py-3 md:min-h-full md:flex-col md:justify-start md:gap-3 md:border-b-0 md:border-r md:px-2 md:py-4">
@@ -1378,25 +1536,29 @@ export function WorkspaceHome({
                     </div>
 
                     <div className="min-w-0">
-                      <div className="space-y-4 px-4 py-4">
+                      <div className="space-y-4 px-[18px] py-[19px] md:px-4 md:py-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-3">
                             <Link
                               href={askerProfileHref}
                               className="group/avatar relative z-10 flex shrink-0 items-center justify-center"
+                              aria-label={`Open ${item.askerName}'s profile`}
                             >
                               {item.askerImage ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                   src={item.askerImage}
                                   alt={item.askerName}
-                                  className="h-7 w-7 shrink-0 aspect-square rounded-full border border-border/80 object-cover shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md"
+                                  className="size-[42px] shrink-0 rounded-full border-[1.5px] border-border/80 object-cover shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md md:size-9"
                                 />
                               ) : (
-                                <div className="flex h-9 w-9 shrink-0 aspect-square items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-bold text-primary shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md">
+                                <div className="flex size-[42px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 text-base font-bold text-primary shadow-sm transition-transform duration-300 group-hover/avatar:scale-105 group-hover/avatar:shadow-md md:size-9 md:text-sm">
                                   {item.askerName.charAt(0).toUpperCase()}
                                 </div>
                               )}
+                              {item.askerIsOnline ? (
+                                <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-emerald-500 md:size-2.5" />
+                              ) : null}
                             </Link>
 
                             <div className="flex flex-col">
@@ -1407,6 +1569,13 @@ export function WorkspaceHome({
                                 >
                                   {item.askerName}
                                 </Link>
+                                {item.askerIsOnline ? (
+                                  <span
+                                    className="size-[7px] rounded-full bg-emerald-500"
+                                    aria-label="Online"
+                                    title="Online"
+                                  />
+                                ) : null}
                                 {item.askerUsername && (
                                   <span className="hidden text-[13px] font-medium text-muted-foreground/60 sm:inline-block">
                                     @{item.askerUsername}
@@ -1546,25 +1715,43 @@ export function WorkspaceHome({
                           <h2 className="text-[1.125rem] font-bold leading-snug text-foreground sm:line-clamp-none sm:text-[1.25rem]">
                             {item.title}
                           </h2>
-                          <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere] line-clamp-1">
-                            {item.body}
-                          </p>
+                          {item.body ? (
+                            <p className="line-clamp-3 text-[14.5px] leading-[1.45] text-muted-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere] md:line-clamp-1 md:text-[15px] md:leading-relaxed">
+                              {item.body}
+                            </p>
+                          ) : null}
                         </div>
 
                         {item.images && item.images.length > 0 && (
                           <div className="flex max-w-full flex-wrap gap-2 overflow-hidden rounded-2xl">
-                            {item.images.map((imgUrl, index) => (
+                            {item.images.slice(0, 1).map((imgUrl, index) => (
                               <a
                                 key={index}
                                 href={imgUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="group block h-28 w-28 overflow-hidden rounded-xl border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
+                                className="group block h-[132px] w-full overflow-hidden rounded-[14px] border border-border/70 bg-muted/10 sm:h-32 sm:w-32 md:h-36 md:w-36"
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={imgUrl}
                                   alt={`Question media ${index + 1}`}
+                                  className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                                />
+                              </a>
+                            ))}
+                            {item.images.slice(1).map((imgUrl, index) => (
+                              <a
+                                key={`${imgUrl}-${index + 1}`}
+                                href={imgUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group block size-[58px] overflow-hidden rounded-[10px] border border-border/70 bg-muted/10"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imgUrl}
+                                  alt={`Question media ${index + 2}`}
                                   className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                                 />
                               </a>
@@ -1635,9 +1822,21 @@ export function WorkspaceHome({
                                   <div className="space-y-4 border-t border-emerald-500/15 bg-background/95 px-4 py-4">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                       <div>
-                                        <p className="text-sm font-semibold text-foreground">
-                                          {answer.acceptorName || "Teacher"}
-                                        </p>
+                                        {answer.acceptorId ? (
+                                          <Link
+                                            href={getProfilePath({
+                                              id: answer.acceptorId,
+                                              name: answer.acceptorName || "Teacher",
+                                            })}
+                                            className="text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline"
+                                          >
+                                            {answer.acceptorName || "Teacher"}
+                                          </Link>
+                                        ) : (
+                                          <p className="text-sm font-semibold text-foreground">
+                                            {answer.acceptorName || "Teacher"}
+                                          </p>
+                                        )}
                                         {answer.submittedAt && (
                                           <p className="text-xs text-muted-foreground">
                                             Posted{" "}

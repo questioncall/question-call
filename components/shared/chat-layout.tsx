@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Search, ChevronLeft, Menu, Loader2, Clock, Lock, AlertTriangle } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppSelector } from "@/store/hooks";
@@ -23,6 +23,26 @@ function formatTimeAgo(value?: string) {
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
   return `${days}d`;
+}
+
+function formatLastActive(isOnline?: boolean, lastActiveAt?: string) {
+  if (isOnline) return "Active now";
+  if (!lastActiveAt) return null;
+
+  const timestamp = new Date(lastActiveAt).getTime();
+  if (Number.isNaN(timestamp)) return null;
+
+  const minutes = Math.floor((Date.now() - timestamp) / 60000);
+  if (minutes < 1) return "Active now";
+  if (minutes < 60) return `Active ${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Active ${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Active ${days}d ago`;
+
+  return null;
 }
 
 const STATUS_ICONS: Record<string, typeof Clock> = {
@@ -77,6 +97,7 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
           </div>
           {filteredChannels.slice(0, 6).map((channel) => (
             <Avatar key={channel.id} className="mb-4 h-12 w-12 border border-border">
+              <AvatarImage src={channel.counterpartImage || ""} alt={channel.counterpartName} />
               <AvatarFallback>
                 {channel.counterpartName.substring(0, 2).toUpperCase()}
               </AvatarFallback>
@@ -128,22 +149,37 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
                 {filteredChannels.map((channel) => {
                   const isActive = pathname.includes(channel.id);
                   const StatusIcon = STATUS_ICONS[channel.status] || Clock;
+                  const presenceLabel = formatLastActive(
+                    channel.counterpartIsOnline,
+                    channel.counterpartLastActiveAt,
+                  );
+                  const preview = channel.lastMessagePreview
+                    ? channel.lastMessagePreview
+                    : channel.status === "ACTIVE"
+                      ? "Channel opened"
+                      : channel.status === "CLOSED"
+                        ? "Channel closed"
+                        : "Channel expired";
 
                   return (
                     <Link
                       key={channel.id}
                       href={getChannelPath(channel.id)}
                       className={cn(
-                        "flex min-w-0 items-start gap-4 rounded-lg p-4 transition-colors hover:bg-muted/50",
+                        "flex min-w-0 items-center gap-[13px] rounded-lg px-4 py-3 transition-colors hover:bg-muted/50",
                         isActive ? "bg-muted" : "bg-transparent",
                       )}
                     >
-                      <div className="relative shrink-0">
-                        <Avatar className="h-14 w-14 border border-border">
+                      <div className="relative size-[54px] shrink-0">
+                        <Avatar className="size-[54px] border border-border">
+                          <AvatarImage src={channel.counterpartImage || ""} alt={channel.counterpartName} />
                           <AvatarFallback>
                             {channel.counterpartName.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
+                        {channel.counterpartIsOnline ? (
+                          <span className="absolute bottom-0.5 right-0.5 size-[13px] rounded-full border-2 border-background bg-emerald-500" />
+                        ) : null}
                         {channel.unreadCount > 0 && (
                           <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-red-500 text-[11px] font-bold text-white shadow-sm">
                             {channel.unreadCount > 99 ? "99+" : channel.unreadCount}
@@ -152,32 +188,63 @@ export function ChatLayout({ children }: { children: React.ReactNode }) {
                       </div>
 
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="flex min-w-0 items-baseline justify-between gap-2 pt-0.5">
+                        <div className="mb-0.5 flex min-w-0 items-center justify-between gap-2">
                           <p
-                            className="min-w-0 flex-1 truncate text-base font-medium text-foreground"
+                            className={cn(
+                              "min-w-0 flex-1 truncate text-[15px] text-foreground",
+                              channel.unreadCount > 0 ? "font-bold" : "font-semibold",
+                            )}
                             title={channel.counterpartName}
                           >
                             {channel.counterpartName}
                           </p>
-                          <span className="shrink-0 text-xs text-muted-foreground">
+                          <span
+                            className={cn(
+                              "shrink-0 text-xs",
+                              channel.unreadCount > 0
+                                ? "font-semibold text-primary"
+                                : "text-muted-foreground",
+                            )}
+                          >
                             {formatTimeAgo(channel.lastMessageAt)}
                           </span>
                         </div>
 
-                        <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                          <StatusIcon className="size-4 shrink-0" />
-                          <span className="truncate">
-                            {channel.role === "asker" ? "You asked" : "You're helping"} •{" "}
+                        <div className="mb-0.5 flex min-w-0 items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+                            {channel.questionTitle}
+                          </p>
+                          {presenceLabel ? (
+                            <span
+                              className={cn(
+                                "shrink-0 text-[11px]",
+                                channel.counterpartIsOnline
+                                  ? "font-semibold text-emerald-500"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {presenceLabel}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p
+                            className={cn(
+                              "min-w-0 flex-1 truncate text-[13px]",
+                              channel.unreadCount > 0
+                                ? "font-medium text-foreground"
+                                : "text-muted-foreground",
+                            )}
+                            title={preview}
+                          >
+                            {preview}
+                          </p>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                            <StatusIcon className="size-3" />
                             {STATUS_LABEL[channel.status]}
                           </span>
-                        </p>
-
-                        <p
-                          className="mt-1 truncate text-xs text-muted-foreground"
-                          title={channel.lastMessagePreview || channel.questionTitle}
-                        >
-                          {channel.lastMessagePreview || channel.questionTitle}
-                        </p>
+                        </div>
                       </div>
                     </Link>
                   );

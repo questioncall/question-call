@@ -11,7 +11,10 @@ import {
   GraduationCapIcon,
   HomeIcon,
   InfoIcon,
+  ListIcon,
+  MenuIcon,
   MessageSquareIcon,
+  PlusIcon,
   Settings2Icon,
   SparklesIcon,
   TargetIcon,
@@ -74,7 +77,7 @@ import {
   getWalletPath,
   getUserHandle,
 } from "@/lib/user-paths";
-import { setProfile, updateProfile } from "@/store/features/user/user-slice";
+import { updateProfile } from "@/store/features/user/user-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import {
@@ -140,6 +143,181 @@ type NewChannelPayload = {
 };
 
 const SIDEBAR_SKELETON_ITEMS = 8;
+const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)";
+
+function isStandaloneDisplayMode() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    nav.standalone === true
+  );
+}
+
+function isMobileViewport() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
+}
+
+function useInstalledMobilePwa() {
+  const [isInstalledMobilePwa, setIsInstalledMobilePwa] = useState(false);
+
+  useEffect(() => {
+    const displayQueries = [
+      window.matchMedia("(display-mode: standalone)"),
+      window.matchMedia("(display-mode: fullscreen)"),
+    ];
+    const mobileQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+
+    const update = () => {
+      setIsInstalledMobilePwa(isStandaloneDisplayMode() && isMobileViewport());
+    };
+
+    const addListener = (query: MediaQueryList) => {
+      query.addEventListener("change", update);
+    };
+
+    const removeListener = (query: MediaQueryList) => {
+      query.removeEventListener("change", update);
+    };
+
+    update();
+    displayQueries.forEach(addListener);
+    addListener(mobileQuery);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+
+    return () => {
+      displayQueries.forEach(removeListener);
+      removeListener(mobileQuery);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
+
+  return isInstalledMobilePwa;
+}
+
+type PwaNavItem = {
+  href: string;
+  icon: typeof HomeIcon;
+  label: string;
+  isActive: boolean;
+  badge?: number | null;
+};
+
+function WorkspacePwaTopBar({
+  userId,
+}: {
+  userId: string;
+}) {
+  return (
+    <header
+      className="sticky top-0 z-30 border-b border-border/70 bg-background/95 shadow-sm backdrop-blur-md md:hidden"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="flex h-14 items-center justify-between px-4">
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <LogoMark size={30} className="rounded-xl" />
+          <div className="min-w-0">
+            <p className="truncate text-lg font-extrabold leading-5 text-foreground">
+              Question <span className="text-emerald-500">Call</span>
+            </p>
+          </div>
+        </Link>
+        <div className="flex items-center gap-1.5">
+          <NotificationBell userId={userId} />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function WorkspacePwaBottomNav({
+  items,
+  centerLabel,
+  centerHref,
+  onCenterClick,
+}: {
+  items: PwaNavItem[];
+  centerLabel: string;
+  centerHref?: string;
+  onCenterClick?: () => void;
+}) {
+  const centerContent = (
+    <>
+      <PlusIcon className="size-6" />
+      <span className="text-[9px] font-semibold leading-none">{centerLabel}</span>
+    </>
+  );
+
+  return (
+    <nav
+      aria-label="App navigation"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 shadow-[0_-10px_28px_rgba(15,23,42,0.08)] backdrop-blur-md md:hidden"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
+    >
+      <div className="grid h-16 grid-cols-5 items-center">
+        {items.slice(0, 2).map((item) => (
+          <PwaBottomNavLink key={item.href} item={item} />
+        ))}
+
+        <div className="flex justify-center">
+          {centerHref ? (
+            <Link
+              href={centerHref}
+              className="relative -mt-7 flex size-16 flex-col items-center justify-center gap-0.5 rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition active:scale-95"
+            >
+              {centerContent}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onCenterClick}
+              className="relative -mt-7 flex size-16 flex-col items-center justify-center gap-0.5 rounded-full border border-primary/30 bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition active:scale-95"
+            >
+              {centerContent}
+            </button>
+          )}
+        </div>
+
+        {items.slice(2).map((item) => (
+          <PwaBottomNavLink key={item.href} item={item} />
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function PwaBottomNavLink({ item }: { item: PwaNavItem }) {
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "relative flex h-full min-w-0 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition active:scale-95",
+        item.isActive ? "text-primary" : "text-muted-foreground",
+      )}
+    >
+      <span className="relative">
+        <item.icon className="size-[21px]" />
+        {item.badge && item.badge > 0 ? (
+          <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        ) : null}
+      </span>
+      <span className="w-full truncate text-center leading-none">{item.label}</span>
+    </Link>
+  );
+}
 
 function WorkspaceSidebarHeaderSkeleton() {
   return (
@@ -209,6 +387,7 @@ export function WorkspaceShell({
   const [outgoingRejectedCallId, setOutgoingRejectedCallId] = useState<string | null>(null);
   const [outgoingMissedCallId, setOutgoingMissedCallId] = useState<string | null>(null);
   const [showTargetInfoModal, setShowTargetInfoModal] = useState(false);
+  const isInstalledMobilePwa = useInstalledMobilePwa();
 
   const removeIncomingCall = useCallback((callSessionId?: string) => {
     setIncomingCalls((prev) => removeIncomingCallFromQueue(prev, callSessionId));
@@ -335,7 +514,7 @@ export function WorkspaceShell({
             const audio = new Audio("/sounds/message-tone.wav");
             audio.volume = 0.5;
             audio.play().catch(() => {});
-          } catch (_) { /* ignore */ }
+          } catch { /* ignore */ }
 
           // Show desktop notification (reliable using service worker)
           try {
@@ -373,7 +552,7 @@ export function WorkspaceShell({
                 };
               }
             }
-          } catch (_) { /* ignore */ }
+          } catch { /* ignore */ }
         }
       }
     });
@@ -530,12 +709,75 @@ export function WorkspaceShell({
   const subscriptionHref = getSubscriptionPath(resolvedUser);
   const walletHref = getWalletPath(resolvedUser);
   const showQuestionFilter = pathname === "/";
-  const isChatPage = pathname.startsWith("/message") || pathname.startsWith("/channel/");
+  const isChannelDetailPage = pathname.startsWith("/channel/");
+  const isCallPage = pathname.startsWith("/calls/");
+  const isPwaPushedActionPage =
+    pathname.startsWith("/ask") || pathname.startsWith("/actions");
+  const isPwaMenuDetailPage =
+    pathname === "/notifications" ||
+    pathname === "/notices" ||
+    pathname === "/referral" ||
+    pathname === "/daily-target" ||
+    pathname === "/onboarding" ||
+    pathname === "/wallet/withdraw" ||
+    pathname === "/profile/activity" ||
+    pathname === "/profile/change-password" ||
+    pathname === "/settings/notifications" ||
+    pathname === "/settings/theme";
+  const isWatchPage = pathname.includes("/watch/");
+  const isPaymentPage =
+    pathname.startsWith("/payment") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/subscription/payment");
+  const hidePwaChrome =
+    isInstalledMobilePwa &&
+    (isChannelDetailPage ||
+      isCallPage ||
+      isPwaPushedActionPage ||
+      isPwaMenuDetailPage ||
+      isWatchPage ||
+      isPaymentPage);
+  const shouldUsePwaChrome = isInstalledMobilePwa && !hidePwaChrome;
+  const isChatPage = pathname.startsWith("/message") || isChannelDetailPage;
 
   // Keep Post Question button in header for students, but open messages for teachers
   const headerPrimaryHref = resolvedUser.role === "STUDENT" ? "#" : messageHref;
   const headerPrimaryLabel = resolvedUser.role === "STUDENT" ? "Post Question" : "Open messages";
   const headerUseModal = resolvedUser.role === "STUDENT";
+  const pwaBottomItems: PwaNavItem[] = [
+    {
+      href: "/",
+      icon: ListIcon,
+      label: "Feed",
+      isActive: pathname === "/" || pathname.startsWith("/question/"),
+    },
+    {
+      href: messageHref,
+      icon: MessageSquareIcon,
+      label: "Channels",
+      badge: totalUnreadChannels,
+      isActive: pathname.startsWith("/message") || pathname.startsWith("/channel/"),
+    },
+    {
+      href: "/courses",
+      icon: BookOpenIcon,
+      label: "Courses",
+      isActive: pathname.startsWith("/courses"),
+    },
+    {
+      href: "/menu",
+      icon: MenuIcon,
+      label: "Menu",
+      isActive:
+        pathname === "/menu" ||
+        pathname.startsWith("/settings") ||
+        pathname.startsWith("/wallet") ||
+        pathname.startsWith("/notes") ||
+        pathname.startsWith("/leaderboard") ||
+        pathname.startsWith("/subscription"),
+    },
+  ];
+  const pwaCenterLabel = resolvedUser.role === "TEACHER" ? "Actions" : "Ask";
 
   const mainItems = [
     {
@@ -823,29 +1065,56 @@ collapseSidebarOnClick: true,
           className={cn(
             "flex flex-col bg-[#f6f8fb] dark:bg-background",
             isChatPage ? "h-svh overflow-hidden" : "min-h-svh",
+            shouldUsePwaChrome && "bg-background",
           )}
         >
           <OnboardingVideoModal />
 
-          <AuthenticatedHeader
-            isScrolled={isScrolled}
-            primaryHref={headerPrimaryHref}
-            primaryLabel={headerPrimaryLabel}
-            showQuizLink={resolvedUser.role === "STUDENT"}
-            showQuestionFilter={showQuestionFilter}
-            useModalForPrimary={headerUseModal}
-            socialLinks={liveSocialLinks}
-            userId={resolvedUser.id}
-          />
+          {hidePwaChrome ? null : shouldUsePwaChrome ? (
+            <WorkspacePwaTopBar
+              userId={resolvedUser.id}
+            />
+          ) : (
+            <AuthenticatedHeader
+              isScrolled={isScrolled}
+              primaryHref={headerPrimaryHref}
+              primaryLabel={headerPrimaryLabel}
+              showQuizLink={resolvedUser.role === "STUDENT"}
+              showQuestionFilter={showQuestionFilter}
+              useModalForPrimary={headerUseModal}
+              socialLinks={liveSocialLinks}
+              userId={resolvedUser.id}
+            />
+          )}
 
           <div
             className={cn(
               "flex flex-1 flex-col",
               isChatPage ? "overflow-hidden" : "gap-6 px-4 py-6 lg:px-6",
+              shouldUsePwaChrome &&
+                !isChatPage &&
+                "gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5",
+              shouldUsePwaChrome &&
+                pathname === "/menu" &&
+                "px-0 pt-0",
+              hidePwaChrome && !isChatPage && "gap-0 px-0 py-0",
+              shouldUsePwaChrome &&
+                isChatPage &&
+                "pb-[calc(5rem+env(safe-area-inset-bottom))]",
             )}
           >
             {children}
           </div>
+
+          {shouldUsePwaChrome ? (
+            <WorkspacePwaBottomNav
+              centerHref={
+                resolvedUser.role === "TEACHER" ? "/actions" : "/ask/question"
+              }
+              centerLabel={pwaCenterLabel}
+              items={pwaBottomItems}
+            />
+          ) : null}
         </SidebarInset>
 
         {/* ── Global call overlays (mounted outside sidebar) ─── */}

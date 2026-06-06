@@ -189,3 +189,20 @@ a {
     @apply font-sans;
   }
 }
+
+.pwa-pushed-header {
+  display: none;
+}
+
+@media (max-width: 767px) and (display-mode: standalone),
+  (max-width: 767px) and (display-mode: fullscreen) {
+  .pwa-pushed-header {
+    display: flex;
+  }
+
+  .pwa-pushed-screen {
+    min-height: 100svh;
+    background: var(--background);
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+}

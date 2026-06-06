@@ -7,6 +7,7 @@ import {
   EyeIcon,
   Loader2Icon,
   SparklesIcon,
+  XIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -134,8 +135,30 @@ export default function AskQuestionPage() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-6">
+    <div className="pwa-pushed-screen">
+      <div
+        className="pwa-pushed-header sticky top-0 z-30 items-center justify-between border-b border-border bg-background px-5 pb-3 pt-[calc(env(safe-area-inset-top)+0.875rem)]"
+      >
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mr-3 flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground active:scale-95"
+          aria-label="Close"
+        >
+          <XIcon className="size-6" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-[22px] font-bold tracking-tight text-foreground">
+            Ask a question
+          </h1>
+          <p className="mt-0.5 truncate text-[12px] font-medium text-primary">
+            Add details, photos, format and visibility
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 px-4 py-5 lg:grid-cols-[1fr_360px]">
+        <div className="space-y-6">
         <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -319,10 +342,10 @@ export default function AskQuestionPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
-      <div className="space-y-6">
-        {showPreview && (
+        <div className="space-y-6">
+          {showPreview && (
           <Card className="border border-primary/20 shadow-sm">
             <CardHeader>
               <CardDescription>Feed preview</CardDescription>
@@ -363,9 +386,9 @@ export default function AskQuestionPage() {
               </p>
             </CardContent>
           </Card>
-        )}
+          )}
 
-        <Card className="border border-border/70 shadow-sm">
+          <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardDescription>Tips</CardDescription>
             <CardTitle className="text-sm">Write a great question</CardTitle>
@@ -388,9 +411,9 @@ export default function AskQuestionPage() {
               <span>Set visibility to Private if you don&apos;t want the answer shown publicly.</span>
             </div>
           </CardContent>
-        </Card>
+          </Card>
 
-        <Card className="border border-border/70 shadow-sm">
+          <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardDescription>What happens next</CardDescription>
             <CardTitle className="text-sm">After posting</CardTitle>
@@ -403,7 +426,8 @@ export default function AskQuestionPage() {
               <li>Submit an answer within the format&apos;s time limit</li>
             </ul>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
