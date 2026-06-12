@@ -91,6 +91,47 @@ type MoneyOutRow = {
   transactionId: string | null;
 };
 
+type FinancialSummary = {
+  completedRevenue: number;
+  platformEarnings: number;
+  teacherCoursePayouts: number;
+  withdrawalsSent: number;
+  pendingReview: number;
+};
+
+type EarningsBySourceRow = {
+  source: string;
+  transactions: number;
+  grossAmount: number;
+  platformKeeps: number;
+  teacherShare: number;
+};
+
+const EMPTY_FINANCIAL_SUMMARY: FinancialSummary = {
+  completedRevenue: 0,
+  platformEarnings: 0,
+  teacherCoursePayouts: 0,
+  withdrawalsSent: 0,
+  pendingReview: 0,
+};
+
+const EMPTY_EARNINGS_BY_SOURCE: EarningsBySourceRow[] = [
+  {
+    source: "Subscriptions",
+    transactions: 0,
+    grossAmount: 0,
+    platformKeeps: 0,
+    teacherShare: 0,
+  },
+  {
+    source: "Course commissions",
+    transactions: 0,
+    grossAmount: 0,
+    platformKeeps: 0,
+    teacherShare: 0,
+  },
+];
+
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong";
 }
@@ -159,6 +200,12 @@ function getUserEmail(transaction: TransactionRecord) {
 export function TransactionsClient() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>(
+    EMPTY_FINANCIAL_SUMMARY,
+  );
+  const [earningsBySource, setEarningsBySource] = useState<EarningsBySourceRow[]>(
+    EMPTY_EARNINGS_BY_SOURCE,
+  );
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState("ALL");
@@ -170,7 +217,9 @@ export function TransactionsClient() {
 
   const PAGE_SIZE = 10;
 
-  const fetchTransactions = useCallback(async (loadMore = false) => {
+  const fetchTransactions = useCallback(async (skip = 0) => {
+    const loadMore = skip > 0;
+
     try {
       if (loadMore) {
         setLoadingMore(true);
@@ -178,7 +227,6 @@ export function TransactionsClient() {
         setLoading(true);
       }
 
-      const skip = loadMore ? transactions.length : 0;
       const res = await fetch(`/api/admin/transactions?limit=${PAGE_SIZE}&skip=${skip}`);
       if (!res.ok) {
         throw new Error("Failed to fetch transactions");
@@ -191,17 +239,19 @@ export function TransactionsClient() {
         setTransactions(data.transactions);
       }
       setTotalTransactions(data.total);
+      setFinancialSummary(data.financialSummary ?? EMPTY_FINANCIAL_SUMMARY);
+      setEarningsBySource(data.earningsBySource ?? EMPTY_EARNINGS_BY_SOURCE);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [transactions.length]);
+  }, []);
 
   useEffect(() => {
     void fetchTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
   const filteredTxns = transactions.filter((transaction) =>
     filter === "ALL" ? true : transaction.type === filter,
@@ -268,64 +318,8 @@ export function TransactionsClient() {
     transactionId: transaction.transactionId || null,
   }));
 
-  const financialSummary = {
-    completedRevenue: moneyInRows.reduce((sum, transaction) => sum + transaction.grossAmount, 0),
-    platformEarnings: moneyInRows.reduce((sum, transaction) => sum + transaction.platformKeeps, 0),
-    teacherCoursePayouts: distributedTransactions
-      .filter((transaction) => transaction.type === "COURSE_SALE_CREDIT")
-      .reduce((sum, transaction) => sum + transaction.amount, 0),
-    withdrawalsSent: distributedTransactions
-      .filter((transaction) => transaction.type === "WITHDRAWAL")
-      .reduce((sum, transaction) => sum + transaction.amount, 0),
-    pendingReview: transactions
-      .filter(
-        (transaction) =>
-          transaction.status === "PENDING" &&
-          (transaction.type === "SUBSCRIPTION_MANUAL" ||
-            transaction.type === "COURSE_PURCHASE"),
-      )
-      .reduce((sum, transaction) => sum + transaction.amount, 0),
-  };
   const totalDistributed =
     financialSummary.teacherCoursePayouts + financialSummary.withdrawalsSent;
-
-  const earningsBySource = [
-    {
-      source: "Subscriptions",
-      transactions: completedIncomingTransactions.filter(
-        (transaction) => transaction.type === "SUBSCRIPTION_MANUAL",
-      ).length,
-      grossAmount: completedIncomingTransactions
-        .filter((transaction) => transaction.type === "SUBSCRIPTION_MANUAL")
-        .reduce((sum, transaction) => sum + transaction.amount, 0),
-      platformKeeps: completedIncomingTransactions
-        .filter((transaction) => transaction.type === "SUBSCRIPTION_MANUAL")
-        .reduce((sum, transaction) => sum + transaction.amount, 0),
-      teacherShare: 0,
-    },
-    {
-      source: "Course commissions",
-      transactions: completedIncomingTransactions.filter(
-        (transaction) => transaction.type === "COURSE_PURCHASE",
-      ).length,
-      grossAmount: completedIncomingTransactions
-        .filter((transaction) => transaction.type === "COURSE_PURCHASE")
-        .reduce(
-          (sum, transaction) => sum + (transaction.metadata?.grossAmount ?? transaction.amount),
-          0,
-        ),
-      platformKeeps: completedIncomingTransactions
-        .filter((transaction) => transaction.type === "COURSE_PURCHASE")
-        .reduce((sum, transaction) => {
-          const grossAmount = transaction.metadata?.grossAmount ?? transaction.amount;
-          const teacherShare = transaction.metadata?.netAmount ?? 0;
-          return sum + (grossAmount - teacherShare);
-        }, 0),
-      teacherShare: completedIncomingTransactions
-        .filter((transaction) => transaction.type === "COURSE_PURCHASE")
-        .reduce((sum, transaction) => sum + (transaction.metadata?.netAmount ?? 0), 0),
-    },
-  ];
 
   const openApproveModal = (transaction: TransactionRecord) => {
     setAdminNote("");
@@ -585,7 +579,7 @@ export function TransactionsClient() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => fetchTransactions(true)}
+                    onClick={() => fetchTransactions(transactions.length)}
                     disabled={loadingMore}
                     className="gap-2"
                   >
