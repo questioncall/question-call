@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { Types } from "mongoose";
 
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
+import { notifyUser } from "@/lib/notifications/notify-user";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,17 @@ export async function POST(
     });
 
     const followerCount = await User.countDocuments({ following: id });
+
+    // Notify the teacher that someone followed them. after() guarantees it runs
+    // post-response on serverless. href → /user/:id (the follower's profile).
+    after(async () => {
+      await notifyUser({
+        userId: id,
+        type: "NEW_FOLLOWER",
+        message: `${authUser.name} started following you`,
+        href: `/user/${authUser.id}`,
+      });
+    });
 
     return NextResponse.json({ following: true, followerCount });
   } catch (error) {

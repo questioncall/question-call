@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 import { connectToDatabase } from "@/lib/mongodb";
 import { REACTION_TYPES } from "@/lib/question-types";
 import { emitQuestionUpdated } from "@/lib/pusher/pusherServer";
+import { notifyUser } from "@/lib/notifications/notify-user";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
 import Question from "@/models/Question";
@@ -48,19 +49,17 @@ export async function POST(request: Request, context: RouteParams) {
         r.userId.toString() === authenticatedUser.id,
     );
 
+    let reactionAdded = false;
     if (existingIndex >= 0) {
       const existingType = reactions[existingIndex].type;
-      // Remove the existing reaction
       reactions.splice(existingIndex, 1);
-
-      // If it was a different type, add the new one (switch reaction)
       if (existingType !== body.type) {
         reactions.push({ userId: authenticatedUser.id, type: body.type });
+        reactionAdded = true;
       }
-      // If same type, it's now removed (toggle off)
     } else {
-      // No existing reaction — add new one
       reactions.push({ userId: authenticatedUser.id, type: body.type });
+      reactionAdded = true;
     }
 
     question.reactions = reactions;
@@ -114,6 +113,21 @@ export async function POST(request: Request, context: RouteParams) {
     };
 
     await emitQuestionUpdated(feedQuestion).catch(() => {});
+
+    // Notify the asker when someone reacts to their post (not themselves).
+    const askerId = asker._id.toString();
+    if (reactionAdded && askerId !== authenticatedUser.id) {
+      const reactorName = authenticatedUser.name;
+      const questionTitle = question.title.slice(0, 80);
+      after(async () => {
+        await notifyUser({
+          userId: askerId,
+          type: "REACTION_RECEIVED",
+          message: `${reactorName} reacted to your question: ${questionTitle}`,
+          href: "/feed",
+        });
+      });
+    }
 
     return NextResponse.json(feedQuestion);
   } catch (error) {

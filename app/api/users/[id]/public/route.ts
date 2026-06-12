@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { Types } from "mongoose";
 
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { getUserHandle } from "@/lib/user-paths";
+import { notifyUser } from "@/lib/notifications/notify-user";
 import User from "@/models/User";
 import Question from "@/models/Question";
 import Answer from "@/models/Answer";
 import Course from "@/models/Course";
+import ProfileView from "@/models/ProfileView";
 
 export const dynamic = "force-dynamic";
 
@@ -204,6 +206,35 @@ export async function GET(request: Request, context: RouteParams) {
           : null,
       };
     });
+
+    // Track profile view and notify the owner (TikTok-style 3-day window).
+    // Runs after the response is flushed via after() so it can't add latency
+    // and is still guaranteed to run on serverless (unlike a bare promise).
+    if (viewer.id !== id) {
+      after(async () => {
+        try {
+          // Atomic upsert — race-free. upsertedCount > 0 means this is the
+          // first view inside the 3-day TTL window (so we notify exactly once);
+          // an existing record just gets its viewedAt refreshed (TTL resets).
+          const result = await ProfileView.updateOne(
+            { viewerId: viewer.id, viewedId: id },
+            { $set: { viewedAt: new Date() } },
+            { upsert: true },
+          );
+
+          if (result.upsertedCount && result.upsertedCount > 0) {
+            await notifyUser({
+              userId: id,
+              type: "PROFILE_VIEWED",
+              message: `${viewer.name} viewed your profile`,
+              href: `/user/${viewer.id}`,
+            });
+          }
+        } catch (err) {
+          console.error("[GET /api/users/[id]/public] profile view tracking failed", err);
+        }
+      });
+    }
 
     return NextResponse.json({
       profile: {

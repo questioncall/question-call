@@ -71,6 +71,9 @@ export function getNotificationPrefKey(
     case "QUESTION_RESET":
     case "ANSWER_SUBMITTED":
     case "DEADLINE_WARNING":
+    case "REACTION_RECEIVED":
+    case "COMMENT_RECEIVED":
+    case "NEW_QUESTION_INTEREST":
       return "questions";
 
     case "CHANNEL_CLOSED":
@@ -81,6 +84,10 @@ export function getNotificationPrefKey(
     case "RATING_RECEIVED":
     case "DAILY_TARGET_BONUS":
       return "wallet";
+
+    case "PROFILE_VIEWED":
+    case "NEW_FOLLOWER":
+      return "announcements";
 
     case "SYSTEM":
       // Non-call SYSTEM is announcements/platform notices.

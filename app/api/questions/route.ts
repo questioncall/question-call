@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/unified-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { emitQuestionCreated } from "@/lib/pusher/pusherServer";
+import { notifyUser } from "@/lib/notifications/notify-user";
 import { ANSWER_FORMATS } from "@/lib/question-types";
 import Question from "@/models/Question";
 import User from "@/models/User";
@@ -176,6 +177,43 @@ export async function POST(request: Request) {
     await emitQuestionCreated(feedQuestion).catch(() => {
       // Pusher broadcast failure is non-fatal
     });
+
+    // Fan-out push notifications to users whose interests match the question's
+    // subject. Runs after the response via after() so it never blocks the
+    // request and still completes on serverless. Case-insensitive collation is
+    // required because interests are free-text (user-typed) while subject is a
+    // canonical dropdown value — an exact match would almost never fire.
+    if (question.subject) {
+      const subject = question.subject as string;
+      after(async () => {
+        try {
+          const interestedUsers = await User.find({
+            interests: subject,
+            _id: { $ne: user.id },
+            isSuspended: { $ne: true },
+            isDeleted: { $ne: true },
+          })
+            .collation({ locale: "en", strength: 2 })
+            .select("_id")
+            .limit(100)
+            .lean<{ _id: { toString(): string } }[]>();
+
+          const message = `New ${subject} question: ${feedQuestion.title.slice(0, 80)}`;
+          await Promise.allSettled(
+            interestedUsers.map((u) =>
+              notifyUser({
+                userId: u._id.toString(),
+                type: "NEW_QUESTION_INTEREST",
+                message,
+                href: "/feed",
+              }),
+            ),
+          );
+        } catch (err) {
+          console.error("[POST /api/questions] interest fan-out failed", err);
+        }
+      });
+    }
 
     return NextResponse.json(feedQuestion, { status: 201 });
   } catch (error) {

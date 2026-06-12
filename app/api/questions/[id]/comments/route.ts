@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { after } from "next/server";
+
 import { llmGenerate } from "@/lib/llm";
 import { connectToDatabase } from "@/lib/mongodb";
+import { notifyUser } from "@/lib/notifications/notify-user";
 import PeerComment from "@/models/PeerComment";
 import { getPlatformConfig } from "@/models/PlatformConfig";
 import Question from "@/models/Question";
@@ -200,7 +203,7 @@ export async function POST(request: Request, context: RouteParams) {
 
     await connectToDatabase();
 
-    const question = await Question.findById(questionId).select("askerId");
+    const question = await Question.findById(questionId).select("askerId title");
 
     if (!question) {
       return NextResponse.json({ error: "Question not found" }, { status: 404 });
@@ -301,6 +304,20 @@ export async function POST(request: Request, context: RouteParams) {
     }
 
     await newComment.populate("studentId", "name userImage username");
+
+    // Notify the asker that someone commented on their question.
+    // Self-comments are already blocked above, so askerId !== commenter here.
+    const askerId = question.askerId.toString();
+    const commenterName = authenticatedUser.name;
+    const questionTitle = String(question.title || "your question").slice(0, 80);
+    after(async () => {
+      await notifyUser({
+        userId: askerId,
+        type: "COMMENT_RECEIVED",
+        message: `${commenterName} commented on: ${questionTitle}`,
+        href: "/feed",
+      });
+    });
 
     return NextResponse.json({
       success: true,

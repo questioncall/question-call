@@ -50,6 +50,22 @@ export function getNotificationTheme(
     case "CHANNEL_EXPIRED":
       return { title: "Channel Expired", channelId: "chat", priority: "normal", sound: null };
 
+    // ── Social interactions ──────────────────────────────────────────────────
+    case "REACTION_RECEIVED":
+      return { title: "New Reaction", channelId: "questions", priority: "normal", sound: "default" };
+
+    case "COMMENT_RECEIVED":
+      return { title: "New Comment", channelId: "questions", priority: "high", sound: "default" };
+
+    case "NEW_QUESTION_INTEREST":
+      return { title: "Question For You", channelId: "questions", priority: "normal", sound: "default" };
+
+    case "PROFILE_VIEWED":
+      return { title: "Profile View", channelId: "default", priority: "normal", sound: null };
+
+    case "NEW_FOLLOWER":
+      return { title: "New Follower", channelId: "default", priority: "normal", sound: "default" };
+
     // ── Ratings ──────────────────────────────────────────────────────────────
     case "RATING_RECEIVED":
       return { title: "New Rating Received", channelId: "wallet", priority: "normal", sound: "default" };
