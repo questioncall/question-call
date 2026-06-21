@@ -35,6 +35,10 @@ export function NoteEditForm({
       toast.error("Title cannot be empty.");
       return;
     }
+    if (!subject.trim() || !grade.trim()) {
+      toast.error("Subject and grade cannot be empty.");
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await fetch(`/api/notes/${noteId}`, {
@@ -43,8 +47,8 @@ export function NoteEditForm({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim(),
-          subject,
-          grade,
+          subject: subject.trim(),
+          grade: grade.trim(),
           fileType,
           visibility,
           price: pricingMode === "paid" ? Math.max(0, Number(price) || 0) : 0,
@@ -84,6 +88,17 @@ export function NoteEditForm({
 
       <div className="space-y-1.5">
         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject</label>
+        <Input
+          list="edit-note-subject-options"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Type or choose subject"
+        />
+        <datalist id="edit-note-subject-options">
+          {SUBJECTS.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
         <div className="flex flex-wrap gap-2">
           {SUBJECTS.map((s) => (
             <button key={s} type="button" onClick={() => setSubject(s)}
@@ -96,6 +111,17 @@ export function NoteEditForm({
 
       <div className="space-y-1.5">
         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Grade</label>
+        <Input
+          list="edit-note-grade-options"
+          value={grade}
+          onChange={(e) => setGrade(e.target.value)}
+          placeholder="Type or choose grade, class, or level"
+        />
+        <datalist id="edit-note-grade-options">
+          {GRADES.map((g) => (
+            <option key={g} value={g} />
+          ))}
+        </datalist>
         <div className="flex flex-wrap gap-2">
           {GRADES.map((g) => (
             <button key={g} type="button" onClick={() => setGrade(g)}

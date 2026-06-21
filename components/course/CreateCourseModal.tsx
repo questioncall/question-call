@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+import { LEVEL_OPTIONS, SUBJECT_OPTIONS } from "@/lib/academic-options";
 import { uploadFileViaServer } from "@/lib/client-upload";
 
 type CreateCourseModalProps = {
@@ -61,45 +61,6 @@ const STEPS = [
   { id: 4, title: "Schedule", icon: CalendarIcon },
   { id: 5, title: "Coupons", icon: TagIcon },
 ];
-
-const SUBJECTS = [
-  "Computer Science",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "English",
-  "Nepali",
-  "Social Studies",
-  "Economics",
-  "History",
-  "Geography",
-  "Accountancy",
-  "Business Studies",
-  "Computer Engineering",
-  "Electrical Engineering",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Information Technology",
-  "Data Science",
-  "Artificial Intelligence",
-  "Machine Learning",
-  "Web Development",
-  "Mobile Development",
-  "UI/UX Design",
-  "Digital Marketing",
-  "Finance",
-  "Management",
-  "Law",
-  "Philosophy",
-  "Psychology",
-  "Sociology",
-  "Political Science",
-  "Statistics",
-  "Others",
-];
-
-const LEVELS = ["Below 10", "11/12", "Bachelor"];
 
 function buildInitialForm(
   initialData: CreateCourseModalProps["initialData"],
@@ -463,21 +424,31 @@ export function CreateCourseModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Subject *</Label>
-                    <Select
+                    <Input
+                      list="course-subject-options"
                       value={form.subject}
-                      onValueChange={(val) => setForm({ ...form, subject: val })}
-                      options={SUBJECTS.map((s) => ({ value: s, label: s }))}
-                      placeholder="Select subject"
+                      onChange={(event) => setForm({ ...form, subject: event.target.value })}
+                      placeholder="Type or choose subject"
                     />
+                    <datalist id="course-subject-options">
+                      {SUBJECT_OPTIONS.map((subject) => (
+                        <option key={subject} value={subject} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="space-y-2">
                     <Label>Level *</Label>
-                    <Select
+                    <Input
+                      list="course-level-options"
                       value={form.level}
-                      onValueChange={(val) => setForm({ ...form, level: val })}
-                      options={LEVELS.map((l) => ({ value: l, label: l }))}
-                      placeholder="Select level"
+                      onChange={(event) => setForm({ ...form, level: event.target.value })}
+                      placeholder="Type or choose level"
                     />
+                    <datalist id="course-level-options">
+                      {LEVEL_OPTIONS.map((level) => (
+                        <option key={level} value={level} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
               </div>

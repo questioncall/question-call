@@ -1,4 +1,5 @@
 import { FileTextIcon, FileIcon, ImageIcon, PresentationIcon } from "lucide-react";
+import { NOTE_GRADE_OPTIONS, SUBJECT_OPTIONS } from "@/lib/academic-options";
 
 export type FileType = "PDF" | "DOCX" | "PPT" | "Image";
 export type Visibility = "public" | "private";
@@ -32,15 +33,8 @@ export const FILE_TYPE_CONFIG: Record<
   Image: { color: "text-violet-600 dark:text-violet-400", bgColor: "bg-violet-500/10", icon: ImageIcon, label: "Image" },
 };
 
-export const SUBJECTS = [
-  "Physics", "Biology", "Chemistry", "Mathematics", "English",
-  "Computer Science", "Social Studies", "Accountancy", "Other",
-];
-
-export const GRADES = [
-  "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12",
-  "Bachelor's", "Other",
-];
+export const SUBJECTS = [...SUBJECT_OPTIONS];
+export const GRADES = [...NOTE_GRADE_OPTIONS];
 
 export const FILE_TYPES: FileType[] = ["PDF", "DOCX", "PPT", "Image"];
 

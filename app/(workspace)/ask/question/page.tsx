@@ -23,6 +23,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  LEVEL_OPTIONS,
+  STREAM_OPTIONS,
+  SUBJECT_OPTIONS,
+} from "@/lib/academic-options";
+import {
   buildAnswerFormatFromSelection,
   getAnswerFormatLabel,
   toggleSelectableAnswerFormat,
@@ -52,13 +57,6 @@ const VISIBILITY_OPTIONS: { value: AnswerVisibility; label: string; desc: string
   { value: "PUBLIC", label: "Public", desc: "Everyone can see the answer on the feed" },
   { value: "PRIVATE", label: "Private", desc: "Only you will see the answer in your inbox" },
 ];
-
-const SUBJECT_OPTIONS = [
-  "IT", "Biology", "Chemistry", "Physics", "Mathematics", "English", "Accountancy",
-] as const;
-
-const STREAM_OPTIONS = ["Science", "Management", "Law", "Humanities", "Education", "Others"] as const;
-const LEVEL_OPTIONS = ["Below 10", "11/12", "Bachelor"] as const;
 
 const visibilityLabelMap: Record<AnswerVisibility, string> = {
   PUBLIC: "Public",
@@ -103,14 +101,17 @@ export default function AskQuestionPage() {
     setError(null);
 
     try {
+      const trimmedSubject = subject.trim();
+      const trimmedStream = stream.trim();
+      const trimmedLevel = level.trim();
       const payload: CreateQuestionPayload = {
         title: title.trim(),
         body: body.trim(),
         answerFormat,
         answerVisibility: visibility,
-        ...(subject ? { subject } : {}),
-        ...(stream ? { stream } : {}),
-        ...(level ? { level } : {}),
+        ...(trimmedSubject ? { subject: trimmedSubject } : {}),
+        ...(trimmedStream ? { stream: trimmedStream } : {}),
+        ...(trimmedLevel ? { level: trimmedLevel } : {}),
       };
 
       const res = await fetch("/api/questions", {
@@ -273,45 +274,48 @@ export default function AskQuestionPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="q-subject">Subject</Label>
-                <select
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                <Input
                   id="q-subject"
+                  list="ask-page-subject-options"
                   onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Any subject"
                   value={subject}
-                >
-                  <option value="">Any</option>
+                />
+                <datalist id="ask-page-subject-options">
                   {SUBJECT_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s} />
                   ))}
-                </select>
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="q-stream">Stream</Label>
-                <select
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                <Input
                   id="q-stream"
+                  list="ask-page-stream-options"
                   onChange={(e) => setStream(e.target.value)}
+                  placeholder="Any stream"
                   value={stream}
-                >
-                  <option value="">Any</option>
+                />
+                <datalist id="ask-page-stream-options">
                   {STREAM_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s} />
                   ))}
-                </select>
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="q-level">Level</Label>
-                <select
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                <Input
                   id="q-level"
+                  list="ask-page-level-options"
                   onChange={(e) => setLevel(e.target.value)}
+                  placeholder="Any level"
                   value={level}
-                >
-                  <option value="">Any</option>
+                />
+                <datalist id="ask-page-level-options">
                   {LEVEL_OPTIONS.map((l) => (
-                    <option key={l} value={l}>{l}</option>
+                    <option key={l} value={l} />
                   ))}
-                </select>
+                </datalist>
               </div>
             </div>
 

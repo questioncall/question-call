@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { NOTE_GRADE_OPTIONS, SUBJECT_OPTIONS } from "@/lib/academic-options";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -68,15 +69,8 @@ export const FILE_TYPE_BG: Record<NoteFileType, string> = {
   Image: "bg-violet-500/10",
 };
 
-export const SUBJECTS = [
-  "Physics", "Biology", "Chemistry", "Mathematics", "English",
-  "Computer Science", "Social Studies", "Accountancy", "Other",
-];
-
-export const GRADES = [
-  "Grade 8", "Grade 9", "Grade 10", "Grade 11",
-  "Grade 12", "Bachelor's", "Other",
-];
+export const SUBJECTS = [...SUBJECT_OPTIONS];
+export const GRADES = [...NOTE_GRADE_OPTIONS];
 
 const FILE_TYPES: NoteFileType[] = ["PDF", "DOCX", "PPT", "Image"];
 
@@ -99,6 +93,7 @@ export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
   const [pricingMode,  setPricingMode]  = useState<"free" | "paid">("free");
   const [price,        setPrice]        = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canSubmit = Boolean(title.trim() && subject.trim() && grade.trim());
 
   const resetForm = () => {
     setTitle(""); setDescription(""); setSubject(SUBJECTS[0]); setGrade(GRADES[0]);
@@ -118,12 +113,12 @@ export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (!canSubmit) return;
 
     const noteTitle       = title.trim();
     const noteDescription = description.trim();
-    const noteSubject     = subject;
-    const noteGrade       = grade;
+    const noteSubject     = subject.trim();
+    const noteGrade       = grade.trim();
     const noteFileType    = fileType;
     const file            = selectedFile;
     const noteVisibility  = visibility;
@@ -227,6 +222,17 @@ export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
           {/* Subject */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-foreground">Subject</label>
+            <Input
+              list="note-subject-options"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="Type or choose subject"
+            />
+            <datalist id="note-subject-options">
+              {SUBJECTS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             <div className="flex flex-wrap gap-2">
               {SUBJECTS.map((s) => (
                 <button
@@ -245,6 +251,17 @@ export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
           {/* Grade */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-foreground">Grade / Class</label>
+            <Input
+              list="note-grade-options"
+              value={grade}
+              onChange={(event) => setGrade(event.target.value)}
+              placeholder="Type or choose grade, class, or level"
+            />
+            <datalist id="note-grade-options">
+              {GRADES.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
             <div className="flex flex-wrap gap-2">
               {GRADES.map((g) => (
                 <button
@@ -352,7 +369,7 @@ export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!canSubmit}>
             <PlusIcon className="mr-1.5 size-4" />
             Upload Note
           </Button>

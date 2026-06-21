@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { LEVEL_OPTIONS, SUBJECT_OPTIONS } from "@/lib/academic-options";
 import { uploadFileViaServer } from "@/lib/client-upload";
 
 type PricingModel = "FREE" | "SUBSCRIPTION_INCLUDED" | "PAID";
@@ -24,22 +24,6 @@ type FormState = {
   level: string;
   thumbnailUrl: string | null;
 };
-
-const SUBJECTS = [
-  "Computer Science",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "English",
-  "Nepali",
-  "Economics",
-  "Web Development",
-  "Mobile Development",
-  "Management",
-  "Others",
-];
-const LEVELS = ["Below 10", "11/12", "Bachelor"];
 
 function initialForm(): FormState {
   return {
@@ -229,11 +213,35 @@ export function CreateChapterModal({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Subject</Label>
-                  <Select value={form.subject} onValueChange={(value) => setForm((prev) => ({ ...prev, subject: value }))} options={SUBJECTS.map((subject) => ({ value: subject, label: subject }))} />
+                  <Input
+                    list="chapter-subject-options"
+                    value={form.subject}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, subject: event.target.value }))
+                    }
+                    placeholder="Type or choose subject"
+                  />
+                  <datalist id="chapter-subject-options">
+                    {SUBJECT_OPTIONS.map((subject) => (
+                      <option key={subject} value={subject} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="space-y-2">
                   <Label>Level</Label>
-                  <Select value={form.level} onValueChange={(value) => setForm((prev) => ({ ...prev, level: value }))} options={LEVELS.map((level) => ({ value: level, label: level }))} />
+                  <Input
+                    list="chapter-level-options"
+                    value={form.level}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, level: event.target.value }))
+                    }
+                    placeholder="Type or choose level"
+                  />
+                  <datalist id="chapter-level-options">
+                    {LEVEL_OPTIONS.map((level) => (
+                      <option key={level} value={level} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
             </div>
