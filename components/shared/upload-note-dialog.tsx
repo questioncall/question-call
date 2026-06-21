@@ -85,8 +85,8 @@ type Props = {
 export function UploadNoteDialog({ open, onClose, onCreated }: Props) {
   const [title,        setTitle]        = useState("");
   const [description,  setDescription]  = useState("");
-  const [subject,      setSubject]      = useState(SUBJECTS[0]);
-  const [grade,        setGrade]        = useState(GRADES[0]);
+  const [subject,      setSubject]      = useState<string>(SUBJECTS[0]);
+  const [grade,        setGrade]        = useState<string>(GRADES[0]);
   const [fileType,     setFileType]     = useState<NoteFileType>("PDF");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [visibility,   setVisibility]   = useState<NoteVisibility>("public");
