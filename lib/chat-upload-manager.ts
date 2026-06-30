@@ -16,6 +16,7 @@
  */
 
 import imageCompression from "browser-image-compression";
+import * as UpChunk from "@mux/upchunk";
 import { toast } from "sonner";
 import type { ChatMessage } from "@/types/channel";
 
@@ -354,35 +355,27 @@ async function uploadVideoViaMux(
 
   const { uploadUrl, uploadId } = await signRes.json();
 
-  // 2. Upload file directly to Mux via XHR (for progress tracking)
+  // 2. Upload the original file directly to Mux in chunks. This does not
+  // compress/transcode the source before Mux receives it.
   await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener("progress", (evt) => {
-      if (evt.lengthComputable) {
-        const pct = Math.round((evt.loaded / evt.total) * 100);
-        updateJob(jobId, { progress: pct, status: "uploading" });
-      }
+    const upload = UpChunk.createUpload({
+      endpoint: uploadUrl,
+      file: params.file,
+      chunkSize: 5120,
+      dynamicChunkSize: true,
+      useLargeFileWorkaround: true,
     });
 
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Video upload failed with status ${xhr.status}`));
-      }
+    upload.on("progress", (event) => {
+      const pct = Math.max(0, Math.min(100, Math.round(Number(event.detail) || 0)));
+      updateJob(jobId, { progress: pct, status: "uploading" });
     });
 
-    xhr.addEventListener("error", () => {
-      reject(new Error("Network error during video upload."));
+    upload.on("success", () => resolve());
+    upload.on("error", (event) => {
+      const detail = event.detail as { message?: string } | undefined;
+      reject(new Error(detail?.message || "Network error during video upload."));
     });
-
-    xhr.addEventListener("abort", () => {
-      reject(new Error("Video upload was cancelled."));
-    });
-
-    xhr.open("PUT", uploadUrl, true);
-    xhr.send(params.file);
   });
 
   // 3. Poll for the playback URL

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowRightIcon,
   type LucideIcon,
@@ -41,10 +41,22 @@ import { ChevronDown, PlusIcon } from "lucide-react";
 import type { PlatformSocialLinks } from "@/models/PlatformConfig";
 import { SocialHandlesDirect } from "@/components/shared/social-handles-hover"; 
 
+const subscribeToHydration = () => () => {};
+const getClientHydrationSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
+
+function useHasHydrated() {
+  return useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
+}
+
 /* ─────────────────────── STYLES ─────────────────────── */
 function LandingStyles() {
   return (
-    <style>{`
+    <style suppressHydrationWarning>{`
       .shiny-pill {
         position: relative;
         overflow: hidden;
@@ -4449,7 +4461,8 @@ export function PublicLanding({
   landingDisplayUserCount?: number;
 }) {
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+  const hasHydrated = useHasHydrated();
+  const isDark = hasHydrated && resolvedTheme === "dark";
 
   return (
     <div

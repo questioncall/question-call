@@ -1,0 +1,3 @@
+export const QUESTIONS_FEED_PAGE_SIZE = 50;
+export const QUESTIONS_FEED_MAX_LIMIT = 50;
+

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
 import { cacheCallToken } from "@/lib/call-token-cache";
+import { startPersistentCall } from "@/lib/persistent-call-events";
 import { cn } from "@/lib/utils";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -195,6 +196,7 @@ export function IncomingCallOverlay({
     if (hasPushedToken) {
       releasePreWarmedMedia();
       onDismiss();
+      startPersistentCall({ callSessionId: call.callSessionId });
       router.push(`/calls/${call.callSessionId}`);
       void (async () => {
         try {
@@ -239,6 +241,7 @@ export function IncomingCallOverlay({
 
       releasePreWarmedMedia();
       onDismiss();
+      startPersistentCall({ callSessionId: call.callSessionId });
       router.push(`/calls/${call.callSessionId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error accepting call");

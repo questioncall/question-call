@@ -60,6 +60,7 @@ import {
   QUESTION_FEED_CHANNEL,
   QUESTION_UPDATED_EVENT,
 } from "@/lib/pusher/events";
+import { QUESTIONS_FEED_PAGE_SIZE } from "@/lib/questions/feed-config";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { getChannelPath, getProfilePath } from "@/lib/user-paths";
 import { cn } from "@/lib/utils";
@@ -405,7 +406,7 @@ export function WorkspaceHome({
   const fetchFeed = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/questions/feed");
+      const res = await fetch(`/api/questions/feed?limit=${QUESTIONS_FEED_PAGE_SIZE}`);
       if (res.ok) {
         const data: FeedQuestion[] = await res.json();
         dispatch(setFeedQuestions(data));

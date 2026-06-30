@@ -7,6 +7,7 @@
  */
 
 import { toast } from "sonner";
+import * as UpChunk from "@mux/upchunk";
 
 import type { AppStore } from "@/store/store";
 import {
@@ -149,58 +150,22 @@ async function performUpload({
     activeUploads.set(clientId, { courseId, videoId });
     updateBeforeUnloadGuard();
 
-    // Direct XMLHttpRequest upload to Mux
-    const xhr = new XMLHttpRequest();
-
-    activeUploads.set(clientId, {
-      courseId,
-      videoId,
-      abort: () => xhr.abort(),
-    });
-
-    xhr.upload.addEventListener("progress", (evt) => {
-      if (evt.lengthComputable) {
-        const progress = Math.round((evt.loaded * 100) / evt.total);
+    await uploadFileToMux({
+      uploadUrl,
+      file,
+      onProgress: (progress) => {
         console.log("[UploadManager] Progress:", progress + "%");
         store.dispatch(updateUploadProgress({ id: clientId, progress }));
-      }
+      },
+      onAbortReady: (abort) => {
+        activeUploads.set(clientId, { courseId, videoId, abort });
+      },
     });
 
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        console.log("[UploadManager] Upload to Mux complete, polling status…");
-        store.dispatch(setUploadProcessing(clientId));
-        toast.success(`"${title}" uploaded — processing…`);
-        pollVideoStatus({ clientId, courseId, videoId, onReady });
-      } else {
-        const errMsg = `Upload failed with status ${xhr.status}`;
-        console.error("[UploadManager]", errMsg);
-        store.dispatch(failUpload({ id: clientId, error: errMsg }));
-        toast.error(errMsg);
-        activeUploads.delete(clientId);
-        updateBeforeUnloadGuard();
-      }
-    });
-
-    xhr.addEventListener("error", () => {
-      console.error("[UploadManager] Network error during upload");
-      store.dispatch(
-        failUpload({ id: clientId, error: "Network error during upload" }),
-      );
-      toast.error("Upload failed due to a network error.");
-      activeUploads.delete(clientId);
-      updateBeforeUnloadGuard();
-    });
-
-    xhr.addEventListener("abort", () => {
-      store.dispatch(failUpload({ id: clientId, error: "Upload cancelled" }));
-      toast.info(`Upload of "${title}" was cancelled.`);
-      activeUploads.delete(clientId);
-      updateBeforeUnloadGuard();
-    });
-
-    xhr.open("PUT", uploadUrl, true);
-    xhr.send(file);
+    console.log("[UploadManager] Upload to Mux complete, polling status…");
+    store.dispatch(setUploadProcessing(clientId));
+    toast.success(`"${title}" uploaded — processing…`);
+    pollVideoStatus({ clientId, courseId, videoId, onReady });
   } catch (err) {
     console.error("[UploadManager] Upload error:", err);
     store.dispatch(
@@ -213,6 +178,39 @@ async function performUpload({
     activeUploads.delete(clientId);
     updateBeforeUnloadGuard();
   }
+}
+
+function uploadFileToMux({
+  uploadUrl,
+  file,
+  onProgress,
+  onAbortReady,
+}: {
+  uploadUrl: string;
+  file: File;
+  onProgress: (progress: number) => void;
+  onAbortReady: (abort: () => void) => void;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const upload = UpChunk.createUpload({
+      endpoint: uploadUrl,
+      file,
+      chunkSize: 5120,
+      dynamicChunkSize: true,
+      useLargeFileWorkaround: true,
+    });
+
+    onAbortReady(() => upload.abort());
+
+    upload.on("progress", (event) => {
+      onProgress(Math.max(0, Math.min(100, Math.round(Number(event.detail) || 0))));
+    });
+    upload.on("success", () => resolve());
+    upload.on("error", (event) => {
+      const detail = event.detail as { message?: string } | undefined;
+      reject(new Error(detail?.message || "Network error during upload."));
+    });
+  });
 }
 
 // ── Poll Mux asset status until READY ───────────────────────────────────

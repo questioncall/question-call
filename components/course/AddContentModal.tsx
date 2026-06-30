@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import * as UpChunk from "@mux/upchunk";
 import { toast } from "sonner";
 import {
   CheckCircle2Icon,
@@ -102,7 +103,7 @@ export function AddContentModal({
   onUploadSuccess,
 }: AddContentModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const uploadRef = useRef<ReturnType<typeof UpChunk.createUpload> | null>(null);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [method, setMethod] = useState<ContentMethod>("UPLOAD");
@@ -116,7 +117,6 @@ export function AddContentModal({
   const [phase, setPhase] = useState<UploadPhase>("IDLE");
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
-  const [videoId, setVideoId] = useState<string | null>(null);
 
   const isBusy = phase === "CREATING" || phase === "UPLOADING" || phase === "PROCESSING";
 
@@ -144,7 +144,6 @@ export function AddContentModal({
       setPhase("IDLE");
       setProgress(0);
       setStatusText("");
-      setVideoId(null);
     }
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
@@ -253,7 +252,7 @@ export function AddContentModal({
     [onUploadSuccess],
   );
 
-  // ── Upload handler (direct XHR, no Redux) ──
+  // ── Upload handler (chunked direct-to-Mux, no Redux) ──
   const handleUpload = async () => {
     if (!videoFile) return;
 
@@ -276,50 +275,45 @@ export function AddContentModal({
 
       const { uploadUrl, video: serverVideo } = await res.json();
       const vId = serverVideo._id as string;
-      setVideoId(vId);
 
-      // Phase 2: Upload file to Mux via XHR
+      // Phase 2: Upload the original file to Mux in chunks. UpChunk does not
+      // transcode or shrink the file; it only makes large uploads reliable.
       setPhase("UPLOADING");
       setStatusText("Uploading…");
 
-      const xhr = new XMLHttpRequest();
-      xhrRef.current = xhr;
+      await new Promise<void>((resolve, reject) => {
+        const upload = UpChunk.createUpload({
+          endpoint: uploadUrl,
+          file: videoFile,
+          chunkSize: 5120,
+          dynamicChunkSize: true,
+          useLargeFileWorkaround: true,
+        });
+        uploadRef.current = upload;
 
-      xhr.upload.addEventListener("progress", (evt) => {
-        if (evt.lengthComputable) {
-          const pct = Math.round((evt.loaded * 100) / evt.total);
+        upload.on("progress", (event) => {
+          const pct = Math.max(0, Math.min(100, Math.round(Number(event.detail) || 0)));
           setProgress(pct);
-          setStatusText(`Uploading… ${pct}%`);
-        }
+          setStatusText(`Uploading… ${pct}% of ${formatBytes(videoFile.size)}`);
+        });
+
+        upload.on("success", () => resolve());
+        upload.on("error", (event) => {
+          const detail = event.detail as { message?: string } | undefined;
+          reject(new Error(detail?.message || "Network error during upload."));
+        });
       });
 
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          // Phase 3: Processing
-          setPhase("PROCESSING");
-          setProgress(100);
-          setStatusText("Processing on Mux…");
-          toast.success(`"${title.trim()}" uploaded — processing…`);
-          pollStatus(courseId, vId);
-        } else {
-          setPhase("ERROR");
-          setStatusText(`Upload failed (HTTP ${xhr.status})`);
-        }
-      });
+      uploadRef.current = null;
 
-      xhr.addEventListener("error", () => {
-        setPhase("ERROR");
-        setStatusText("Network error during upload.");
-      });
-
-      xhr.addEventListener("abort", () => {
-        setPhase("ERROR");
-        setStatusText("Upload cancelled.");
-      });
-
-      xhr.open("PUT", uploadUrl, true);
-      xhr.send(videoFile);
+      // Phase 3: Processing
+      setPhase("PROCESSING");
+      setProgress(100);
+      setStatusText("Processing on Mux…");
+      toast.success(`"${title.trim()}" uploaded — processing…`);
+      pollStatus(courseId, vId);
     } catch (err) {
+      uploadRef.current = null;
       setPhase("ERROR");
       setStatusText(
         err instanceof Error ? err.message : "Upload failed",

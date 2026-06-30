@@ -7,6 +7,10 @@ import Answer from "@/models/Answer";
 import Channel from "@/models/Channel";
 import PeerComment from "@/models/PeerComment";
 import type { FeedQuestion } from "@/types/question";
+import {
+  QUESTIONS_FEED_MAX_LIMIT,
+  QUESTIONS_FEED_PAGE_SIZE,
+} from "@/lib/questions/feed-config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +27,9 @@ export async function GET(request: Request) {
     const cursor = searchParams.get("cursor");
     const limitParam = Number.parseInt(searchParams.get("limit") || "", 10);
     const limit =
-      Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 50
+      Number.isFinite(limitParam) && limitParam > 0 && limitParam <= QUESTIONS_FEED_MAX_LIMIT
         ? limitParam
-        : 50;
+        : QUESTIONS_FEED_PAGE_SIZE;
 
     const filter: Record<string, unknown> = {};
     let sort: Record<string, 1 | -1> = { resetCount: -1, createdAt: -1 };

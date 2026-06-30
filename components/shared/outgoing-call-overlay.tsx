@@ -6,6 +6,7 @@ import { PhoneOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
+import { startPersistentCall } from "@/lib/persistent-call-events";
 import { cn } from "@/lib/utils";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ export function OutgoingCallOverlay({
     releasePreWarmedMedia();
     // Token is already cached from the pre-fetch above (OPT-3).
     // The call page will pick it up from the cache instantly.
+    startPersistentCall({ callSessionId: call.callSessionId });
     router.push(`/calls/${call.callSessionId}`);
     onDismiss();
   }, [call, wasAccepted, stopAudio, releasePreWarmedMedia, router, onDismiss]);
