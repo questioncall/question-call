@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { PageLoadingBar } from "@/components/shared/page-loading-bar";
+import { PersistentCallHost } from "@/components/shared/persistent-call-host";
 
 import "./globals.css";
 import { Inter, DM_Sans } from "next/font/google";
@@ -128,6 +129,7 @@ export default function RootLayout({
           <StoreProvider>
             <TooltipProvider delayDuration={0}>
               {children}
+              <PersistentCallHost />
             </TooltipProvider>
           </StoreProvider>
         </ThemeProvider>

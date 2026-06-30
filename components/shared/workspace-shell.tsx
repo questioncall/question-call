@@ -95,7 +95,6 @@ import {
 } from "@/lib/pusher/events";
 import { IncomingCallOverlay, type IncomingCallPayload } from "@/components/shared/incoming-call-overlay";
 import { OutgoingCallOverlay, type OutgoingCallState } from "@/components/shared/outgoing-call-overlay";
-import { PersistentCallHost } from "@/components/shared/persistent-call-host";
 import {
   setChannelsLoading,
   setChannelsList,
@@ -1138,7 +1137,6 @@ collapseSidebarOnClick: true,
           wasMissed={outgoingMissedCallId === outgoingCall?.callSessionId}
           ringbackTone={resolvedCallSettings.outgoingRingtone}
         />
-        <PersistentCallHost />
 
         {/* ── Daily Target Info Modal ────────────────────────── */}
         {resolvedUser.role === "TEACHER" && dailyTargets.length > 0 && (

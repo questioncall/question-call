@@ -67,9 +67,80 @@ type CallSessionPayload = {
 
 type ActiveCall = CallJoinPayload & {
   callSessionId: string;
+  connectionVersion: number;
   mode: "AUDIO" | "VIDEO";
   session: CallSessionPayload | null;
 };
+
+type StartCallOptions = {
+  force?: boolean;
+  silent?: boolean;
+};
+
+type PersistedActiveCall = {
+  callSessionId: string;
+  channelId?: string;
+  savedAt: number;
+};
+
+const ACTIVE_CALL_STORAGE_KEY = "qc.activeCall";
+const ACTIVE_CALL_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+const REJOIN_GRACE_MS = 60_000;
+const REJOIN_RETRY_MS = 3_000;
+
+function readPersistedActiveCall(): PersistedActiveCall | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_CALL_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<PersistedActiveCall>;
+    if (!parsed.callSessionId || typeof parsed.savedAt !== "number") {
+      window.localStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+      return null;
+    }
+
+    if (Date.now() - parsed.savedAt > ACTIVE_CALL_MAX_AGE_MS) {
+      window.localStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      callSessionId: parsed.callSessionId,
+      channelId: parsed.channelId,
+      savedAt: parsed.savedAt,
+    };
+  } catch {
+    window.localStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistActiveCall(call: Pick<ActiveCall, "callSessionId" | "channelId">) {
+  if (typeof window === "undefined") return;
+
+  const payload: PersistedActiveCall = {
+    callSessionId: call.callSessionId,
+    channelId: call.channelId,
+    savedAt: Date.now(),
+  };
+
+  window.localStorage.setItem(ACTIVE_CALL_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function clearPersistedActiveCall(callSessionId?: string | null) {
+  if (typeof window === "undefined") return;
+
+  if (callSessionId) {
+    const current = readPersistedActiveCall();
+    if (current?.callSessionId && current.callSessionId !== callSessionId) {
+      return;
+    }
+  }
+
+  window.localStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+}
 
 function getCallIdFromPathname(pathname: string | null) {
   const match = pathname?.match(/^\/calls\/([^/?#]+)/);
@@ -270,6 +341,9 @@ export function PersistentCallHost() {
   const activeCallRef = useRef<ActiveCall | null>(null);
   const startingCallIdRef = useRef<string | null>(null);
   const endingRef = useRef(false);
+  const restoreAttemptedRef = useRef(false);
+  const rejoiningCallIdRef = useRef<string | null>(null);
+  const rejoinTimerRef = useRef<number | null>(null);
 
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [loadingCallId, setLoadingCallId] = useState<string | null>(null);
@@ -277,10 +351,25 @@ export function PersistentCallHost() {
   const [countdown, setCountdown] = useState(0);
   const [isExtendingTime, setIsExtendingTime] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     activeCallRef.current = activeCall;
   }, [activeCall]);
+
+  useEffect(() => {
+    if (activeCall) {
+      persistActiveCall(activeCall);
+    }
+  }, [activeCall]);
+
+  useEffect(() => {
+    return () => {
+      if (rejoinTimerRef.current) {
+        window.clearTimeout(rejoinTimerRef.current);
+      }
+    };
+  }, []);
 
   const routeCallId = getCallIdFromPathname(pathname);
   const isFullscreen =
@@ -288,12 +377,20 @@ export function PersistentCallHost() {
 
   const clearCall = useCallback(
     (navigateToChannel = false) => {
-      const channelId = activeCallRef.current?.channelId;
+      const current = activeCallRef.current;
+      const channelId = current?.channelId;
+      if (rejoinTimerRef.current) {
+        window.clearTimeout(rejoinTimerRef.current);
+        rejoinTimerRef.current = null;
+      }
+      rejoiningCallIdRef.current = null;
+      clearPersistedActiveCall(current?.callSessionId);
       activeCallRef.current = null;
       endingRef.current = false;
       setActiveCall(null);
       setLoadingCallId(null);
       setIsEnding(false);
+      setIsReconnecting(false);
       setError(null);
 
       if (navigateToChannel && channelId) {
@@ -333,13 +430,17 @@ export function PersistentCallHost() {
   );
 
   const startCall = useCallback(
-    async (callSessionId: string) => {
+    async (callSessionId: string, options: StartCallOptions = {}) => {
       if (!callSessionId) return;
-      if (activeCallRef.current?.callSessionId === callSessionId) return;
-      if (startingCallIdRef.current === callSessionId) return;
+      if (activeCallRef.current?.callSessionId === callSessionId && !options.force) {
+        return true;
+      }
+      if (startingCallIdRef.current === callSessionId && !options.force) return false;
 
       startingCallIdRef.current = callSessionId;
-      setLoadingCallId(callSessionId);
+      if (!options.silent) {
+        setLoadingCallId(callSessionId);
+      }
       setError(null);
 
       try {
@@ -362,6 +463,7 @@ export function PersistentCallHost() {
         }
 
         const resolvedSession = session ?? (await sessionPromise);
+        const current = activeCallRef.current;
         if (!joinDetails.token || !joinDetails.serverUrl) {
           throw new Error("The call token is missing. Please try joining again.");
         }
@@ -373,22 +475,35 @@ export function PersistentCallHost() {
           channelId: joinDetails.channelId,
           timerDeadline: joinDetails.timerDeadline,
           timeExtensionCount: joinDetails.timeExtensionCount ?? 0,
+          connectionVersion:
+            current?.callSessionId === callSessionId
+              ? current.connectionVersion + 1
+              : 0,
           mode: resolvedSession?.mode ?? "VIDEO",
           session: resolvedSession,
         };
 
         endingRef.current = false;
         activeCallRef.current = nextCall;
+        persistActiveCall(nextCall);
+        setIsReconnecting(false);
         setActiveCall(nextCall);
+        return true;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Error joining call";
         setError(message);
-        toast.error(message);
+        if (!options.silent) {
+          clearPersistedActiveCall(callSessionId);
+          toast.error(message);
+        }
+        return false;
       } finally {
         if (startingCallIdRef.current === callSessionId) {
           startingCallIdRef.current = null;
         }
-        setLoadingCallId(null);
+        if (!options.silent) {
+          setLoadingCallId(null);
+        }
       }
     },
     [fetchSession],
@@ -397,6 +512,16 @@ export function PersistentCallHost() {
   useEffect(() => {
     if (!routeCallId) return;
     void startCall(routeCallId);
+  }, [routeCallId, startCall]);
+
+  useEffect(() => {
+    if (restoreAttemptedRef.current || routeCallId) return;
+    restoreAttemptedRef.current = true;
+
+    const persisted = readPersistedActiveCall();
+    if (!persisted?.callSessionId) return;
+
+    void startCall(persisted.callSessionId, { silent: true });
   }, [routeCallId, startCall]);
 
   useEffect(() => {
@@ -550,11 +675,56 @@ export function PersistentCallHost() {
     clearCall(routeCallId === current.callSessionId);
   }, [clearCall, routeCallId]);
 
+  const attemptRejoin = useCallback(
+    (callSessionId: string, deadline: number) => {
+      if (endingRef.current) return;
+      if (rejoiningCallIdRef.current === callSessionId) return;
+
+      rejoiningCallIdRef.current = callSessionId;
+      setIsReconnecting(true);
+      toast.info("Reconnecting to the call...");
+
+      const run = async () => {
+        if (endingRef.current) return;
+
+        const rejoined = await startCall(callSessionId, {
+          force: true,
+          silent: true,
+        });
+
+        if (rejoined) {
+          rejoiningCallIdRef.current = null;
+          if (rejoinTimerRef.current) {
+            window.clearTimeout(rejoinTimerRef.current);
+            rejoinTimerRef.current = null;
+          }
+          toast.success("Call reconnected.");
+          return;
+        }
+
+        if (Date.now() >= deadline) {
+          rejoiningCallIdRef.current = null;
+          setIsReconnecting(false);
+          toast.error("Could not reconnect to the call.");
+          clearCall(routeCallId === callSessionId);
+          return;
+        }
+
+        rejoinTimerRef.current = window.setTimeout(run, REJOIN_RETRY_MS);
+      };
+
+      void run();
+    },
+    [clearCall, routeCallId, startCall],
+  );
+
   const handleDisconnected = useCallback(() => {
     if (endingRef.current) return;
-    toast.info("The call disconnected.");
-    clearCall(routeCallId === activeCallRef.current?.callSessionId);
-  }, [clearCall, routeCallId]);
+    const callSessionId = activeCallRef.current?.callSessionId;
+    if (!callSessionId) return;
+
+    attemptRejoin(callSessionId, Date.now() + REJOIN_GRACE_MS);
+  }, [attemptRejoin]);
 
   const handleMinimize = useCallback(() => {
     const channelId = activeCallRef.current?.channelId;
@@ -659,6 +829,12 @@ export function PersistentCallHost() {
           onMaximize={handleMaximize}
           onMinimize={handleMinimize}
         />
+        {isReconnecting ? (
+          <div className="absolute inset-x-0 top-12 z-30 mx-auto flex w-fit items-center gap-2 rounded-full border border-amber-300/40 bg-amber-400/15 px-3 py-1.5 text-xs font-medium text-amber-100 backdrop-blur">
+            <Loader2Icon className="size-3.5 animate-spin" />
+            Reconnecting
+          </div>
+        ) : null}
         <VideoConference />
         <RoomAudioRenderer />
       </LiveKitRoom>
