@@ -741,12 +741,24 @@ export function PersistentCallHost() {
   const loadingCallRoute = routeCallId && loadingCallId === routeCallId;
   const showRouteError = routeCallId && error && !activeCall;
 
+  const liveKitRoomOptions = useMemo(
+    () => ({
+      adaptiveStream: false,
+      dynacast: false,
+    }),
+    [],
+  );
+
   const liveKitClassName = useMemo(
     () =>
       cn(
         "h-full w-full",
         "[&_.lk-video-conference]:h-full [&_.lk-video-conference]:w-full",
         "[&_.lk-grid-layout]:h-full [&_.lk-grid-layout]:w-full",
+        "[&_[data-lk-source=screen_share]_video]:!object-contain",
+        "[&_video[data-lk-source=screen_share]]:!object-contain",
+        "[&_.lk-focus-layout]:!bg-black",
+        "[&_.lk-participant-tile[data-lk-source=screen_share]]:!bg-black",
         isFullscreen
           ? [
               "[&_.lk-control-bar]:fixed [&_.lk-control-bar]:bottom-6 [&_.lk-control-bar]:left-1/2 [&_.lk-control-bar]:-translate-x-1/2",
@@ -814,6 +826,7 @@ export function PersistentCallHost() {
         serverUrl={activeCall.serverUrl}
         data-lk-theme="default"
         onDisconnected={handleDisconnected}
+        options={liveKitRoomOptions}
         className={liveKitClassName}
       >
         <CallTopBar
