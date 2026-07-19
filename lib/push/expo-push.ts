@@ -15,18 +15,18 @@ export type ExpoMessage = {
   categoryId?: string;
   /**
    * When true, the push is delivered as a data-only FCM message (no top-level
-   * `title`/`body`), so Android shows nothing and delivery is handled purely
-   * in JS.
+   * `title`/`body`), so the FCM SDK renders nothing and the message is handed
+   * to the app's own `FirebaseMessagingService`.
    *
-   * NOTE: incoming calls used to set this, on the assumption that a headless
-   * `INCOMING_CALL_NOTIFICATION` background task would pick them up. No such
-   * task was ever registered in the app, so a data-only call push did nothing
-   * at all once the app had been killed — the callee simply never rang. Calls
-   * now send real notification fields; see the comment in `web-push.ts`.
+   * Incoming calls set this, and require it: only a data-only message reaches
+   * `onMessageReceived` when the app has been killed, which is what lets
+   * `CallNotificationService` raise the full-screen ringing UI instead of a
+   * plain notification.
    *
-   * Nothing sets this today. Do not re-enable it for calls without first
-   * registering (and verifying on a real device) a background task to receive
-   * them.
+   * An earlier attempt set this for calls while no native receiver existed, so
+   * a killed app rang not at all — strictly worse than a plain notification.
+   * The rule that follows: only ever set this for a message type something
+   * native is guaranteed to pick up.
    */
   dataOnly?: boolean;
 };

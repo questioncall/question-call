@@ -3,11 +3,22 @@ type NotificationLike = {
   href?: string | null;
 };
 
+/**
+ * Android channel for incoming calls.
+ *
+ * Versioned on purpose: Android freezes a channel's sound/importance/vibration
+ * at creation time, so the app can only ship changed call-ring settings under a
+ * new id. Must match CALL_CHANNEL_ID in app/lib/push-notifications.ts — if the
+ * two drift, the push arrives referencing a channel the app never created and
+ * Android strips its sound and priority.
+ */
+export const CALL_CHANNEL_ID = "calls_v2";
+
 export type NotificationTheme = {
   /** Title shown in the push notification */
   title: string;
   /** Android notification channel ID (must match channels registered in the app) */
-  channelId: "chat" | "questions" | "calls" | "wallet" | "default";
+  channelId: "chat" | "questions" | typeof CALL_CHANNEL_ID | "wallet" | "default";
   /** FCM / Expo delivery priority */
   priority: "high" | "normal" | "default";
   /** Play sound */
@@ -93,7 +104,12 @@ export function getNotificationTheme(
     // ── System / Calls (use href to distinguish) ─────────────────────────────
     case "SYSTEM": {
       if (href?.startsWith("/calls/") || href?.startsWith("/call/")) {
-        return { title: "Incoming Call", channelId: "calls", priority: "high", sound: "default" };
+        return {
+          title: "Incoming Call",
+          channelId: CALL_CHANNEL_ID,
+          priority: "high",
+          sound: "default",
+        };
       }
       return { title: "System Update", channelId: "default", priority: "normal", sound: null };
     }
