@@ -15,11 +15,18 @@ export type ExpoMessage = {
   categoryId?: string;
   /**
    * When true, the push is delivered as a data-only FCM message (no top-level
-   * `title`/`body`). This is required for incoming-call pushes so Android
-   * wakes the app's JS engine and runs the `INCOMING_CALL_NOTIFICATION`
-   * background task instead of showing a plain heads-up. The client then
-   * renders the full-screen CallKeep UI and the Expo-registered Accept/Decline
-   * action category.
+   * `title`/`body`), so Android shows nothing and delivery is handled purely
+   * in JS.
+   *
+   * NOTE: incoming calls used to set this, on the assumption that a headless
+   * `INCOMING_CALL_NOTIFICATION` background task would pick them up. No such
+   * task was ever registered in the app, so a data-only call push did nothing
+   * at all once the app had been killed — the callee simply never rang. Calls
+   * now send real notification fields; see the comment in `web-push.ts`.
+   *
+   * Nothing sets this today. Do not re-enable it for calls without first
+   * registering (and verifying on a real device) a background task to receive
+   * them.
    */
   dataOnly?: boolean;
 };

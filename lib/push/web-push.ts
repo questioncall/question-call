@@ -161,8 +161,17 @@ export async function sendPushNotificationToUser(
     const resolvedTitle = notification.title || theme.title;
 
     console.log(
-      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}${isIncomingCall ? " [data-only call]" : ""}`,
+      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}${isIncomingCall ? " [call]" : ""}`,
     );
+    // Calls are deliberately NOT data-only. A data-only message carries no
+    // title/body, so Android renders nothing itself and relies entirely on the
+    // JS handler in `app/lib/push-notifications.ts` to draw the call UI. That
+    // works while the app is alive, but when it has been killed there is no JS
+    // to wake — the push landed and the callee never rang. Sending real
+    // notification fields makes calls behave like every other notification,
+    // which already survives the app being killed. While the app IS alive the
+    // handler still intercepts on `callSessionId`, suppresses the banner and
+    // shows the full-screen call UI, so nothing changes for that path.
     await sendExpoPush(androidSubs, {
       title: resolvedTitle,
       body: notification.message,
@@ -171,9 +180,8 @@ export async function sendPushNotificationToUser(
         url,
         href: url,
         ...notification.extraData,
-        // Mirror title/body inside `data` for incoming calls so the headless
-        // background task can render fallback UI without relying on top-level
-        // notification fields (which we omit for data-only delivery).
+        // Mirrored inside `data` so the client handler can render the
+        // full-screen call UI straight from the payload.
         ...(isIncomingCall
           ? { title: resolvedTitle, body: notification.message }
           : {}),
@@ -182,7 +190,6 @@ export async function sendPushNotificationToUser(
       priority: theme.priority,
       sound: theme.sound,
       categoryId: isIncomingCall ? "incoming_call" : undefined,
-      dataOnly: isIncomingCall,
     }).catch((err) => {
       console.error("[web-push] Expo push failed for user:", userId, "type:", notifyType, err);
       logError("Expo push failed in web-push dispatcher", {
