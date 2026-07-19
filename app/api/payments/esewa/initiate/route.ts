@@ -6,6 +6,11 @@ import User from "@/models/User";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getPlatformConfig, getHydratedPlans } from "@/models/PlatformConfig";
 import { getSiteUrl } from "@/lib/site-url";
+import {
+  applySubscriptionCouponDiscount,
+  SUBSCRIPTION_COUPON_FAILURE_MESSAGES,
+  validateSubscriptionCoupon,
+} from "@/lib/subscription-coupons";
 
 export async function POST(req: NextRequest) {
   await connectToDatabase();
@@ -17,7 +22,10 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Parse request body
-  const { planSlug } = await req.json() as { planSlug: string };
+  const { planSlug, couponCode } = await req.json() as {
+    planSlug: string;
+    couponCode?: string | null;
+  };
 
   if (!planSlug) {
     return NextResponse.json({ error: "Missing plan configuration" }, { status: 400 });
@@ -29,6 +37,50 @@ export async function POST(req: NextRequest) {
   const plan = hydratedPlans.find(p => p.slug === planSlug);
   if (!plan) {
     return NextResponse.json({ error: "Invalid plan selected" }, { status: 400 });
+  }
+
+  // 2b. Optional percentage coupon — server-side re-pricing only.
+  let planPrice = plan.price;
+  let couponMeta: Record<string, unknown> = {};
+
+  if (couponCode?.trim()) {
+    const validation = await validateSubscriptionCoupon({
+      code: couponCode,
+      userId: session.user.id,
+      userEmail: session.user.email,
+      planSlug: plan.slug,
+    });
+
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: SUBSCRIPTION_COUPON_FAILURE_MESSAGES[validation.reason] },
+        { status: 400 },
+      );
+    }
+
+    if (
+      validation.coupon.kind !== "PERCENTAGE" ||
+      typeof validation.coupon.discountPercentage !== "number"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This coupon grants free access — redeem it on the subscription page instead of paying.",
+        },
+        { status: 400 },
+      );
+    }
+
+    planPrice = applySubscriptionCouponDiscount(
+      plan.price,
+      validation.coupon.discountPercentage,
+    );
+    couponMeta = {
+      subscriptionCouponId: validation.couponId,
+      subscriptionCouponCode: validation.coupon.code,
+      subscriptionCouponDiscountPercentage: validation.coupon.discountPercentage,
+      subscriptionOriginalPrice: plan.price,
+    };
   }
 
   // 3. Check user is not already subscribed
@@ -44,7 +96,7 @@ export async function POST(req: NextRequest) {
 
   // eSewa breaks amount into parts — for subscriptions, tax and charges are 0 in our base example
   // We'll pass the total due considering tax.
-  const baseAmount = plan.price;
+  const baseAmount = planPrice;
   const taxAmount = plan.tax;
   const serviceCharge = 0;
   const deliveryCharge = 0;
@@ -64,7 +116,8 @@ export async function POST(req: NextRequest) {
     gateway: "ESEWA",
     meta: {
       planSlug: plan.slug,
-      durationDays: plan.durationDays
+      durationDays: plan.durationDays,
+      ...couponMeta,
     }
   });
 

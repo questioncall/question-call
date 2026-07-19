@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "@/lib/env";
 import { connectToDatabase } from "@/lib/mongodb";
 import RefreshTokenModel from "@/models/RefreshToken";
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || "default-secret";
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY = "30d";
 

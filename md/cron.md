@@ -3,13 +3,17 @@
 This project uses the `CRON_SECRET` environment variable to authorize cron requests.
 No real cron secret should be hardcoded in route files, docs, or committed config.
 
-Both cron endpoints accept any one of these auth formats:
+Cron endpoints accept the secret in a **header only**:
 
-- Query param: `?key=YOUR_CRON_SECRET`
 - Header: `x-cron-secret: YOUR_CRON_SECRET`
 - Header: `Authorization: Bearer YOUR_CRON_SECRET`
 
-For `cron-job.org`, the easiest setup is usually the query param version.
+> **The `?key=YOUR_CRON_SECRET` query param is no longer accepted.** A secret in
+> a URL is written to Vercel access logs, proxy/CDN logs, browser history, and
+> the `Referer` header of any outbound navigation. If you have existing
+> cron-job.org jobs using `?key=`, move them to the header form — they will
+> return `401` until you do — and rotate `CRON_SECRET` afterwards, since the old
+> value has been travelling in URLs.
 
 ## Required Environment Variable
 
@@ -39,10 +43,11 @@ Recommended schedule:
 
 - Every 5 minutes
 
-Example URL:
+Example request:
 
 ```text
-https://your-domain.com/api/cron/expire-channels?key=YOUR_CRON_SECRET
+POST https://your-domain.com/api/cron/expire-channels
+x-cron-secret: YOUR_CRON_SECRET
 ```
 
 ### 2. Monthly Rewards
@@ -57,10 +62,11 @@ Recommended schedule:
 
 - Once per month on day 1 at 00:00
 
-Example URL:
+Example request:
 
 ```text
-https://your-domain.com/api/cron/monthly-rewards?key=YOUR_CRON_SECRET
+POST https://your-domain.com/api/cron/monthly-rewards
+x-cron-secret: YOUR_CRON_SECRET
 ```
 
 ## cron-job.org Settings
@@ -68,7 +74,9 @@ https://your-domain.com/api/cron/monthly-rewards?key=YOUR_CRON_SECRET
 Use these settings for each job:
 
 - Method: `POST`
-- URL: the full cron endpoint URL including `?key=YOUR_CRON_SECRET`
+- URL: the plain cron endpoint URL, with **no** query parameters
+- Headers: add `x-cron-secret` with the value of `CRON_SECRET`
+  (cron-job.org: job → *Advanced* → *Headers*)
 - No username/password needed
 - No request body needed
 
@@ -81,6 +89,8 @@ If cron-job.org returns `Unauthorized`, check these first:
 3. You are calling the correct deployed domain.
 4. You are using `POST`, not `GET`.
 5. You updated old saved jobs that still use an outdated hardcoded secret.
+6. The job sends the secret as the `x-cron-secret` **header**. Jobs still using
+   the retired `?key=` query param return `401`.
 
 ## Fallback Behavior
 

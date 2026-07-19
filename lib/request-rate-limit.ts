@@ -2,7 +2,13 @@ import ApiRequestLog from "@/models/ApiRequestLog";
 
 type RateLimitOptions = {
   action: string;
-  userId: string;
+  /** Authenticated caller. Omit for pre-auth endpoints (login, OTP, register). */
+  userId?: string;
+  /**
+   * Pre-auth bucket key — e.g. `email:foo@bar.com` or `ip:1.2.3.4`. Used when
+   * there is no userId yet. Falls back to the request IP, then "anonymous".
+   */
+  identifier?: string;
   request?: Request;
   windowMs: number;
   maxRequests: number;
@@ -34,9 +40,14 @@ function getRequestIpAddress(request?: Request) {
   return request.headers.get("x-real-ip")?.trim() || null;
 }
 
+export function getRequestIp(request?: Request) {
+  return getRequestIpAddress(request);
+}
+
 export async function enforceRequestRateLimit({
   action,
   userId,
+  identifier,
   request,
   windowMs,
   maxRequests,
@@ -45,7 +56,8 @@ export async function enforceRequestRateLimit({
   const windowStart = new Date(now.getTime() - windowMs);
   const resetAt = new Date(now.getTime() + windowMs);
   const ipAddress = getRequestIpAddress(request);
-  const key = `${action}:${userId}`;
+  const subject = userId ?? identifier ?? (ipAddress ? `ip:${ipAddress}` : "anonymous");
+  const key = `${action}:${subject}`;
 
   const recentCount = await ApiRequestLog.countDocuments({
     key,
@@ -64,7 +76,8 @@ export async function enforceRequestRateLimit({
   await ApiRequestLog.create({
     key,
     action,
-    userId,
+    userId: userId ?? null,
+    subject,
     ipAddress,
     createdAt: now,
     expiresAt: resetAt,

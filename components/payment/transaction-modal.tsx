@@ -17,10 +17,12 @@ import { useRouter } from "next/navigation";
 
 export function TransactionModal({
   planSlug,
+  couponCode = null,
   triggerClassName,
   triggerLabel = "I have paid",
 }: {
   planSlug: string;
+  couponCode?: string | null;
   triggerClassName?: string;
   triggerLabel?: string;
 }) {
@@ -40,6 +42,9 @@ export function TransactionModal({
       const hasScreenshot = screenshot instanceof File && screenshot.size > 0;
       // Append the slug prop to the body to identify their product tier securely
       formData.append("planSlug", planSlug);
+      if (couponCode) {
+        formData.append("couponCode", couponCode);
+      }
 
       setUploadProgress(hasScreenshot ? 0 : null);
 

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
 import { isWithinDeletionGrace } from "@/lib/account-deletion";
-import VerificationToken from "@/models/VerificationToken";
+import { consumeOtp, verifyOtp } from "@/lib/otp";
 import User from "@/models/User";
 import AccountDeletion from "@/models/AccountDeletion";
 
@@ -21,14 +22,21 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    const record = await VerificationToken.findOne({ email });
+    const limit = await enforceAuthRateLimit({
+      action: "forgot-password-reset",
+      request: req,
+      email,
+      ...AUTH_RATE_LIMITS.otpVerify,
+    });
+    if (!limit.ok) return limit.response;
 
-    if (!record) {
-      return NextResponse.json({ error: "No pending password reset found or code expired." }, { status: 404 });
-    }
+    // Verified but NOT consumed yet: if the password write below fails, the
+    // code must survive so the user can retry instead of requesting a new one.
+    // It is consumed once the new password is persisted.
+    const otp = await verifyOtp(email, code, { consume: false });
 
-    if (record.code !== code) {
-      return NextResponse.json({ error: "Invalid verification code." }, { status: 400 });
+    if (!otp.ok) {
+      return NextResponse.json({ error: otp.error }, { status: otp.status });
     }
 
     const user = await User.findOne({ email });
@@ -68,8 +76,8 @@ export async function POST(req: Request) {
     user.passwordHash = passwordHash;
     await user.save();
 
-    // Clean up used OTP
-    await VerificationToken.deleteOne({ email });
+    // Password is persisted — burn the code so it cannot be replayed.
+    await consumeOtp(email);
 
     return NextResponse.json({ success: true, message: "Password reset successful." });
   } catch (error) {

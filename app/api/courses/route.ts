@@ -152,6 +152,9 @@ export async function GET(request: NextRequest) {
 
     if (authenticatedUser?.role !== "ADMIN") {
       query.status = "ACTIVE";
+      // Courses merged into another one are shells — their content and students
+      // moved to the target. Hide them even if the status says ACTIVE.
+      query.mergedInto = null;
     }
 
     if (pricingModel && COURSE_PRICING_MODELS.includes(pricingModel as (typeof COURSE_PRICING_MODELS)[number])) {

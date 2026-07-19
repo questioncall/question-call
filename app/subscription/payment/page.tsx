@@ -9,6 +9,10 @@ import {
   getPlatformConfig,
 } from "@/models/PlatformConfig";
 import { isCheckoutRequest } from "@/lib/checkout-host.server";
+import {
+  applySubscriptionCouponDiscount,
+  validateSubscriptionCoupon,
+} from "@/lib/subscription-coupons";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,7 +20,7 @@ export const revalidate = 0;
 export default async function PaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; coupon?: string }>;
 }) {
   const [session, isCheckout] = await Promise.all([
     getSafeServerSession(),
@@ -28,7 +32,7 @@ export default async function PaymentPage({
     redirect("/login");
   }
   // Unwrap search params asynchronously properly for Next.js latest dynamic constraints
-  const { plan: planQuery } = await searchParams;
+  const { plan: planQuery, coupon: couponQuery } = await searchParams;
 
   // Retrieve plan safely, defaulting to the 1 Month Plan if not found
   const config = await getPlatformConfig();
@@ -39,6 +43,33 @@ export default async function PaymentPage({
   const plan =
     hydratedPlans.find((p) => p.slug === planSlug) || hydratedPlans[1];
 
+  // Optional subscription coupon (percentage) — server-side validation only;
+  // the same code is re-validated and re-priced in /api/payments/manual.
+  let couponCode: string | null = null;
+  let couponDiscount = 0;
+  if (couponQuery?.trim()) {
+    const validation = await validateSubscriptionCoupon({
+      code: couponQuery,
+      userId: session.user.id,
+      userEmail: session.user.email,
+      planSlug: plan.slug,
+    });
+    if (
+      validation.valid &&
+      validation.coupon.kind === "PERCENTAGE" &&
+      typeof validation.coupon.discountPercentage === "number"
+    ) {
+      couponCode = validation.coupon.code;
+      couponDiscount =
+        plan.price -
+        applySubscriptionCouponDiscount(
+          plan.price,
+          validation.coupon.discountPercentage,
+        );
+    }
+  }
+
+  const effectivePrice = plan.price - couponDiscount;
   const subscriptionValue =
     plan.originalPrice && plan.price < plan.originalPrice
       ? plan.originalPrice
@@ -108,13 +139,19 @@ export default async function PaymentPage({
             <span>- NPR {(plan.originalPrice! - plan.price).toFixed(2)}</span>
           </div>
         ) : null}
+        {couponCode ? (
+          <div className="qc-line qc-line-disc">
+            <span>Coupon {couponCode}</span>
+            <span>- NPR {couponDiscount.toFixed(2)}</span>
+          </div>
+        ) : null}
         <div className="qc-line">
           <span>Estimated tax</span>
           <span>NPR {plan.tax.toFixed(2)}</span>
         </div>
         <div className="qc-due">
           <span>Due today</span>
-          <strong>NPR {(plan.price + plan.tax).toFixed(2)}</strong>
+          <strong>NPR {(effectivePrice + plan.tax).toFixed(2)}</strong>
         </div>
       </div>
 
@@ -128,6 +165,7 @@ export default async function PaymentPage({
             screenshot review (TransactionModal) is the only active path. */}
         <TransactionModal
           planSlug={plan.slug}
+          couponCode={couponCode}
           triggerClassName="qc-submit"
           triggerLabel="I have paid — submit details"
         />

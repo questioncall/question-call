@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
-  let body: { intent?: string; ref?: string };
+  let body: { intent?: string; ref?: string; coupon?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +47,11 @@ export async function POST(req: NextRequest) {
 
   const params = new URLSearchParams({ ht, intent, return: RETURN_URL });
   if (body.ref) params.set("ref", body.ref);
+  // Optional subscription promo code — not part of the signed token; it is
+  // re-validated and re-priced server-side on the checkout page itself.
+  if (intent === "subscription" && typeof body.coupon === "string" && body.coupon.trim()) {
+    params.set("coupon", body.coupon.trim().toUpperCase().slice(0, 40));
+  }
 
   return NextResponse.json({
     url: `${CHECKOUT_BASE}/checkout?${params.toString()}`,

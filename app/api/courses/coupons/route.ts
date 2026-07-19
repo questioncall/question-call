@@ -6,6 +6,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Course from "@/models/Course";
 import CourseCoupon from "@/models/CourseCoupon";
 import CourseCouponRedemption from "@/models/CourseCouponRedemption";
+import SubscriptionCoupon from "@/models/SubscriptionCoupon";
 
 function parseBooleanFilter(value: string | null) {
   if (value === "true") {
@@ -210,14 +211,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Teachers can only create course-scoped coupons." }, { status: 403 });
     }
 
-    const existingCoupon = await CourseCoupon.findOne({ code }).collation({
-      locale: "en",
-      strength: 2,
-    });
+    const [existingCoupon, existingSubscriptionCoupon] = await Promise.all([
+      CourseCoupon.findOne({ code }).collation({ locale: "en", strength: 2 }),
+      SubscriptionCoupon.findOne({ code }).collation({ locale: "en", strength: 2 }),
+    ]);
 
-    if (existingCoupon) {
+    if (existingCoupon || existingSubscriptionCoupon) {
       return NextResponse.json(
-        { error: "A coupon with that code already exists." },
+        {
+          error: existingSubscriptionCoupon
+            ? "A subscription coupon with that code already exists."
+            : "A coupon with that code already exists.",
+        },
         { status: 409 },
       );
     }

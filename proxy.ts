@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { JWT_SECRET } from "@/lib/env";
 import { getUserHandle } from "@/lib/user-paths";
 
 type AppRole = "STUDENT" | "TEACHER" | "ADMIN";
@@ -122,7 +123,7 @@ export async function proxy(request: NextRequest) {
   try {
     token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: JWT_SECRET,
     });
   } catch {
     return resetBrokenSession(request);

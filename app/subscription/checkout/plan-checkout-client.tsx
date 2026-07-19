@@ -21,6 +21,7 @@ type Plan = {
 
 type Props = {
   plan: Plan;
+  couponCode?: string | null;
   manualPayment: {
     recipientName: string;
     esewaNumber: string;
@@ -32,6 +33,7 @@ type Props = {
 
 export function PlanCheckoutClient({
   plan,
+  couponCode = null,
   manualPayment,
   checkoutMode = false,
   forcedTheme,
@@ -51,6 +53,9 @@ export function PlanCheckoutClient({
     try {
       const formData = new FormData(e.currentTarget);
       formData.append("planSlug", plan.slug);
+      if (couponCode) {
+        formData.append("couponCode", couponCode);
+      }
 
       const screenshot = formData.get("screenshot");
       const hasScreenshot = screenshot instanceof File && screenshot.size > 0;

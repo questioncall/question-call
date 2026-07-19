@@ -43,7 +43,8 @@ import type {
   AnswerVisibility,
 } from "@/types/question";
 import { prependFeedQuestion } from "@/store/features/feed/feed-slice";
-import { useAppDispatch } from "@/store/hooks";
+import { updateProfile } from "@/store/features/user/user-slice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 const FORMAT_OPTIONS: {
   value: SelectableAnswerFormat;
@@ -67,6 +68,9 @@ type PostQuestionModalProps = {
 
 export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps) {
   const dispatch = useAppDispatch();
+  const questionsRemaining = useAppSelector((s) => s.user.questionsRemaining);
+  const maxQuestions = useAppSelector((s) => s.user.maxQuestions);
+  const questionsAsked = useAppSelector((s) => s.user.questionsAsked);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -100,8 +104,18 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   const bodyLen = body.trim().length;
   const answerFormat = buildAnswerFormatFromSelection(selectedFormats);
   const isTitleValid = titleLen >= 6 && titleLen <= 180;
-  const isBodyValid = bodyLen === 0 || (bodyLen >= 12 && bodyLen <= 5000);
-  const canSubmit = isTitleValid && isBodyValid && !isSubmitting;
+  // Quota shown at the top of the modal. `questionsRemaining` is null for
+  // unlimited plans, in which case there is nothing to meter.
+  const hasQuota = questionsRemaining !== null && maxQuestions > 0;
+  const quotaUsedPercent = hasQuota
+    ? Math.min(100, (questionsAsked / maxQuestions) * 100)
+    : 0;
+  const isQuotaLow = hasQuota && questionsRemaining <= 3;
+  const isQuotaEmpty = hasQuota && questionsRemaining === 0;
+
+  // Details are fully optional — any length up to the 5000 cap enforced by
+  // maxLength below (and by POST /api/questions).
+  const canSubmit = isTitleValid && !isQuotaEmpty && !isSubmitting;
 
   const stopCamera = (resetState = true) => {
     if (cameraStreamRef.current) {
@@ -135,6 +149,34 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
       stopCamera();
     }
   }, [open]);
+
+  // Refresh the quota each time the modal opens so the meter is never stale
+  // (questions can also be posted from the mobile app).
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/subscription");
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        dispatch(
+          updateProfile({
+            questionsAsked: data.questionsAsked,
+            questionsRemaining: data.questionsRemaining,
+            maxQuestions: data.maxQuestions,
+          }),
+        );
+      } catch {
+        // Non-fatal: the meter just keeps showing the last known values.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, dispatch]);
 
   useEffect(() => {
     const video = cameraVideoRef.current;
@@ -369,6 +411,14 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
       const feedQuestion: FeedQuestion = await res.json();
       dispatch(prependFeedQuestion(feedQuestion));
+      dispatch(
+        updateProfile({
+          questionsAsked: questionsAsked + 1,
+          ...(questionsRemaining !== null
+            ? { questionsRemaining: Math.max(0, questionsRemaining - 1) }
+            : {}),
+        }),
+      );
       resetForm();
       onOpenChange(false);
     } catch (err) {
@@ -382,22 +432,68 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] w-full max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <SparklesIcon className="size-5 text-primary" />
-            Post a Question
-          </DialogTitle>
-          <DialogDescription>
-            Describe your doubt clearly. You can attach up to 4 images to help teachers understand perfectly.
-          </DialogDescription>
+        <DialogHeader className="gap-3 border-b border-border/70 pb-4">
+          <div className="flex flex-col gap-1 pr-8">
+            <DialogTitle className="flex items-center gap-2">
+              <SparklesIcon className="size-5 text-primary" />
+              Post a Question
+            </DialogTitle>
+            <DialogDescription>
+              Describe your doubt clearly. You can attach up to 4 images to help teachers understand perfectly.
+            </DialogDescription>
+          </div>
+
+          {hasQuota ? (
+            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="font-medium text-foreground">
+                  {isQuotaEmpty ? (
+                    "No questions left on your plan"
+                  ) : (
+                    <>
+                      <span
+                        className={
+                          isQuotaLow ? "text-destructive" : "text-primary"
+                        }
+                      >
+                        {questionsRemaining}
+                      </span>{" "}
+                      of {maxQuestions} questions left
+                    </>
+                  )}
+                </span>
+                <span className="text-muted-foreground">
+                  {questionsAsked} used
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    isQuotaEmpty
+                      ? "bg-destructive"
+                      : isQuotaLow
+                        ? "bg-amber-500"
+                        : "bg-primary"
+                  }`}
+                  style={{ width: `${quotaUsedPercent}%` }}
+                />
+              </div>
+              {isQuotaEmpty ? (
+                <p className="text-xs text-destructive">
+                  Upgrade your plan or earn bonus questions to keep asking.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-6 py-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="q-title">
+            <Label className="flex w-full items-baseline gap-2" htmlFor="q-title">
               Title
-              <span className="ml-2 text-xs text-muted-foreground">
+              <span className="text-xs font-normal text-destructive">*</span>
+              <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
                 {titleLen}/180
               </span>
             </Label>
@@ -417,28 +513,23 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
 
           {/* Body */}
           <div className="space-y-2">
-            <Label htmlFor="q-body">
+            <Label className="flex w-full items-baseline gap-2" htmlFor="q-body">
               Details
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                (Optional)
+              <span className="text-xs font-normal text-muted-foreground">
+                Optional
               </span>
-              <span className="ml-2 text-xs text-muted-foreground">
+              <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
                 {bodyLen}/5000
               </span>
             </Label>
             <Textarea
-              className="min-h-32 resize-none"
+              className="min-h-32 resize-y"
               id="q-body"
               maxLength={5000}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Explain what you understand so far, what confuses you, and what kind of answer would help…"
               value={body}
             />
-            {bodyLen > 0 && !isBodyValid && (
-              <p className="text-xs text-destructive">
-                Body must be between 12 and 5000 characters
-              </p>
-            )}
           </div>
 
           {/* Image Attachments */}
@@ -711,7 +802,7 @@ export function PostQuestionModal({ open, onOpenChange }: PostQuestionModalProps
           )}
         </div>
 
-        <DialogFooter className="border-t border-border/70 pt-5 mt-2 bg-background sticky bottom-0">
+        <DialogFooter className="sticky bottom-0 mt-2 border-t border-border/70 bg-popover pt-5">
           <Button
             onClick={() => { resetForm(); onOpenChange(false); }}
             variant="ghost"

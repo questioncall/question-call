@@ -51,6 +51,7 @@ const iconMap: Record<string, React.ElementType> = {
   "Courses": BookOpenIcon,
   "Chapters": Layers3Icon,
   "Coupons": FileTextIcon,
+  "Subscription coupons": TagIcon,
   "Live sessions": VideoIcon,
   "Onboarding Videos": ClapperboardIcon,
   "Legal": ShieldAlertIcon,
@@ -72,7 +73,7 @@ const groupedItems = [
   },
   {
     category: "CONTENT",
-    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Questions", "Notes", "Courses", "Chapters", "Coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
+    items: ADMIN_NAV_ITEMS.filter(item => ["Quiz management", "Questions", "Notes", "Courses", "Chapters", "Coupons", "Subscription coupons", "Live sessions", "Onboarding Videos"].includes(item.label))
   },
   {
     category: "PLATFORM",

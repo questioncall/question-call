@@ -1,13 +1,13 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
+import { JWT_SECRET as SECRET } from "@/lib/env";
 import { connectToDatabase } from "@/lib/mongodb";
 import UsedCheckoutToken from "@/models/UsedCheckoutToken";
 
 // The mobile app's access tokens are signed with NEXTAUTH_SECRET (see
 // lib/mobile-auth.ts). Reuse the SAME secret so handoff tokens live in one trust
 // domain — do NOT introduce a second payment-specific secret.
-const SECRET = process.env.NEXTAUTH_SECRET || "default-secret";
 
 export const HANDOFF_TTL_SECONDS = 5 * 60;
 

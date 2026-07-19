@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
-import VerificationToken from "@/models/VerificationToken";
+import { issueOtp } from "@/lib/otp";
 import User from "@/models/User";
 import { sendForgotPasswordEmail } from "@/lib/sendEmails/sendForgotPasswordEmail";
 
@@ -15,28 +16,29 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // Ensure email exists in our system
+    const limit = await enforceAuthRateLimit({
+      action: "forgot-password-send",
+      request: req,
+      email,
+      ...AUTH_RATE_LIMITS.otpSend,
+    });
+    if (!limit.ok) return limit.response;
+
+    // Deliberately uniform response whether or not the account exists —
+    // returning 404 for unknown emails turns this endpoint into a free
+    // membership oracle for the entire user base.
+    const genericResponse = NextResponse.json({
+      success: true,
+      message:
+        "If an account exists for that email, a verification code has been sent.",
+    });
+
     const existingUser = await User.findOne({ email });
     if (!existingUser) {
-      // Return 200 even if user not found to prevent email enumeration, 
-      // but for this flow it's sometimes better to return an error if we want to show it in UI.
-      // The requirement says "check if that gmail exist in the db or not if yes then we will send a otp"
-      return NextResponse.json(
-        { error: "No account found with this email address." },
-        { status: 404 }
-      );
+      return genericResponse;
     }
 
-    // Generate a 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-
-    // Upsert the token for this email (invalidating old ones)
-    await VerificationToken.findOneAndUpdate(
-      { email },
-      { email, code, expiresAt },
-      { upsert: true, new: true }
-    );
+    const code = await issueOtp(email);
 
     // Dispatch via Resend
     const sent = await sendForgotPasswordEmail(email, code, existingUser.name || "User");
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, message: "Verification code sent." });
+    return genericResponse;
   } catch (error) {
     console.error("[POST /api/auth/forgot-password/send]", error);
     return NextResponse.json(

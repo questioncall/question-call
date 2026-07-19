@@ -52,7 +52,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     await connectToDatabase();
 
-    const activeCourses = await Course.find({ status: "ACTIVE" }, "slug updatedAt")
+    const activeCourses = await Course.find(
+      { status: "ACTIVE", mergedInto: null },
+      "slug updatedAt",
+    )
       .lean<SitemapCourse[]>();
 
     courseRoutes = activeCourses

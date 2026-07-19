@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { getGoogleAudiences } from "@/lib/google-audiences";
 import { connectToDatabase } from "@/lib/mongodb";
 import { generateAccessToken, generateRefreshToken } from "@/lib/mobile-auth";
@@ -37,6 +38,16 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
+    // Throttle before any credential check so passwords cannot be brute forced.
+    const limit = await enforceAuthRateLimit({
+      action: "mobile-login",
+      request,
+      email:
+        typeof body.email === "string" ? body.email.toLowerCase().trim() : null,
+      ...AUTH_RATE_LIMITS.login,
+    });
+    if (!limit.ok) return limit.response;
+
     let user;
     let email: string;
 
@@ -46,7 +57,10 @@ export async function POST(request: Request) {
 
       user = await User.findOne({ email }).select("+passwordHash");
 
-      if (!user) {
+      // A missing user and a Google-only account (no passwordHash) must return
+      // the SAME response — otherwise bcrypt.compare throws on `undefined` and
+      // the resulting 500 becomes an oracle for "this email is registered".
+      if (!user?.passwordHash) {
         return NextResponse.json(
           { error: "Invalid email or password" },
           { status: 401 },
@@ -86,7 +100,9 @@ export async function POST(request: Request) {
         });
 
         const payload = ticket.getPayload();
-        if (!payload?.email) {
+        // `email_verified` must be checked explicitly: Google can issue tokens
+        // for unverified addresses, and we match accounts by email alone.
+        if (!payload?.email || payload.email_verified !== true) {
           return NextResponse.json(
             { error: "Invalid Google ID token" },
             { status: 401 },

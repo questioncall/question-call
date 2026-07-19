@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { getCourseDetailPageData } from "@/lib/course-page-data";
+import { getMergedRedirectSlug } from "@/lib/course-merge";
 import { connectToDatabase } from "@/lib/mongodb";
 import { APP_NAME } from "@/lib/constants";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { absoluteUrl, createPageMetadata, truncateDescription } from "@/lib/seo";
 import Course from "@/models/Course";
 import { CourseDetailClient } from "./course-detail-client";
@@ -49,6 +51,11 @@ export default async function CourseDetailPage({
   });
 
   if (!course) {
+    // Old links to a course that was merged into another one keep working.
+    const mergedSlug = await getMergedRedirectSlug(slug);
+    if (mergedSlug) {
+      redirect(`/courses/${mergedSlug}`);
+    }
     notFound();
   }
 
@@ -88,7 +95,7 @@ export default async function CourseDetailPage({
         id="course-structured-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(courseStructuredData),
+          __html: serializeJsonLd(courseStructuredData),
         }}
       />
       <CourseDetailClient

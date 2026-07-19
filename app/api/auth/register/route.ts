@@ -2,11 +2,12 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
+import { consumeOtp, consumeVerifiedOtp, verifyOtp } from "@/lib/otp";
 import { generateUniqueUsername } from "@/lib/user-directory";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
-import VerificationToken from "@/models/VerificationToken";
 import Referral from "@/models/Referral";
 import Notification from "@/models/Notification";
 import { emitNotification } from "@/lib/pusher/pusherServer";
@@ -27,9 +28,13 @@ export async function POST(request: Request) {
     const payload = await request.json();
 
     const rawName = payload?.name?.trim();
-    const email = payload?.email?.trim().toLowerCase();
+    const email =
+      typeof payload?.email === "string"
+        ? payload.email.trim().toLowerCase()
+        : "";
     const password = payload?.password;
     const role = payload?.role;
+    const code = payload?.code;
 
     if (!email || !password || !role) {
       return NextResponse.json(
@@ -37,6 +42,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
 
     const name =
       rawName ||
@@ -62,6 +68,14 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
+    const limit = await enforceAuthRateLimit({
+      action: "register",
+      request,
+      email,
+      ...AUTH_RATE_LIMITS.register,
+    });
+    if (!limit.ok) return limit.response;
+
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -69,6 +83,26 @@ export async function POST(request: Request) {
         { message: "An account already exists with that email address." },
         { status: 409 },
       );
+    }
+
+    // Prove ownership of the address BEFORE creating the account. This route
+    // previously deleted the OTP without ever checking it, so anyone could
+    // POST here directly and register an email they did not control — which
+    // also let an attacker pre-register a victim's address ahead of them.
+    //
+    // Deliberately NOT consumed yet: if account creation fails below, the code
+    // must survive so the user can retry rather than request a fresh one.
+    // It is consumed after the account exists.
+    //
+    // The codeless branch supports mobile builds shipped before this endpoint
+    // required `code`; they prove ownership via /verify-email/confirm instead.
+    // Remove it once those builds are gone.
+    const otp = code
+      ? await verifyOtp(email, code, { consume: false })
+      : await consumeVerifiedOtp(email);
+
+    if (!otp.ok) {
+      return NextResponse.json({ message: otp.error }, { status: otp.status });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -112,6 +146,14 @@ const userOwnReferralCode = `REF-${crypto.randomBytes(3).toString("hex").toUpper
       overallRatingSum: 0,
       overallRatingCount: 0,
     });
+
+    // The account now exists, so the code has done its job and must not be
+    // replayable. Deliberately after User.create: consuming beforehand would
+    // burn the code on any creation failure and force the user to request a
+    // new one. Duplicate accounts are already prevented by the 409 check above
+    // plus the unique email index, so two concurrent requests cannot both
+    // succeed here.
+    await consumeOtp(email);
 
     console.log("Created user with referralCode:", user.referralCode);
 
@@ -167,9 +209,6 @@ if (referrerUser) {
         transactorName: name,
       });
     }
-
-    // Clean up used OTP
-    await VerificationToken.deleteOne({ email });
 
     // Fire welcome email asynchronously
     if (referrerUser && refereeBonus > 0) {

@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSafeServerSession } from "@/lib/auth";
 import { generateEsewaSignature } from "@/lib/payment/esewa";
 import Transaction from "@/models/Transaction";
-import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { connectToDatabase } from "@/lib/mongodb";
 import { sendTransactionEmail } from "@/lib/sendEmails/sendTransactionEmail";
 import { getMasterAdminEmails } from "@/lib/user-directory";
 import { generateReceiptPdf } from "@/lib/generate-receipt-pdf";
 import { sendPushNotificationToUser } from "@/lib/push/web-push";
-import { emitNotification, emitSubscriptionUpdated } from "@/lib/pusher/pusherServer";
+import { emitNotification } from "@/lib/pusher/pusherServer";
+import { activateSubscription } from "@/lib/subscription-activation";
+import { finalizePercentageCouponRedemption } from "@/lib/subscription-coupons";
 
 interface EsewaResponseData {
   transaction_code: string;
@@ -113,38 +114,34 @@ export async function POST(req: NextRequest) {
 
   const durationDays = transaction.meta?.durationDays || 30;
   const planSlug = transaction.meta?.planSlug || "unknown";
-  const user = await User.findById(session.user.id).select("subscriptionEnd");
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const activation = await activateSubscription({
+    userId: session.user.id,
+    planSlug,
+    durationDays: typeof durationDays === "number" ? durationDays : null,
+  });
+
+  if (!activation.ok) {
+    return NextResponse.json({ error: activation.error }, { status: activation.status });
   }
 
-  const now = new Date();
-  const currentSubscriptionEnd =
-    user.subscriptionEnd && new Date(user.subscriptionEnd) > now
-      ? new Date(user.subscriptionEnd)
-      : now;
-  const subscriptionEnd = new Date(
-    currentSubscriptionEnd.getTime() + durationDays * 24 * 60 * 60 * 1000,
-  );
+  const subscriptionEnd = activation.subscriptionEnd;
 
-  await User.findByIdAndUpdate(session.user.id, {
-    subscriptionStatus: "ACTIVE",
-    subscriptionEnd,
-    planSlug,
-    trialUsed: true,
-    questionsAsked: 0,
-  });
+  const couponId = (transaction.meta as Record<string, unknown> | undefined)
+    ?.subscriptionCouponId;
+  if (typeof couponId === "string" && couponId) {
+    await finalizePercentageCouponRedemption({
+      couponId,
+      userId: session.user.id,
+      userEmail: session.user.email ?? null,
+      planSlug,
+      transactionId: transaction._id,
+    });
+  }
 
   // Notify the user (in-app + Pusher + push + email-with-PDF)
   const subscriptionMessage = `Your eSewa payment for ${planSlug.toUpperCase()} was successful. Access is active until ${subscriptionEnd.toLocaleDateString()}.`;
   const txnId = decoded.transaction_code || decoded.transaction_uuid;
-
-  void emitSubscriptionUpdated(session.user.id, {
-    subscriptionStatus: "ACTIVE",
-    subscriptionEnd: subscriptionEnd.toISOString(),
-    planSlug,
-    questionsAsked: 0,
-  }).catch(console.error);
 
   const notif = await Notification.create({
     userId: session.user.id,

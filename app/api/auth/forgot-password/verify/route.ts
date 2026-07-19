@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
-import VerificationToken from "@/models/VerificationToken";
+import { verifyOtp } from "@/lib/otp";
 
 export async function POST(req: Request) {
   try {
@@ -13,14 +14,20 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    const record = await VerificationToken.findOne({ email });
+    const limit = await enforceAuthRateLimit({
+      action: "forgot-password-verify",
+      request: req,
+      email,
+      ...AUTH_RATE_LIMITS.otpVerify,
+    });
+    if (!limit.ok) return limit.response;
 
-    if (!record) {
-      return NextResponse.json({ error: "No pending password reset found or code expired." }, { status: 404 });
-    }
+    // This is a pre-check for the UI only — do NOT consume the code here, the
+    // /reset call that follows needs it and re-validates independently.
+    const result = await verifyOtp(email, code, { consume: false });
 
-    if (record.code !== code) {
-      return NextResponse.json({ error: "Invalid verification code." }, { status: 400 });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
     return NextResponse.json({ success: true, message: "Code verified." });

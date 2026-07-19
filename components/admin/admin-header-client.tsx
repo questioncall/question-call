@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { getPusherClient } from "@/lib/pusher/pusherClient";
 import { ADMIN_UPDATES_CHANNEL, ADMIN_WITHDRAWAL_EVENT } from "@/lib/pusher/events";
 
+/** Backstop cadence for the counts poll; Pusher carries the realtime updates. */
+const COUNTS_POLL_INTERVAL_MS = 3 * 60 * 1000;
+
 interface AdminCounts {
   pendingWithdrawals: number;
   expiredSubscriptions: number;
@@ -54,12 +57,22 @@ export function AdminHeaderClient({ initialCounts }: { initialCounts: AdminCount
     };
   }, []);
 
+  // Safety-net poll only. Pusher above already pushes the two events that move
+  // these numbers, so this exists to catch a dropped socket — not to deliver
+  // freshness. It stays idle while the tab is hidden (a backgrounded admin tab
+  // used to poll all day) and catches up once on refocus.
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchCounts();
-    }, 30000);
+    const refetchIfVisible = () => {
+      if (document.visibilityState === "visible") fetchCounts();
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(refetchIfVisible, COUNTS_POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refetchIfVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refetchIfVisible);
+    };
   }, []);
 
   useEffect(() => {

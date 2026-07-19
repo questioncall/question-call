@@ -2,7 +2,9 @@ import { completeCoursePurchase } from "@/lib/course-purchases";
 import { completeChapterPurchase } from "@/lib/chapter-purchases";
 import { getCoursePurchaseMetadata } from "@/lib/course-purchases";
 import { connectToDatabase } from "@/lib/mongodb";
-import { emitNotification, emitSubscriptionUpdated } from "@/lib/pusher/pusherServer";
+import { emitNotification } from "@/lib/pusher/pusherServer";
+import { activateSubscription } from "@/lib/subscription-activation";
+import { finalizePercentageCouponRedemption } from "@/lib/subscription-coupons";
 import Notification from "@/models/Notification";
 import { getHydratedPlans, getPlatformConfig } from "@/models/PlatformConfig";
 import Transaction from "@/models/Transaction";
@@ -48,19 +50,7 @@ export async function approveTransaction(args: {
   let notificationMessage = "Your payment was approved.";
 
   if (transaction.type === "SUBSCRIPTION_MANUAL") {
-    const user = await User.findById(transaction.userId).select(
-      "name subscriptionStatus subscriptionEnd trialUsed planSlug questionsAsked bonusQuestions",
-    );
-
-    if (!user) {
-      return { ok: false, error: "User not found", status: 404 };
-    }
-
-    const config = await getPlatformConfig();
-    const plans = getHydratedPlans(config);
-    const plan = plans.find((entry) => entry.slug === transaction.planSlug);
-
-    if (!plan) {
+    if (!transaction.planSlug) {
       return {
         ok: false,
         error: "Transaction plan is missing or invalid",
@@ -68,35 +58,31 @@ export async function approveTransaction(args: {
       };
     }
 
-    const now = new Date();
-    const currentSubscriptionEnd =
-      user.subscriptionEnd && new Date(user.subscriptionEnd) > now
-        ? new Date(user.subscriptionEnd)
-        : now;
-    const nextSubscriptionEnd = new Date(
-      currentSubscriptionEnd.getTime() + plan.durationDays * 24 * 60 * 60 * 1000,
-    );
-
-    const oldPlan = plans.find((p) => p.slug === (user.planSlug ?? "free"));
-    const oldPlanMax = (oldPlan?.maxQuestions ?? 0) + (user.bonusQuestions ?? 0);
-    const oldAsked = user.questionsAsked ?? 0;
-    const carryOver = Math.max(0, oldPlanMax - oldAsked);
-
-    user.subscriptionStatus = "ACTIVE";
-    user.subscriptionEnd = nextSubscriptionEnd;
-    user.trialUsed = true;
-    user.planSlug = transaction.planSlug;
-    user.questionsAsked = 0;
-    user.bonusQuestions = carryOver;
-    await user.save();
-
-    await emitSubscriptionUpdated(transaction.userId.toString(), {
-      subscriptionStatus: "ACTIVE",
-      subscriptionEnd: nextSubscriptionEnd.toISOString(),
+    const activation = await activateSubscription({
+      userId: transaction.userId.toString(),
       planSlug: transaction.planSlug,
-      questionsAsked: 0,
-      bonusQuestions: carryOver,
-    }).catch(console.error);
+    });
+
+    if (!activation.ok) {
+      return { ok: false, error: activation.error, status: activation.status };
+    }
+
+    const plan = { name: activation.planName };
+    const now = new Date();
+    const nextSubscriptionEnd = activation.subscriptionEnd;
+
+    const couponId = (transaction.meta as Record<string, unknown> | undefined)
+      ?.subscriptionCouponId;
+    if (typeof couponId === "string" && couponId) {
+      const payer = await User.findById(transaction.userId).select("email").lean();
+      await finalizePercentageCouponRedemption({
+        couponId,
+        userId: transaction.userId.toString(),
+        userEmail: (payer as { email?: string } | null)?.email ?? null,
+        planSlug: transaction.planSlug,
+        transactionId: transaction._id,
+      });
+    }
 
     transaction.status = "COMPLETED";
     transaction.gateway = "MANUAL";

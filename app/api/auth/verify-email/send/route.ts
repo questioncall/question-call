@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
-import VerificationToken from "@/models/VerificationToken";
+import { issueOtp } from "@/lib/otp";
 import User from "@/models/User";
 import { sendVerificationEmail } from "@/lib/sendEmails/sendVerificationEmail";
 
@@ -15,6 +16,14 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
+    const limit = await enforceAuthRateLimit({
+      action: "verify-email-send",
+      request: req,
+      email,
+      ...AUTH_RATE_LIMITS.otpSend,
+    });
+    if (!limit.ok) return limit.response;
+
     // Ensure email isn't already taken
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -24,16 +33,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Generate a 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-
-    // Upsert the token for this email (invalidating old ones)
-    await VerificationToken.findOneAndUpdate(
-      { email },
-      { email, code, expiresAt },
-      { upsert: true, new: true }
-    );
+    const code = await issueOtp(email);
 
     // Dispatch via Resend
     const sent = await sendVerificationEmail(email, code, name || "User");

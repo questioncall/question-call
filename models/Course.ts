@@ -128,6 +128,15 @@ const courseSchema = new Schema(
       type: [String],
       default: [],
     },
+    // Set when an admin merged this course into another one. The course is
+    // ARCHIVED at that point; detail/watch pages redirect old links to the
+    // target course's slug.
+    mergedInto: {
+      type: Schema.Types.ObjectId,
+      ref: "Course",
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

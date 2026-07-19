@@ -320,7 +320,10 @@ export async function getCourseBrowsePageData(input: {
 }) {
   await connectToDatabase();
 
-  const courses = await Course.find({ status: "ACTIVE" })
+  // `mergedInto: null` — a course that was merged away is a shell: its videos,
+  // sections and students now live on the target course, so it must never be
+  // browsable even if its status was flipped back to ACTIVE.
+  const courses = await Course.find({ status: "ACTIVE", mergedInto: null })
     .sort({ isFeatured: -1, createdAt: -1 })
     .select(
       "_id slug title description subject level pricingModel price thumbnailUrl totalDurationMinutes enrollmentCount instructorName instructorRole isFeatured",
@@ -457,6 +460,12 @@ export async function getCourseDetailPageData(input: {
       course.instructorId.toString() === input.userId);
 
   if (course.status !== "ACTIVE" && !canManage) {
+    return null;
+  }
+
+  // Merged away — hand off to the caller's redirect so the student lands on the
+  // course that actually holds the content.
+  if (course.mergedInto && !canManage) {
     return null;
   }
 

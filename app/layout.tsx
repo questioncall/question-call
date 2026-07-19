@@ -14,6 +14,7 @@ import { Inter, DM_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { SITE_URL } from "@/lib/site-url";
+import { serializeJsonLd } from "@/lib/json-ld";
 import { absoluteUrl } from "@/lib/seo";
 
 const dmSansHeading = DM_Sans({subsets:['latin'],variable:'--font-heading'});
@@ -121,7 +122,7 @@ export default function RootLayout({
         <PageLoadingBar />
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
@@ -142,7 +143,7 @@ export default function RootLayout({
           id="organization-structured-data"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationStructuredData),
+            __html: serializeJsonLd(organizationStructuredData),
           }}
         />
       </body>

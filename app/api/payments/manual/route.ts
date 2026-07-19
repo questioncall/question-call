@@ -10,6 +10,11 @@ import { pusherServer } from "@/lib/pusher/pusherServer";
 import { ADMIN_UPDATES_CHANNEL } from "@/lib/pusher/events";
 import { getMasterAdminEmails } from "@/lib/user-directory";
 import { notifyUser } from "@/lib/notifications/notify-user";
+import {
+  applySubscriptionCouponDiscount,
+  SUBSCRIPTION_COUPON_FAILURE_MESSAGES,
+  validateSubscriptionCoupon,
+} from "@/lib/subscription-coupons";
 
 cloudinary.config({
   secure: true,
@@ -27,6 +32,7 @@ export async function POST(req: NextRequest) {
     const transactorName = formData.get("transactorName") as string;
     const planSlug = formData.get("planSlug") as string | null;
     const courseId = formData.get("courseId") as string | null;
+    const couponCode = (formData.get("couponCode") as string | null)?.trim() || null;
     const file = formData.get("screenshot") as File | null;
 
     const isCourseMode = !!courseId;
@@ -43,6 +49,7 @@ export async function POST(req: NextRequest) {
     let totalAmount: number;
     let transactionType: "SUBSCRIPTION_MANUAL" | "COURSE_PURCHASE";
     let courseMeta: Record<string, unknown> | undefined;
+    let subscriptionCouponMeta: Record<string, unknown> | undefined;
     // For the user-facing "payment submitted" notification + push.
     let notifyLabel = "";
     let notifyHref = "/subscription";
@@ -86,7 +93,50 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      totalAmount = plan.price + plan.tax;
+
+      let planPrice = plan.price;
+
+      if (couponCode) {
+        const validation = await validateSubscriptionCoupon({
+          code: couponCode,
+          userId: authenticatedUser.id,
+          userEmail: authenticatedUser.email,
+          planSlug: plan.slug,
+        });
+
+        if (!validation.valid) {
+          return NextResponse.json(
+            { error: SUBSCRIPTION_COUPON_FAILURE_MESSAGES[validation.reason] },
+            { status: 400 },
+          );
+        }
+
+        if (
+          validation.coupon.kind !== "PERCENTAGE" ||
+          typeof validation.coupon.discountPercentage !== "number"
+        ) {
+          return NextResponse.json(
+            {
+              error:
+                "This coupon grants free access — redeem it on the subscription page instead of paying.",
+            },
+            { status: 400 },
+          );
+        }
+
+        planPrice = applySubscriptionCouponDiscount(
+          plan.price,
+          validation.coupon.discountPercentage,
+        );
+        subscriptionCouponMeta = {
+          subscriptionCouponId: validation.couponId,
+          subscriptionCouponCode: validation.coupon.code,
+          subscriptionCouponDiscountPercentage: validation.coupon.discountPercentage,
+          subscriptionOriginalPrice: plan.price,
+        };
+      }
+
+      totalAmount = planPrice + plan.tax;
       transactionType = "SUBSCRIPTION_MANUAL";
       notifyLabel = `the ${plan.name} plan`;
       notifyHref = "/subscription";
@@ -198,6 +248,7 @@ export async function POST(req: NextRequest) {
       transactionId,
       transactorName,
       ...(isCourseMode ? { metadata: courseMeta } : { planSlug }),
+      ...(subscriptionCouponMeta ? { meta: subscriptionCouponMeta } : {}),
       screenshotUrl,
     });
 

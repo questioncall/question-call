@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import { NextResponse } from "next/server";
 
+import { AUTH_RATE_LIMITS, enforceAuthRateLimit } from "@/lib/auth-rate-limit";
 import { APP_NAME } from "@/lib/constants";
 import { getGoogleAudiences } from "@/lib/google-audiences";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -203,13 +204,22 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
+    const limit = await enforceAuthRateLimit({
+      action: "mobile-register",
+      request,
+      ...AUTH_RATE_LIMITS.register,
+    });
+    if (!limit.ok) return limit.response;
+
     const ticket = await googleClient.verifyIdToken({
       idToken: body.googleIdToken,
       audience: googleAudiences,
     });
 
     const payload = ticket.getPayload();
-    if (!payload?.email) {
+    // `email_verified` must be checked explicitly: Google can issue tokens for
+    // unverified addresses, and accounts are keyed on email alone.
+    if (!payload?.email || payload.email_verified !== true) {
       return NextResponse.json(
         { error: "Invalid Google ID token" },
         { status: 401 },

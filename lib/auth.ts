@@ -7,6 +7,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { cookies } from "next/headers";
 
 import { normalizeCallSettings, type UserCallSettings } from "@/lib/call-settings";
+import { JWT_SECRET } from "@/lib/env";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProfilePath, getUserHandle } from "@/lib/user-paths";
 import { generateUniqueUsername } from "@/lib/user-directory";
@@ -101,7 +102,7 @@ export async function getWorkspaceUser(sessionUser: Session["user"]) {
 }
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: JWT_SECRET,
   session: {
     strategy: "jwt",
   },
@@ -174,6 +175,13 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google") {
         const email = user.email?.toLowerCase();
         if (!email) return false;
+
+        // Google can issue tokens for unverified addresses. Since accounts are
+        // matched by email alone below, an unverified one would let a stranger
+        // sign into someone else's account.
+        if ((profile as { email_verified?: boolean } | undefined)?.email_verified !== true) {
+          return false;
+        }
 
         await connectToDatabase();
         const existingUser = await User.findOne({ email });

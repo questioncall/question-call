@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Leaf, Clock, CalendarDays, HelpCircle, CheckCircle2 } from "lucide-react";
 import { LegalDialog } from "@/components/shared/legal-dialog";
+import { CouponApplyBar } from "@/components/subscription/coupon-apply-bar";
+import { useSubscriptionCoupon } from "@/components/subscription/use-subscription-coupon";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlanDef } from "@/lib/plans";
@@ -93,6 +95,18 @@ export function SubscriptionClient({
     planSlug,
   } = useAppSelector((state) => state.user);
   
+  const coupon = useSubscriptionCoupon();
+
+  // A `?coupon=CODE` link (from the invite banner, or shared by support) lands
+  // here with the code already applied and the packages on screen.
+  const applyCoupon = coupon.apply;
+  useEffect(() => {
+    const fromQuery = new URLSearchParams(window.location.search).get("coupon");
+    if (!fromQuery) return;
+    setShowPricing(true);
+    void applyCoupon(fromQuery);
+  }, [applyCoupon]);
+
   const [referralStats, setReferralStats] = useState<{ totalReferred: number; totalBonusEarned: number } | null>(null);
   const inviterBonusQuestions = referrerBonusQuestions ?? 3;
   const inviteeBonusQuestions = referralBonusQuestions ?? 1;
@@ -253,7 +267,32 @@ const fetchReferralStats = async () => {
               See More Packages
             </Button>
           </div>
-          
+
+          {/* Coupon entry sits at the top so a code is applied before the user
+              starts comparing packages. */}
+          <CouponApplyBar coupon={coupon} />
+
+          {coupon.applied?.kind === "FREE_ACCESS" && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#1B7258]/40 bg-white p-5 dark:border-[#27A883]/30 dark:bg-neutral-900 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-neutral-700 dark:text-neutral-200">
+                Activate the{" "}
+                <strong className="uppercase">{coupon.applied.planSlug}</strong> plan
+                free of charge
+                {coupon.applied.durationDays
+                  ? ` for ${coupon.applied.durationDays} days`
+                  : ""}
+                . It stacks on top of your current expiry date.
+              </p>
+              <Button
+                onClick={() => void coupon.redeemFreeAccess()}
+                disabled={coupon.isWorking}
+                className="shrink-0 rounded-xl bg-[#1B7258] text-white hover:bg-[#145C46]"
+              >
+                {coupon.isWorking ? "Activating…" : "Activate free plan"}
+              </Button>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-6">
             {/* Days Remaining Widget */}
             <div className={`p-8 rounded-3xl border shadow-sm relative overflow-hidden ${
@@ -433,15 +472,24 @@ const fetchReferralStats = async () => {
           )}
         </div>
 
+        {/* Coupon bar — above the packages, so applying a code visibly
+            rewrites the prices below it. */}
+        <div className="mb-8">
+          <CouponApplyBar coupon={coupon} />
+        </div>
+
         {/* Pricing Section */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pt-4">
           {(hydratedPlans || []).map((plan, index) => {
             const isCurrentTrialCard = isTrialPlan && plan.slug === "free";
             const isCurrentPaidCard = isPaidPlanActive && plan.slug === planSlug;
+            const effect = coupon.effectForPlan(plan.slug, plan.price);
             const planHref =
               plan.slug === "free" || isCurrentTrialCard || isCurrentPaidCard
                 ? null
-                : `/subscription/payment?plan=${plan.slug}`;
+                : effect.type === "discount"
+                  ? `/subscription/payment?plan=${plan.slug}&coupon=${encodeURIComponent(coupon.applied!.code)}`
+                  : `/subscription/payment?plan=${plan.slug}`;
             const ctaLabel = isCurrentTrialCard
               ? "Current Trial"
               : isCurrentPaidCard
@@ -509,21 +557,66 @@ const fetchReferralStats = async () => {
                 </div>
 
               <div className="mb-8 flex flex-col">
-                {plan.originalPrice && (
-                  <div className="text-[15px] font-semibold text-neutral-400 dark:text-neutral-500 line-through mb-1">
-                    NPR {plan.originalPrice}
-                  </div>
-                )}
-                <div className="flex items-end gap-2 text-[2.5rem] font-bold tracking-tight text-neutral-900 dark:text-white leading-none">
-                  <span className="text-[1.2rem] font-semibold text-neutral-500 mb-1 mr-1">NPR</span>
-                  <span>{plan.price}</span>
-                  {plan.suffix && (
-                    <span className="text-[13px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
-                      {" "}
-                      {plan.suffix}
+                {effect.type === "free" ? (
+                  <>
+                    <div className="text-[15px] font-semibold text-neutral-400 dark:text-neutral-500 line-through mb-1">
+                      NPR {plan.price}
+                    </div>
+                    <div className="flex items-end gap-2 text-[2.5rem] font-bold tracking-tight text-[#1B7258] dark:text-[#27A883] leading-none">
+                      <span>FREE</span>
+                      {effect.durationDays && (
+                        <span className="text-[13px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
+                          for {effect.durationDays} days
+                        </span>
+                      )}
+                    </div>
+                    <span className="mt-2 inline-flex w-fit rounded-full bg-[#1B7258]/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#1B7258] dark:bg-[#27A883]/15 dark:text-[#27A883]">
+                      Coupon {coupon.applied?.code}
                     </span>
-                  )}
-                </div>
+                  </>
+                ) : effect.type === "discount" ? (
+                  <>
+                    <div className="text-[15px] font-semibold text-neutral-400 dark:text-neutral-500 line-through mb-1">
+                      NPR {effect.originalPrice}
+                    </div>
+                    <div className="flex items-end gap-2 text-[2.5rem] font-bold tracking-tight text-neutral-900 dark:text-white leading-none">
+                      <span className="text-[1.2rem] font-semibold text-neutral-500 mb-1 mr-1">NPR</span>
+                      <span>{effect.price}</span>
+                      {plan.suffix && (
+                        <span className="text-[13px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
+                          {" "}
+                          {plan.suffix}
+                        </span>
+                      )}
+                    </div>
+                    <span className="mt-2 inline-flex w-fit rounded-full bg-[#1B7258]/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#1B7258] dark:bg-[#27A883]/15 dark:text-[#27A883]">
+                      {effect.percentage}% off · {coupon.applied?.code}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {plan.originalPrice && (
+                      <div className="text-[15px] font-semibold text-neutral-400 dark:text-neutral-500 line-through mb-1">
+                        NPR {plan.originalPrice}
+                      </div>
+                    )}
+                    <div className="flex items-end gap-2 text-[2.5rem] font-bold tracking-tight text-neutral-900 dark:text-white leading-none">
+                      <span className="text-[1.2rem] font-semibold text-neutral-500 mb-1 mr-1">NPR</span>
+                      <span>{plan.price}</span>
+                      {plan.suffix && (
+                        <span className="text-[13px] font-medium text-neutral-400 dark:text-neutral-500 mb-2">
+                          {" "}
+                          {plan.suffix}
+                        </span>
+                      )}
+                    </div>
+                    {effect.type === "not-applicable" && (
+                      <span className="mt-2 text-[12px] font-medium text-neutral-400 dark:text-neutral-500">
+                        Coupon {coupon.applied?.code} doesn&apos;t apply to this plan
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
 
                             <ul className="mb-10 flex-1 space-y-5 text-[14px] font-medium text-neutral-700 dark:text-neutral-300">
@@ -560,7 +653,15 @@ const fetchReferralStats = async () => {
                 })}
               </ul>
 
-              {planHref ? (
+              {effect.type === "free" && !isCurrentPaidCard ? (
+                <Button
+                  onClick={() => void coupon.redeemFreeAccess()}
+                  disabled={coupon.isWorking}
+                  className="mt-auto h-12 w-full rounded-[14px] bg-[#1B7258] font-semibold text-white shadow-md hover:bg-[#145C46]"
+                >
+                  {coupon.isWorking ? "Activating…" : "Activate free"}
+                </Button>
+              ) : planHref ? (
                 <Link href={planHref} className="mt-auto w-full flex">
                   <Button
                     variant={plan.highlight ? "default" : "outline"}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArchiveIcon,
   CurrencyIcon,
   Layers3Icon,
   PencilIcon,
@@ -43,6 +44,13 @@ type CourseData = {
   instructorRole: string;
   enrollmentCount: number;
   createdAt: string;
+  /**
+   * Set by the merge flow (`lib/course-merge.ts`) when this course was folded
+   * into another one. Such courses are archived and their content now lives in
+   * the target, so they are hidden from the default table.
+   */
+  mergedInto: string | null;
+  mergedIntoTitle: string | null;
 };
 
 type AdminCoursesClientProps = {
@@ -65,6 +73,10 @@ export function AdminCoursesClient({
   const [isWorking, setIsWorking] = useState(false);
 
   const [filter, setFilter] = useState<string>("all");
+  // Merged-away courses are noise in day-to-day admin work — they are archived
+  // shells whose content lives in the target. Off by default; the toggle above
+  // the table swaps the view to show *only* them.
+  const [showMerged, setShowMerged] = useState(false);
 
   useEffect(() => {
     setCourses(initialCourses);
@@ -90,7 +102,12 @@ export function AdminCoursesClient({
     };
   }, [router]);
 
+  const mergedCount = courses.filter((course) => Boolean(course.mergedInto)).length;
+
   const filteredCourses = courses.filter((course) => {
+    // The merged view is a mode, not an extra filter: it shows every merged
+    // course regardless of status, and the normal views show none of them.
+    if (showMerged !== Boolean(course.mergedInto)) return false;
     if (filter === "all") return true;
     return course.status === filter;
   });
@@ -160,10 +177,15 @@ export function AdminCoursesClient({
             Manage all courses and view analytics.
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="mr-1 size-4" />
-          Create course
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/courses/merge">Merge courses</Link>
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="mr-1 size-4" />
+            Create course
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -224,7 +246,17 @@ export function AdminCoursesClient({
         </Card>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant={showMerged ? "default" : "outline"}
+          onClick={() => setShowMerged((prev) => !prev)}
+          disabled={!showMerged && mergedCount === 0}
+        >
+          <ArchiveIcon className="mr-1 size-4" />
+          {showMerged
+            ? "Back to active courses"
+            : `Merged courses${mergedCount > 0 ? ` (${mergedCount})` : ""}`}
+        </Button>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -237,6 +269,14 @@ export function AdminCoursesClient({
           <option value="ARCHIVED">Archived</option>
         </select>
       </div>
+
+      {showMerged && (
+        <p className="text-sm text-muted-foreground">
+          These courses were merged into another course. Their lessons and students
+          already live in the destination — they are kept only so old links keep
+          redirecting.
+        </p>
+      )}
 
       <div className="rounded-2xl border border-border bg-background overflow-hidden">
         <div className="overflow-x-auto">
@@ -269,6 +309,14 @@ export function AdminCoursesClient({
                         <div className="text-xs text-muted-foreground">
                           {course.subject} · {course.level}
                         </div>
+                        {course.mergedInto && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Merged into{" "}
+                            <span className="font-medium text-foreground">
+                              {course.mergedIntoTitle ?? "another course"}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -284,16 +332,26 @@ export function AdminCoursesClient({
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <select
-                      value={course.status}
-                      onChange={(e) => updateStatus(course._id, e.target.value)}
-                      className="w-[120px] rounded-xl border border-input bg-background px-2 py-1.5 text-sm"
-                    >
-                      <option value="DRAFT">Draft</option>
-                      <option value="ACTIVE">Active</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="ARCHIVED">Archived</option>
-                    </select>
+                    {course.mergedInto ? (
+                      // A merged course is a redirect shell: its lessons and
+                      // students live on the target now, so there is no status
+                      // to choose — republishing it would only put an empty
+                      // duplicate back in front of students.
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Archived (merged)
+                      </Badge>
+                    ) : (
+                      <select
+                        value={course.status}
+                        onChange={(e) => updateStatus(course._id, e.target.value)}
+                        className="w-[120px] rounded-xl border border-input bg-background px-2 py-1.5 text-sm"
+                      >
+                        <option value="DRAFT">Draft</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="ARCHIVED">Archived</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-sm text-muted-foreground">
                     {course.instructorName}
@@ -364,10 +422,11 @@ export function AdminCoursesClient({
         </div>
         {filteredCourses.length === 0 && (
           <div className="p-12 text-center text-sm text-muted-foreground">
-            No courses found.
+            {showMerged ? "No merged courses." : "No courses found."}
           </div>
         )}
       </div>
+
     </div>
   );
 }

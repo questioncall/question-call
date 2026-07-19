@@ -51,6 +51,10 @@ export default async function AdminCoursesPage() {
     }
   });
 
+  // Merge targets are themselves courses in this same list, so the destination
+  // title needed for the "merged into X" label costs no extra query.
+  const titleById = new Map(courses.map((c) => [c._id.toString(), c.title]));
+
   return (
     <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading courses...</div>}>
       <AdminCoursesClient
@@ -68,6 +72,10 @@ export default async function AdminCoursesPage() {
         instructorRole: c.instructorRole,
         enrollmentCount: enrollmentCountByCourse.get(c._id.toString()) ?? 0,
         createdAt: c.createdAt.toString(),
+        mergedInto: c.mergedInto ? c.mergedInto.toString() : null,
+        mergedIntoTitle: c.mergedInto
+          ? (titleById.get(c.mergedInto.toString()) ?? null)
+          : null,
       }))}
       analytics={{
         totalActiveCourses: courses.filter((c) => c.status === "ACTIVE").length,

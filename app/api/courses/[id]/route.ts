@@ -324,6 +324,19 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid status." }, { status: 400 });
       }
 
+      // A merged course only exists to redirect old links — its lessons and
+      // students moved to the target. Publishing it again would surface an
+      // empty duplicate, and it restores nothing, so the merge is one-way.
+      if (course.mergedInto && status !== "ARCHIVED") {
+        return NextResponse.json(
+          {
+            error:
+              "This course was merged into another one and cannot be published again.",
+          },
+          { status: 400 },
+        );
+      }
+
       course.status = status;
     }
 

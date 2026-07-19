@@ -239,6 +239,23 @@ export const ADMIN_PORTAL_ROUTE_ENTRIES: AdminPortalEntry[] = [
     keywords: ["coupons", "discount", "promo", "unlock", "redeem"],
   },
   {
+    id: "subscription-coupons",
+    label: "Subscription coupons",
+    href: "/admin/subscription-coupons",
+    description:
+      "Promo codes granting free plan access or plan discounts — duration, email allowlists, and first-N-user campaigns.",
+    group: "Revenue & Finance",
+    keywords: [
+      "subscription",
+      "coupons",
+      "promo",
+      "plan",
+      "creator",
+      "campaign",
+      "free access",
+    ],
+  },
+  {
     id: "live-sessions",
     label: "Live Sessions",
     href: "/admin/live-sessions",
@@ -316,6 +333,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/chapters", label: "Chapters" },
   { href: "/admin/courses/coupons", label: "Coupons" },
+  { href: "/admin/subscription-coupons", label: "Subscription coupons" },
   { href: "/admin/live-sessions", label: "Live sessions" },
   { href: "/admin/onboarding-videos", label: "Onboarding Videos" },
   { href: "/admin/legal", label: "Legal" },

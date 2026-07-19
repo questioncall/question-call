@@ -7,6 +7,7 @@ import { PublicLanding } from "@/components/shared/public-landing";
 import { WorkspaceHome } from "@/components/shared/workspace-home";
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
+import { CouponGiftModal } from "@/components/subscription/coupon-gift-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getCourseBrowsePageData } from "@/lib/course-page-data";
 import {
@@ -119,6 +120,11 @@ export default async function HomePage() {
   return (
     <>
       <GlobalNoticeModal />
+      {/* Students land here after login, so the gift has to be mounted on this
+          route too — it is NOT covered by the (workspace) layout. */}
+      {session.user.role === "STUDENT" && (
+        <CouponGiftModal firstName={session.user.name?.split(" ")[0] ?? null} />
+      )}
       <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} dailyTargets={dailyTargets} defaultOpen={defaultOpen}>
         <WorkspaceHome
           role={workspaceUser.role as "STUDENT" | "TEACHER"}

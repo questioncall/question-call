@@ -157,6 +157,7 @@ function AuthFormInner({ mode, role, callbackUrl }: AuthFormProps) {
             email,
             password,
             role,
+            code: otpCode,
             referralCode: referralCodeFromUrl,
           }),
         );

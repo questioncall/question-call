@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { isValidObjectId } from "mongoose";
 
+import { JWT_SECRET } from "@/lib/env";
 import { connectToDatabase } from "@/lib/mongodb";
 import {
   verifyCheckoutToken,
@@ -86,6 +87,11 @@ export async function GET(req: NextRequest) {
     target = payload.ref
       ? `/subscription/checkout?plan=${encodeURIComponent(payload.ref)}`
       : "/subscription/checkout";
+    // Optional promo code passthrough — checkout re-validates it server-side.
+    const couponParam = req.nextUrl.searchParams.get("coupon");
+    if (couponParam?.trim()) {
+      target += `${target.includes("?") ? "&" : "?"}coupon=${encodeURIComponent(couponParam.trim())}`;
+    }
   } else if (payload.intent === "course") {
     const slug = await resolveSlug(Course as unknown as SlugModel, payload.ref);
     if (!slug) return redirectTo(req, "/courses?checkout=notfound");
@@ -117,7 +123,7 @@ export async function GET(req: NextRequest) {
       name: user.name,
       email: user.email,
     },
-    secret: process.env.NEXTAUTH_SECRET!,
+    secret: JWT_SECRET,
     maxAge: SESSION_MAX_AGE,
   });
 

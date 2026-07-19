@@ -755,10 +755,10 @@ export function PersistentCallHost() {
         "h-full w-full",
         "[&_.lk-video-conference]:h-full [&_.lk-video-conference]:w-full",
         "[&_.lk-grid-layout]:h-full [&_.lk-grid-layout]:w-full",
-        "[&_[data-lk-source=screen_share]_video]:!object-contain",
-        "[&_video[data-lk-source=screen_share]]:!object-contain",
+        "[&_[data-lk-source=screen\\_share]_video]:!object-contain",
+        "[&_video[data-lk-source=screen\\_share]]:!object-contain",
         "[&_.lk-focus-layout]:!bg-black",
-        "[&_.lk-participant-tile[data-lk-source=screen_share]]:!bg-black",
+        "[&_.lk-participant-tile[data-lk-source=screen\\_share]]:!bg-black",
         isFullscreen
           ? [
               "[&_.lk-control-bar]:fixed [&_.lk-control-bar]:bottom-6 [&_.lk-control-bar]:left-1/2 [&_.lk-control-bar]:-translate-x-1/2",

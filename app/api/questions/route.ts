@@ -43,12 +43,9 @@ export async function POST(request: Request) {
     }
 
     const questionBody = typeof body.body === "string" ? body.body.trim() : "";
-    if (
-      questionBody.length > 0 &&
-      (questionBody.length < 12 || questionBody.length > 5000)
-    ) {
+    if (questionBody.length > 5000) {
       return NextResponse.json(
-        { error: "Details must be empty or between 12 and 5000 characters" },
+        { error: "Details must be 5000 characters or fewer" },
         { status: 400 },
       );
     }

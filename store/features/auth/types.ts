@@ -7,6 +7,8 @@ export type RegisterPayload = {
   email: string;
   password: string;
   role: RegisterableRole;
+  /** Email-verification OTP. The server re-verifies it before creating the account. */
+  code: string;
   referralCode?: string;
 };
 

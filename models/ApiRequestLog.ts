@@ -12,9 +12,17 @@ const apiRequestLogSchema = new Schema(
       required: true,
       index: true,
     },
+    // Null for pre-auth endpoints (login, OTP, register), where the caller has
+    // no user yet and the bucket is keyed on `subject` instead.
     userId: {
       type: String,
-      required: true,
+      default: null,
+      index: true,
+    },
+    /** The bucket subject: a userId, or a pre-auth key like `email:…` / `ip:…`. */
+    subject: {
+      type: String,
+      default: null,
       index: true,
     },
     ipAddress: {

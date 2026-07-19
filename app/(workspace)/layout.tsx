@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 
 import { WorkspaceShell } from "@/components/shared/workspace-shell";
 import { GlobalNoticeModal } from "@/components/shared/global-notice-modal";
+import { CouponGiftModal } from "@/components/subscription/coupon-gift-modal";
 import { getDefaultPath, getSafeServerSession, getWorkspaceUser } from "@/lib/auth";
 import { getSignInPath } from "@/lib/user-paths";
 import { getPlatformConfig, getPlatformSocialLinks } from "@/models/PlatformConfig";
@@ -54,6 +55,9 @@ export default async function WorkspaceLayout({
   return (
     <>
       <GlobalNoticeModal />
+      {session.user.role === "STUDENT" && (
+        <CouponGiftModal firstName={session.user.name?.split(" ")[0] ?? null} />
+      )}
       <WorkspaceShell user={workspaceUser} socialLinks={socialLinks} dailyTargets={dailyTargets} defaultOpen={defaultOpen}>
         {children}
       </WorkspaceShell>
