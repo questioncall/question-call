@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { type CallRingtone, DEFAULT_CALL_SETTINGS } from "@/lib/call-settings";
 import { playCallTone } from "@/lib/call-tone-player";
 import { cacheCallToken } from "@/lib/call-token-cache";
+import { getDeviceId } from "@/lib/device-id";
 import { startPersistentCall } from "@/lib/persistent-call-events";
 import { cn } from "@/lib/utils";
 
@@ -202,6 +203,8 @@ export function IncomingCallOverlay({
         try {
           const res = await fetch(`/api/calls/${call.callSessionId}/accept`, {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: getDeviceId() }),
           });
           if (!res.ok && res.status !== 409) {
             const data = await res.json().catch(() => ({}));
@@ -222,6 +225,8 @@ export function IncomingCallOverlay({
     try {
       const res = await fetch(`/api/calls/${call.callSessionId}/accept`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: getDeviceId() }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -264,6 +269,8 @@ export function IncomingCallOverlay({
     try {
       await fetch(`/api/calls/${call.callSessionId}/reject`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: getDeviceId() }),
       });
     } catch {
       // Non-fatal — dismiss regardless

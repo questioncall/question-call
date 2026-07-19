@@ -47,23 +47,26 @@ export async function POST(request: Request, context: RouteParams) {
       callSession.endedAt = new Date();
       await callSession.save();
 
-      await pusherServer
-        .trigger(getChannelPusherName(channelId), CALL_ENDED_EVENT, {
-          callSessionId: id,
-          channelId,
-          endedBy: userId,
-        })
-        .catch(console.error);
-
       // Calculate duration in seconds
       const startedAt = callSession.startedAt ? new Date(callSession.startedAt).getTime() : callSession.createdAt ? new Date(callSession.createdAt).getTime() : 0;
       const endedAt = callSession.endedAt ? new Date(callSession.endedAt).getTime() : Date.now();
       const durationSeconds = startedAt ? Math.max(0, Math.round((endedAt - startedAt) / 1000)) : null;
 
+      // Fire the ended event and fetch the caller's name (for the history
+      // message) in parallel — the peer's teardown only depends on the event.
       const resolvedCallerId = callerId || userId;
-      const callerUser = await User.findById(resolvedCallerId)
-        .select("name")
-        .lean<{ name?: string | null } | null>();
+      const [, callerUser] = await Promise.all([
+        pusherServer
+          .trigger(getChannelPusherName(channelId), CALL_ENDED_EVENT, {
+            callSessionId: id,
+            channelId,
+            endedBy: userId,
+          })
+          .catch(console.error),
+        User.findById(resolvedCallerId)
+          .select("name")
+          .lean<{ name?: string | null } | null>(),
+      ]);
       const callerName = callerUser?.name || user.name || "Unknown";
 
       // Create a system message in the channel with call metadata

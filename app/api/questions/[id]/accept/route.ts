@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import mongoose from "mongoose";
 
 import { connectToDatabase } from "@/lib/mongodb";
@@ -11,6 +11,7 @@ import { getPlatformConfig, getFormatDurationMinutes } from "@/models/PlatformCo
 import Question from "@/models/Question";
 import User from "@/models/User";
 import type { FeedQuestion } from "@/types/question";
+import type { ChannelDetail, ChatMessage } from "@/types/channel";
 import Notification from "@/models/Notification";
 import { checkTeacherStudentPattern } from "@/lib/anti-cheat";
 
@@ -67,35 +68,18 @@ export async function POST(_request: Request, context: RouteParams) {
     const now = new Date();
     const timerDeadline = new Date(now.getTime() + formatDurationMinutes * 60 * 1000);
 
-    // Update question status
+    // Claim the question first — this is the guard against a double-accept,
+    // so it must land before we create any channel that depends on it.
     question.status = "ACCEPTED";
     question.acceptedById = authenticatedUser.id;
     question.acceptedAt = now;
     await question.save();
 
-    // Create the channel. We pre-generate the _id so we can persist the
-    // deterministic roomName in the same write — no follow-up update needed.
+    // The channel _id is pre-generated, so the channel row, the auto-message
+    // that lives in it, and the acceptor lookup have no ordering dependency
+    // on each other — issue all three concurrently instead of serially.
     const channelId = new mongoose.Types.ObjectId();
     const roomName = getChannelRoomName(channelId.toString());
-    const channel = await Channel.create({
-      _id: channelId,
-      questionId: question._id,
-      askerId: question.askerId._id,
-      acceptorId: authenticatedUser.id,
-      openedAt: now,
-      timerDeadline,
-      status: "ACTIVE",
-      roomName,
-    });
-
-    // Fire-and-forget: provision the LiveKit room on the SFU so the first
-    // participant to connect skips the cold-start. Never awaited — channel
-    // accept must not block on LiveKit availability.
-    void prepareChannelRoom(channelId.toString());
-
-    // Get acceptor's name for the auto-message
-    const acceptor = await User.findById(authenticatedUser.id).select("name userImage").lean();
-    const acceptorName = (acceptor as { name?: string })?.name || authenticatedUser.name || "Someone";
 
     // Format duration for the message
     const durationText =
@@ -105,29 +89,34 @@ export async function POST(_request: Request, context: RouteParams) {
 
     // Create the auto-message from acceptor — concise, includes the question title
     const autoMessageContent = `✅ Question accepted! Answer coming within ${durationText}.\n\n📌 "${question.title}"`;
-    const autoMessage = await Message.create({
-      channelId: channel._id,
-      senderId: authenticatedUser.id,
-      content: autoMessageContent,
-      isSystemMessage: true,
-      sentAt: now,
-    });
 
-    // Broadcast the auto-message via Pusher (non-fatal if fails)
-    await emitChannelMessage(channel._id.toString(), {
-      id: autoMessage._id.toString(),
-      channelId: channel._id.toString(),
-      senderId: authenticatedUser.id,
-      senderName: acceptorName,
-      content: autoMessageContent,
-      mediaUrl: null,
-      mediaType: null,
-      isSystemMessage: true,
-      isOwn: false,
-      isSeen: false,
-      isDelivered: true,
-      sentAt: now.toISOString(),
-    }).catch(() => {});
+    const [channel, autoMessage, acceptor] = await Promise.all([
+      Channel.create({
+        _id: channelId,
+        questionId: question._id,
+        askerId: question.askerId._id,
+        acceptorId: authenticatedUser.id,
+        openedAt: now,
+        timerDeadline,
+        status: "ACTIVE",
+        roomName,
+      }),
+      Message.create({
+        channelId,
+        senderId: authenticatedUser.id,
+        content: autoMessageContent,
+        isSystemMessage: true,
+        sentAt: now,
+      }),
+      User.findById(authenticatedUser.id).select("name username userImage").lean(),
+    ]);
+
+    // Fire-and-forget: provision the LiveKit room on the SFU so the first
+    // participant to connect skips the cold-start. Never awaited — channel
+    // accept must not block on LiveKit availability.
+    void prepareChannelRoom(channelId.toString());
+
+    const acceptorName = (acceptor as { name?: string })?.name || authenticatedUser.name || "Someone";
 
     // Build the FeedQuestion shape for broadcast
     const asker = question.askerId as unknown as {
@@ -169,45 +158,107 @@ export async function POST(_request: Request, context: RouteParams) {
       updatedAt: question.updatedAt.toISOString(),
     };
 
-    await emitQuestionUpdated(feedQuestion).catch(() => {});
-
-    // Notify Asker that their question was accepted
-    const acceptNotif = await Notification.create({
-      userId: asker._id,
-      type: "QUESTION_ACCEPTED",
-      message: `${acceptorName} accepted your question. Channel is now open.`,
-      href: `/workspace/${channel._id.toString()}`,
-    }).catch(() => null);
-    if (acceptNotif) {
-      await emitNotification(asker._id.toString(), acceptNotif);
-    }
-
-    // Emit the new channel to the asker so their sidebar updates in real-time
-    const channelListItem = {
-      id: channel._id.toString(),
-      questionTitle: question.title,
-      counterpartName: acceptorName,
-      counterpartImage: (acceptor as { userImage?: string | null } | null)?.userImage || undefined,
-      status: "ACTIVE",
-      lastMessagePreview: autoMessageContent,
-      lastMessageAt: now.toISOString(),
-      unreadCount: 1, // The auto-message is unread for the asker
-      timerDeadline: timerDeadline.toISOString(),
-      role: "asker",
+    // The auto-message as the accepting teacher's client will render it.
+    const bootstrapMessage: ChatMessage = {
+      id: autoMessage._id.toString(),
+      channelId: channel._id.toString(),
+      senderId: authenticatedUser.id,
+      senderName: acceptorName,
+      content: autoMessageContent,
+      mediaUrl: null,
+      mediaType: null,
+      isSystemMessage: true,
+      isOwn: true,
+      isSeen: false,
+      isDelivered: true,
+      isMarkedAsAnswer: false,
+      isDeleted: false,
+      sentAt: now.toISOString(),
+      callInfo: null,
     };
-    await emitNewChannel(asker._id.toString(), channelListItem).catch(() => {});
 
-    // Run anti-cheat check asynchronously
-    checkTeacherStudentPattern(authenticatedUser.id, asker._id.toString()).catch((err) => {
-      console.error("[Anti-Cheat] Check failed:", err);
+    // Everything the workspace screen needs, in the exact shape
+    // GET /api/channels/[id] returns — so the client can seed its cache and
+    // skip that second round trip entirely.
+    const channelDetail: ChannelDetail = {
+      id: channel._id.toString(),
+      questionId: question._id.toString(),
+      askerId: asker._id.toString(),
+      acceptorId: authenticatedUser.id,
+      openedAt: now.toISOString(),
+      timerDeadline: timerDeadline.toISOString(),
+      timeExtensionCount: 0,
+      closedAt: null,
+      status: "ACTIVE",
+      isClosedByAsker: false,
+      ratingGiven: null,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      questionTitle: question.title,
+      questionBody: question.body,
+      questionImages: Array.isArray(question.images) ? question.images : [],
+      answerFormat: question.answerFormat,
+      answerVisibility: question.answerVisibility,
+      askerName: asker.name || "Anonymous",
+      askerUsername: asker.username || undefined,
+      askerImage: asker.userImage || undefined,
+      acceptorName,
+      acceptorUsername: (acceptor as { username?: string } | null)?.username || undefined,
+      acceptorImage: (acceptor as { userImage?: string } | null)?.userImage || undefined,
+      formatDurationMinutes,
+      maxVideoDurationMinutes: config.maxVideoDurationMinutes,
+      isAnswerSubmitted: false,
+    };
+
+    // Every remaining side effect below notifies *other* people (the asker's
+    // devices, the feed) — none of it changes what the accepting teacher sees.
+    // after() flushes the response first and runs this on the same invocation,
+    // so the teacher stops waiting on the asker's push fanout.
+    after(async () => {
+      const channelListItem = {
+        id: channel._id.toString(),
+        questionTitle: question.title,
+        counterpartName: acceptorName,
+        counterpartImage: (acceptor as { userImage?: string | null } | null)?.userImage || undefined,
+        status: "ACTIVE",
+        lastMessagePreview: autoMessageContent,
+        lastMessageAt: now.toISOString(),
+        unreadCount: 1, // The auto-message is unread for the asker
+        timerDeadline: timerDeadline.toISOString(),
+        role: "asker",
+      };
+
+      await Promise.allSettled([
+        // The asker sees the auto-message as incoming, not their own.
+        emitChannelMessage(channel._id.toString(), {
+          ...bootstrapMessage,
+          isOwn: false,
+        }),
+        emitQuestionUpdated(feedQuestion),
+        emitNewChannel(asker._id.toString(), channelListItem),
+        Notification.create({
+          userId: asker._id,
+          type: "QUESTION_ACCEPTED",
+          message: `${acceptorName} accepted your question. Channel is now open.`,
+          href: `/workspace/${channel._id.toString()}`,
+        }).then((acceptNotif) =>
+          acceptNotif ? emitNotification(asker._id.toString(), acceptNotif) : undefined,
+        ),
+        checkTeacherStudentPattern(authenticatedUser.id, asker._id.toString()),
+      ]);
     });
 
-    // Return channelId so the UI can redirect
+    // Return channelId so the UI can redirect, plus the full channel payload
+    // so the workspace screen renders populated on first paint.
     return NextResponse.json({
       ...feedQuestion,
       channelId: channel._id.toString(),
       timerDeadline: timerDeadline.toISOString(),
       formatDurationMinutes,
+      channelBootstrap: {
+        channel: channelDetail,
+        messages: [bootstrapMessage],
+      },
     });
   } catch (error) {
     console.error("[POST /api/questions/[id]/accept]", error);

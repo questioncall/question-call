@@ -9,7 +9,7 @@ import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 import Message from "@/models/Message";
 import { emitCallStatusToUser, emitChannelMessage } from "@/lib/pusher/pusherServer";
-import { CALL_REJECTED_EVENT } from "@/lib/pusher/events";
+import { CALL_HANDLED_EVENT, CALL_REJECTED_EVENT } from "@/lib/pusher/events";
 import User from "@/models/User";
 import type { ChatMessage } from "@/types/channel";
 
@@ -23,6 +23,11 @@ export async function POST(request: Request, context: RouteParams) {
     }
     const userId = user.id;
     const { id } = await context.params;
+
+    // Optional — identifies which of the callee's devices rejected, so the
+    // CALL_HANDLED_EVENT fan-out can be ignored by the device that acted.
+    const body = await request.json().catch(() => null);
+    const byDeviceId = typeof body?.deviceId === "string" ? body.deviceId : null;
 
     await connectToDatabase();
 
@@ -79,19 +84,27 @@ export async function POST(request: Request, context: RouteParams) {
     callSession.endedAt = new Date();
     await callSession.save();
 
-    // Notify the caller that the call was rejected
+    // Notify the caller that the call was rejected, fan out to the callee's
+    // other devices so they stop ringing, and fetch the caller's name for the
+    // history message — all independent, so run them in parallel.
     const resolvedCallerId = callerId || (userId === teacherId ? studentId : teacherId);
-    await emitCallStatusToUser(resolvedCallerId, CALL_REJECTED_EVENT, {
-      callSessionId: id,
-      channelId: callSession.channelId.toString(),
-      rejectedBy: userId,
-    }).catch(console.error);
-
-    // Insert a system message so both participants see the rejected call in history
     const channelId = callSession.channelId.toString();
-    const callerUser = await User.findById(resolvedCallerId)
-      .select("name")
-      .lean<{ name?: string | null } | null>();
+    const [, , callerUser] = await Promise.all([
+      emitCallStatusToUser(resolvedCallerId, CALL_REJECTED_EVENT, {
+        callSessionId: id,
+        channelId,
+        rejectedBy: userId,
+      }).catch(console.error),
+      emitCallStatusToUser(userId, CALL_HANDLED_EVENT, {
+        callSessionId: id,
+        channelId,
+        action: "rejected",
+        byDeviceId,
+      }).catch(console.error),
+      User.findById(resolvedCallerId)
+        .select("name")
+        .lean<{ name?: string | null } | null>(),
+    ]);
     const resolvedCallerName = callerUser?.name || "Unknown";
     const contentText = getCallSummaryText({
       mode: callSession.mode,

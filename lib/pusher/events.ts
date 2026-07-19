@@ -67,3 +67,7 @@ export const CALL_REJECTED_EVENT = "call:rejected";
 export const CALL_ENDED_EVENT = "call:ended";
 export const CALL_CANCELLED_EVENT = "call:cancelled";
 export const CALL_MISSED_EVENT = "call:missed";
+// Fired to the CALLEE's user channel when they accept/reject on one device, so
+// their other logged-in devices (web + app) dismiss the incoming-call UI
+// immediately instead of ringing until timeout.
+export const CALL_HANDLED_EVENT = "call:handled";

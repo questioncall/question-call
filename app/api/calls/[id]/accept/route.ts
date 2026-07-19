@@ -10,7 +10,7 @@ import { getAuthenticatedUser } from "@/lib/unified-auth";
 import CallSession from "@/models/CallSession";
 import Channel from "@/models/Channel";
 import { emitCallStatusToUser } from "@/lib/pusher/pusherServer";
-import { CALL_ACCEPTED_EVENT } from "@/lib/pusher/events";
+import { CALL_ACCEPTED_EVENT, CALL_HANDLED_EVENT } from "@/lib/pusher/events";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -22,6 +22,11 @@ export async function POST(request: Request, context: RouteParams) {
     }
     const userId = user.id;
     const { id } = await context.params;
+
+    // Optional — identifies which of the callee's devices accepted, so the
+    // CALL_HANDLED_EVENT fan-out can be ignored by the device that acted.
+    const body = await request.json().catch(() => null);
+    const byDeviceId = typeof body?.deviceId === "string" ? body.deviceId : null;
 
     await connectToDatabase();
 
@@ -99,13 +104,16 @@ export async function POST(request: Request, context: RouteParams) {
         ttl: 7200,
       });
       at.addGrant({ roomJoin: true, room: callSession.roomName, roomRecord: false });
-      token = await at.toJwt();
-      serverUrl = wsUrl;
 
-      // Fetch channel timer info in parallel — avoids a separate /token call
-      const channel = await Channel.findById(callSession.channelId)
-        .select("timerDeadline timeExtensionCount")
-        .lean();
+      // Token mint + channel timer fetch are independent — run them in parallel.
+      const [jwt, channel] = await Promise.all([
+        at.toJwt(),
+        Channel.findById(callSession.channelId)
+          .select("timerDeadline timeExtensionCount")
+          .lean(),
+      ]);
+      token = jwt;
+      serverUrl = wsUrl;
       if (channel) {
         timerDeadline = new Date(channel.timerDeadline).toISOString();
         timeExtensionCount = channel.timeExtensionCount ?? 0;
@@ -120,13 +128,23 @@ export async function POST(request: Request, context: RouteParams) {
       });
     }
 
-    // Notify the caller that the call was accepted
+    // Notify the caller that the call was accepted, and fan out to the
+    // callee's OTHER devices (same account on web + app) so their incoming
+    // call UI dismisses immediately instead of ringing until timeout.
     const resolvedCallerId = callerId || (userId === teacherId ? studentId : teacherId);
-    await emitCallStatusToUser(resolvedCallerId, CALL_ACCEPTED_EVENT, {
-      callSessionId: id,
-      channelId,
-      acceptedBy: userId,
-    }).catch(console.error);
+    await Promise.all([
+      emitCallStatusToUser(resolvedCallerId, CALL_ACCEPTED_EVENT, {
+        callSessionId: id,
+        channelId,
+        acceptedBy: userId,
+      }).catch(console.error),
+      emitCallStatusToUser(userId, CALL_HANDLED_EVENT, {
+        callSessionId: id,
+        channelId,
+        action: "accepted",
+        byDeviceId,
+      }).catch(console.error),
+    ]);
 
     logCallLifecycle("accepted", {
       callSessionId: id,

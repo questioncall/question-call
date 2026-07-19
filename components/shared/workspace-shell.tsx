@@ -92,7 +92,9 @@ import {
   CALL_REJECTED_EVENT,
   CALL_CANCELLED_EVENT,
   CALL_MISSED_EVENT,
+  CALL_HANDLED_EVENT,
 } from "@/lib/pusher/events";
+import { getDeviceId } from "@/lib/device-id";
 import { IncomingCallOverlay, type IncomingCallPayload } from "@/components/shared/incoming-call-overlay";
 import { OutgoingCallOverlay, type OutgoingCallState } from "@/components/shared/outgoing-call-overlay";
 import {
@@ -601,6 +603,16 @@ export function WorkspaceShell({
       setOutgoingMissedCallId(data.callSessionId);
     });
 
+    // Call was accepted/rejected on another of THIS user's devices (same
+    // account on web + app) — dismiss our incoming-call overlay immediately.
+    channel.bind(
+      CALL_HANDLED_EVENT,
+      (data: { callSessionId: string; byDeviceId?: string | null }) => {
+        if (data.byDeviceId && data.byDeviceId === getDeviceId()) return;
+        removeIncomingCall(data.callSessionId);
+      },
+    );
+
     return () => {
       channel.unbind(CHANNEL_UPDATED_EVENT);
       channel.unbind(NEW_CHANNEL_EVENT);
@@ -609,6 +621,7 @@ export function WorkspaceShell({
       channel.unbind(CALL_REJECTED_EVENT);
       channel.unbind(CALL_CANCELLED_EVENT);
       channel.unbind(CALL_MISSED_EVENT);
+      channel.unbind(CALL_HANDLED_EVENT);
       pusherClient.unsubscribe(userChannel);
     };
   }, [user.id, dispatch, removeIncomingCall]);

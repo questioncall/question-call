@@ -7,6 +7,7 @@ import {
   RoomAudioRenderer,
   VideoConference,
   useLocalParticipant,
+  useRemoteParticipants,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import {
@@ -87,6 +88,61 @@ const ACTIVE_CALL_STORAGE_KEY = "qc.activeCall";
 const ACTIVE_CALL_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 const REJOIN_GRACE_MS = 60_000;
 const REJOIN_RETRY_MS = 3_000;
+// Grace before treating "remote participant left" as a possible call end —
+// covers transient peer network blips without delaying real hangups much.
+const REMOTE_LEFT_GRACE_MS = 2_000;
+
+/**
+ * Watches remote-participant presence inside the LiveKit room. When the peer
+ * leaves (explicit hangup, app killed, or their `call:ended` Pusher event was
+ * dropped), verify the session status with the server after a short grace and
+ * tear down if the call is over — instead of sitting in the room forever.
+ */
+function RemotePresenceWatcher({
+  callSessionId,
+  onRemoteLeft,
+}: {
+  callSessionId: string;
+  onRemoteLeft: () => void;
+}) {
+  const remoteParticipants = useRemoteParticipants();
+  const remoteCount = remoteParticipants.length;
+  const hadRemoteRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (remoteCount > 0) {
+      hadRemoteRef.current = true;
+      return;
+    }
+    if (!hadRemoteRef.current) return;
+
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      void (async () => {
+        try {
+          const res = await fetch(`/api/calls/${callSessionId}`);
+          const data = await res.json().catch(() => null);
+          const status = data?.status as string | undefined;
+          if (status && status !== "ACTIVE" && status !== "RINGING") {
+            onRemoteLeft();
+          }
+        } catch {
+          // Status check failed — leave teardown to the Pusher event.
+        }
+      })();
+    }, REMOTE_LEFT_GRACE_MS);
+
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [remoteCount, callSessionId, onRemoteLeft]);
+
+  return null;
+}
 
 function readPersistedActiveCall(): PersistedActiveCall | null {
   if (typeof window === "undefined") return null;
@@ -726,6 +782,18 @@ export function PersistentCallHost() {
     attemptRejoin(callSessionId, Date.now() + REJOIN_GRACE_MS);
   }, [attemptRejoin]);
 
+  // The peer left the LiveKit room and the server confirmed the session is
+  // over (covers dropped `call:ended` Pusher events and killed apps).
+  const handleRemoteLeft = useCallback(() => {
+    if (endingRef.current) return;
+    const current = activeCallRef.current;
+    if (!current) return;
+
+    toast.info("The call has ended.");
+    endingRef.current = true;
+    clearCall(routeCallId === current.callSessionId);
+  }, [clearCall, routeCallId]);
+
   const handleMinimize = useCallback(() => {
     const channelId = activeCallRef.current?.channelId;
     router.push(channelId ? `/channel/${channelId}` : "/");
@@ -850,6 +918,10 @@ export function PersistentCallHost() {
         ) : null}
         <VideoConference />
         <RoomAudioRenderer />
+        <RemotePresenceWatcher
+          callSessionId={activeCall.callSessionId}
+          onRemoteLeft={handleRemoteLeft}
+        />
       </LiveKitRoom>
     </div>
   );
