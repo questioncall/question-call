@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
 import { logCallLifecycle } from "@/lib/call-logging";
@@ -12,6 +12,21 @@ import { getAuthenticatedUser } from "@/lib/unified-auth";
 import Channel from "@/models/Channel";
 import CallSession from "@/models/CallSession";
 import User from "@/models/User";
+
+/**
+ * How long to wait before falling back to a system-rendered call notification.
+ *
+ * Long enough that a device which *can* raise the full-screen ring has already
+ * done so and moved the session out of CREATED/RINGING (Pusher usually wins in
+ * well under a second, FCM within two), short enough that a callee on an OEM
+ * that blocked the ring is not left staring at a silent phone.
+ */
+const RING_FALLBACK_DELAY_MS = 5000;
+
+// after() runs on the same invocation, so the fallback's delay counts toward
+// this route's wall clock. Default (10s) leaves no headroom above the 5s wait
+// plus the LiveKit/Mongo/Pusher work before it.
+export const maxDuration = 30;
 
 export async function POST(request: Request) {
   try {
@@ -104,6 +119,108 @@ export async function POST(request: Request) {
     }
     const otherUserId = userId === askerId ? acceptorId : askerId;
 
+    // Issue LiveKit tokens for BOTH participants up-front. The callee token
+    // travels in the Pusher payload so they can pre-warm the room while the
+    // ringtone plays — eliminating the GET /token round-trip on accept.
+    // Declared before the idempotency guard below, which mints a token too.
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const wsUrl = process.env.LIVEKIT_URL;
+    const livekitConfigured = Boolean(apiKey && apiSecret && wsUrl);
+
+    async function mintToken(identity: string, displayName: string) {
+      if (!livekitConfigured) return null;
+      const at = new AccessToken(apiKey!, apiSecret!, {
+        identity,
+        name: displayName,
+        ttl: 7200,
+      });
+      at.addGrant({ roomJoin: true, room: roomName, roomRecord: false });
+      return at.toJwt();
+    }
+
+    // ── Idempotency guard ────────────────────────────────────────────────────
+    // Never let a channel accumulate more than one live call. A client that
+    // dials twice (a remount re-running the caller bootstrap, a retried
+    // request, a double tap) must get the call it already started back —
+    // creating a second session re-rings the callee and orphans the first.
+    // Reuse is deliberately bounded: only calls still ringing recently, or one
+    // that is genuinely ACTIVE, can be handed back.
+    const RING_REUSE_WINDOW_MS = 60_000;
+    const liveCall = await CallSession.findOne({
+      channelId,
+      status: { $in: ["RINGING", "ACTIVE"] },
+    })
+      .sort({ createdAt: -1 })
+      .select("callerId mode status roomName teacherId studentId createdAt")
+      .lean();
+
+    if (liveCall) {
+      const liveCallerId = liveCall.callerId?.toString() ?? null;
+      const liveCallId = liveCall._id.toString();
+      const isSameCaller = liveCallerId === userId;
+      const isFresh =
+        liveCall.status === "ACTIVE" ||
+        Date.now() - new Date(liveCall.createdAt).getTime() < RING_REUSE_WINDOW_MS;
+
+      if (!isSameCaller && isFresh) {
+        // The other participant is already calling us (or we are already in a
+        // call together). Stacking a second session here is what produces two
+        // simultaneous ringing calls between the same two people.
+        logCallLifecycle("create_rejected_busy", {
+          callSessionId: liveCallId,
+          channelId,
+          callerId: userId,
+          calleeId: otherUserId,
+        });
+        return NextResponse.json(
+          {
+            error:
+              liveCall.status === "ACTIVE"
+                ? "This channel already has a call in progress."
+                : "They are calling you right now — answer that call instead.",
+            callSessionId: liveCallId,
+            reason: "BUSY",
+          },
+          { status: 409 },
+        );
+      }
+
+      if (isSameCaller && isFresh) {
+        // Same caller, same channel, call still live: hand back the ORIGINAL
+        // session with a fresh token. Deliberately no Pusher emit and no push
+        // — the callee is already ringing for this exact session, and
+        // re-emitting would ring them a second time.
+        const existingToken = await mintToken(userId, user.name || "Caller");
+        logCallLifecycle("create_deduped", {
+          callSessionId: liveCallId,
+          channelId,
+          callerId: userId,
+          calleeId: otherUserId,
+          status: liveCall.status,
+        });
+        return NextResponse.json(
+          {
+            callSessionId: liveCallId,
+            channelId,
+            roomName: liveCall.roomName,
+            mode: liveCall.mode,
+            callerId: userId,
+            teacherId: liveCall.teacherId?.toString() ?? teacherId,
+            studentId: liveCall.studentId?.toString() ?? studentId,
+            calleeIsOnline: true,
+            status: liveCall.status,
+            token: existingToken,
+            serverUrl: wsUrl || null,
+            timerDeadline: new Date(channel.timerDeadline).toISOString(),
+            timeExtensionCount: channel.timeExtensionCount ?? 0,
+            deduped: true,
+          },
+          { status: 200 },
+        );
+      }
+    }
+
     const newCallPromise = CallSession.create({
       channelId,
       roomName,
@@ -121,25 +238,6 @@ export async function POST(request: Request) {
     const calleeUserPromise = User.findById(otherUserId)
       .select("lastActiveAt")
       .lean();
-
-    // Issue LiveKit tokens for BOTH participants up-front. The callee token
-    // travels in the Pusher payload so they can pre-warm the room while the
-    // ringtone plays — eliminating the GET /token round-trip on accept.
-    const apiKey = process.env.LIVEKIT_API_KEY;
-    const apiSecret = process.env.LIVEKIT_API_SECRET;
-    const wsUrl = process.env.LIVEKIT_URL;
-    const livekitConfigured = Boolean(apiKey && apiSecret && wsUrl);
-
-    async function mintToken(identity: string, displayName: string) {
-      if (!livekitConfigured) return null;
-      const at = new AccessToken(apiKey!, apiSecret!, {
-        identity,
-        name: displayName,
-        ttl: 7200,
-      });
-      at.addGrant({ roomJoin: true, room: roomName, roomRecord: false });
-      return at.toJwt();
-    }
 
     const [newCall, callerUser, calleeUser, callerToken, calleeToken] =
       await Promise.all([
@@ -191,6 +289,76 @@ export async function POST(request: Request) {
       },
     }).catch((err) => {
       console.warn("[calls/create] push notification failed:", err);
+    });
+
+    // ── Ring fallback tier ──────────────────────────────────────────────────
+    // The push above is data-only, which is what lets CallNotificationService
+    // raise the real full-screen ring on a killed app. Its unadvertised
+    // dependency: a data-only message renders nothing by itself, so the OS has
+    // to start our process for it to do anything at all. Aggressive OEMs
+    // (Infinix/XOS, Xiaomi, Oppo, Vivo, Tecno, Realme) refuse that start after
+    // a swipe from recents — and because the service's own fallback
+    // notification lives *inside* onMessageReceived, it never runs either. The
+    // callee gets absolute silence, which is how this shipped.
+    //
+    // So if the call is still unanswered a few seconds on, re-send it as an
+    // ordinary notification-payload push. The FCM SDK draws those with no
+    // process start required (the same path chat notifications already arrive
+    // on, confirmed working on the problem device), and the calls_v2 channel
+    // supplies the real ringtone, MAX importance, DND bypass and lock-screen
+    // visibility. Worst case degrades from "nothing at all" to "a ringing
+    // notification you tap to answer".
+    //
+    // Devices where the ring worked never reach the send: answering or
+    // declining moves the session out of CREATED/RINGING, and if one does slip
+    // through while the app is alive, CallDispatchStore.claim() has already
+    // claimed the id and the native service stays quiet.
+    after(async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, RING_FALLBACK_DELAY_MS));
+
+        const current = await CallSession.findById(callSessionId)
+          .select("status")
+          .lean<{ status: string } | null>();
+
+        if (!current || (current.status !== "CREATED" && current.status !== "RINGING")) {
+          return;
+        }
+
+        // The body names the caller on purpose, even though the title already
+        // does: some OEM lock screens show only the body in compact form, and
+        // this notification may be the callee's ONLY surface for the call.
+        const fallbackCallerName = user.name || "Someone";
+        await sendPushNotificationToUser(otherUserId, {
+          type: "SYSTEM",
+          title: user.name || "Incoming Call",
+          message:
+            mode === "VIDEO"
+              ? `📹 ${fallbackCallerName} is video calling you — tap to answer`
+              : `📞 ${fallbackCallerName} is calling you — tap to answer`,
+          href: `/call/${callSessionId}`,
+          icon: callerImage,
+          // The whole point of this tier — see web-push.ts.
+          forceSystemRendered: true,
+          extraData: {
+            callSessionId,
+            callerId: userId,
+            callerName: user.name || "Someone",
+            mode,
+          },
+        });
+
+        logCallLifecycle("ring_fallback_sent", {
+          callSessionId,
+          channelId,
+          calleeId: otherUserId,
+          afterMs: RING_FALLBACK_DELAY_MS,
+        });
+      } catch (err) {
+        // Never let the fallback surface as a call failure — the primary push
+        // and Pusher emit have both already gone out by this point.
+        console.warn("[calls/create] ring fallback push failed:", err);
+      }
     });
 
     logCallLifecycle("created", {

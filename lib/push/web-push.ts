@@ -23,6 +23,25 @@ type NotificationPayload = {
   icon?: string | null;
   /** Extra string key/value pairs merged into the Expo push data object */
   extraData?: Record<string, string>;
+  /**
+   * Force a system-rendered (notification-payload) push for a message that
+   * would otherwise go out data-only — i.e. an incoming call.
+   *
+   * Only the ring-fallback tier in /api/calls/create sets this, and it exists
+   * because data-only delivery has a hard dependency the ring UI does not
+   * advertise: the OS has to start our process so CallNotificationService can
+   * run. Aggressive OEMs (Infinix/XOS is this project's documented problem
+   * device, plus Xiaomi/Oppo/Vivo/Tecno/Realme) refuse that start once the app
+   * has been swiped from recents, and the callee then gets *nothing* — not
+   * even the in-service fallback notification, which lives inside
+   * onMessageReceived and so never runs either.
+   *
+   * A notification-payload push is drawn by the FCM SDK itself and needs no
+   * process start, so it lands on those devices — it is the same path their
+   * chat notifications already arrive on. This does NOT replace the data-only
+   * push (see the long comment below); it is a second tier behind it.
+   */
+  forceSystemRendered?: boolean;
 };
 
 type WebPushPayload = {
@@ -158,10 +177,15 @@ export async function sendPushNotificationToUser(
   // ── Android → Expo push ──────────────────────────────────────────────────
   if (androidSubs.length > 0) {
     const isIncomingCall = Boolean(notification.extraData?.callSessionId);
+    // Ring-fallback tier: same call, same channel, same high priority — the
+    // ONLY thing that changes is who renders it. See `forceSystemRendered`.
+    const systemRendered = notification.forceSystemRendered === true;
     const resolvedTitle = notification.title || theme.title;
 
     console.log(
-      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}${isIncomingCall ? " [call]" : ""}`,
+      `[web-push] Sending Android push (${androidSubs.length} sub(s)) for user=${userId} type=${notifyType}${
+        isIncomingCall ? (systemRendered ? " [call-fallback]" : " [call]") : ""
+      }`,
     );
     // Calls MUST be data-only, and the app depends on it.
     //
@@ -193,10 +217,18 @@ export async function sendPushNotificationToUser(
           : {}),
       },
       channelId: theme.channelId,
-      priority: theme.priority,
+      // Calls are ALWAYS high priority, independent of the theme lookup.
+      // getNotificationTheme() only classifies a call by (type === "SYSTEM" &&
+      // href starts with /call), so any future change to the call href would
+      // silently drop these to normal priority — which Doze defers, meaning a
+      // killed device would simply never ring, with nothing logged anywhere.
+      // Key off the payload we already trust instead.
+      priority: isIncomingCall ? "high" : theme.priority,
       sound: theme.sound,
       categoryId: isIncomingCall ? "incoming_call" : undefined,
-      dataOnly: isIncomingCall,
+      // A call is data-only *unless* it is the fallback tier, whose entire
+      // purpose is to be rendered by the system without waking our process.
+      dataOnly: isIncomingCall && !systemRendered,
     }).catch((err) => {
       console.error("[web-push] Expo push failed for user:", userId, "type:", notifyType, err);
       logError("Expo push failed in web-push dispatcher", {
